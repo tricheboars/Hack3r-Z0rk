@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hackerzork"
+version = "0.1.0"
+description = "H@ck3r-Z0rk — A cyberpunk hacking text adventure"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+dependencies = [
+    "rich>=13.7",
+    "textual>=0.50",
+    "pygame>=2.5",
+    "pyyaml>=6.0",
+    "pyfiglet>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.3",
+    "mypy>=1.8",
+]
+
+[project.scripts]
+hackerzork = "hackerzork.main:main"
+
+[tool.setuptools.packages.find]
+include = ["hackerzork*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true

@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Game saves (player data, not tracked)
+saves/*.json
+
+# Audio files (too large for git — downloaded separately)
+hackerzork/data/sounds/*.wav
+hackerzork/data/sounds/*.ogg
+hackerzork/data/music/*.ogg
+hackerzork/data/music/*.mp3
+!hackerzork/data/sounds/.gitkeep
+!hackerzork/data/music/.gitkeep
+
+# Secrets (if any API keys end up here during dev)
+.env
+*.key
