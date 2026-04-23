@@ -48,8 +48,8 @@ hackerzork/
 │   ├── filesystem/          # Filesystem templates (.yaml)
 │   ├── dialogue/            # NPC dialogue, IRC logs (.yaml)
 │   ├── ascii/               # ASCII art assets (.txt)
-│   ├── sounds/              # Sound effect files (.wav/.ogg)
-│   └── music/               # Music tracks (.ogg/.mp3)
+│   ├── sounds/              # SFX — .wav preferred (see docs/AUDIO_GUIDE.md)
+│   └── music/               # Music + ambient drones — .ogg (see docs/AUDIO_GUIDE.md)
 ├── main.py          # Entry point
 └── game.py          # Game class — orchestrates everything
 ```
@@ -70,7 +70,7 @@ hackerzork/
 
 ## Key Conventions
 
-- **Python 3.11+** required
+- **Python 3.11–3.13** (3.14 isn't supported yet — pygame doesn't ship wheels for it). Local venv at `.venv/` runs 3.12.
 - **Type hints everywhere** — use `from __future__ import annotations`
 - **Dataclasses** for data structures, not plain dicts
 - **asyncio** for the event system and shell loop
@@ -78,7 +78,7 @@ hackerzork/
 - **pytest** for tests — each module gets a corresponding test file
 - Use **pathlib.Path** for any real filesystem access
 - YAML files use **PyYAML** or **ruamel.yaml**
-- Audio uses **pygame.mixer** — initialize early, never block the main loop
+- Audio uses **pygame.mixer** — initialize early, never block the main loop. Format conventions: SFX = `.wav` 16-bit/44.1kHz, music + ambient = `.ogg` Vorbis. Full source/format/licensing rules and the inventory of submitted tracks live in [`docs/AUDIO_GUIDE.md`](docs/AUDIO_GUIDE.md) — keep it updated as files come in.
 
 ## Command Implementation Pattern
 
