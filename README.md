@@ -1,13 +1,30 @@
 # H@ck3r-Z0rk
 
 ```
+$ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
+[ OK ] spoofing MAC ........... 13:37:de:ad:be:ef ........ [ done ]
+[ OK ] routing thru 7 prox13s ............................ [ done ]
+[ OK ] mounting /dev/r34l1ty ............................. [ done ]
+[ !! ] trac3 d3t3ct3d — pwn1ng c0unt3rm3asur3s ........... [ ████ ]
+
+░▒▓███▓▒░▒▓███▓▒░▒▓███▓▒░ wake up, neo. ░▒▓███▓▒░▒▓███▓▒░▒▓███▓▒░
+
  ██╗  ██╗ █████╗  ██████╗██╗  ██╗██████╗ ██████╗
- ██║  ██║██╔══██╗██╔════╝██║ ██╔╝╚════██╗██╔══██╗
- ███████║███████║██║     █████╔╝  █████╔╝██████╔╝
- ██╔══██║██╔══██║██║     ██╔═██╗  ╚═══██╗██╔══██╗
- ██║  ██║██║  ██║╚██████╗██║  ██╗██████╔╝██║  ██║
- ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
-              — Z 0 R K —
+ ██║  ██║██╔══██╗██╔════╝██║ ██╔╝╚════██╗██╔══██╗   .--.
+ ███████║███████║██║     █████╔╝  █████╔╝██████╔╝  |o_o |
+ ██╔══██║██╔══██║██║     ██╔═██╗  ╚═══██╗██╔══██╗  |:_/ |
+ ██║  ██║██║  ██║╚██████╗██║  ██╗██████╔╝██║  ██║ //   \ \
+ ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝(|     | )
+        ─=≡Σ((( ─  Z 0 R K  ─ )))Σ≡=─           /'\_   _/`\
+                                                \___)=(___/
+
+░▒▓████████████████████████████████████████████████████████▓▒░
+
+root@blackbox:~# whoami
+> ex-corporate. one burner laptop. one USB drive. z3r0 fr13nds.
+root@blackbox:~# cat /etc/motd
+> th3y kn0w y0u kn0w.  r u n n i n g  i s  t h e  0 n l y  m 0 v e.
+root@blackbox:~# _
 ```
 
 A cyberpunk hacking text adventure played through a simulated terminal.
@@ -22,15 +39,15 @@ The tone is Mr. Robot meets Pony Island. It starts gritty and paranoid. It ends.
 
 ## Requirements
 
-- Python 3.11+
+- Python **3.11–3.13** (3.14 isn't supported yet — pygame doesn't ship wheels for it)
 - A terminal
 - Computer science knowledge (or a willingness to learn)
 
 ## Install
 
 ```bash
-git clone https://github.com/tricheboars/H-ck3r-Z0rk.git
-cd H-ck3r-Z0rk
+git clone https://github.com/tricheboars/Hack3r-Z0rk.git
+cd Hack3r-Z0rk
 pip install -e ".[dev]"
 ```
 
