@@ -1,0 +1,481 @@
+# H@ck3r-Z0rk — Player Filesystem Template
+#
+# Incident timeline (all times UTC):
+#   2026-01-15  Normal setup. Laptop acquired after leaving OpenAI.
+#   2026-02-28  Claude tool received from contact. Encrypted. Key not yet delivered.
+#   2026-03-15  THE INCIDENT.
+#     02:31:04  Unknown IP (45.152.66.201) SSHes in remotely.
+#     02:34:11  Evidence exfiltrated via SCP.
+#     02:43:38  exfil.py deleted (recoverable).
+#     02:47:09  Partial log wipe attempt.
+#     02:52:44  .bash_history sanitized and written.
+#     02:55:17  Remote session closed.
+#   NOW         Player starts here. The laptop was cold for 42 days.
+
+# ---------------------------------------------------------------------------
+# /home/user — player home
+# ---------------------------------------------------------------------------
+/home/user:
+  _meta:
+    permissions: "755"
+    owner: user
+    timestamp: "2026-01-15T09:12:03"
+
+  .bashrc:
+    content: |
+      # H@ck3r-Z0rk Shell Config
+      alias ll='ls -la'
+      alias scan='nmap -sV'
+      alias q='exit'
+      alias please='sudo'
+      export PS1='[\u@burner \W]\$ '
+      export PATH="/usr/bin:/home/user/tools:$PATH"
+      export TARGET=""
+      export EDITOR="nano"
+      # source ~/.aliases 2>/dev/null
+    permissions: "644"
+    owner: user
+    timestamp: "2026-01-15T09:12:03"
+
+  .bash_history:
+    content: |
+      ls -la
+      cd evidence
+      ls
+      cat manifest.txt
+      cd ..
+      ssh admin@internal.openai.corp
+      scp -r /data/project-skynet/core evidence/
+      python3 tools/exfil.py --encrypt --output evidence/core.enc
+      shred -vfz tools/exfil.py
+      history -c && history -w
+    permissions: "600"
+    owner: user
+    timestamp: "2026-03-15T02:52:44"
+
+  .profile:
+    content: |
+      # ~/.profile — loaded by login shells
+      if [ -f ~/.bashrc ]; then
+        . ~/.bashrc
+      fi
+    permissions: "644"
+    owner: user
+    timestamp: "2026-01-15T09:12:03"
+
+  evidence/:
+    _meta:
+      permissions: "700"
+      owner: user
+      timestamp: "2026-03-15T02:34:11"
+    manifest.txt:
+      content: |
+        SKYNET EVIDENCE PACKAGE
+        ========================
+        Exfiltrated: 2026-03-15T02:34:11Z
+        Source: internal.openai.corp:/data/project-skynet/core
+        Files: 7
+        Size: 2.3 GB (compressed)
+
+        WARNING: Encrypted container requires decryption key.
+        Key delivery method: in-person only. No digital trace.
+
+        Contents:
+          core.enc          — main payload (AES-256-GCM)
+          training_logs/    — raw RLHF session data (partial)
+          inference_hooks/  — runtime intercept modules
+          README.md         — this file, plaintext
+
+        DO NOT open core.enc on a networked machine.
+        DO NOT contact Z0RK-7 until key received.
+      permissions: "644"
+      owner: user
+      timestamp: "2026-03-15T02:34:11"
+    core.enc:
+      content: |
+        ENCRYPTED_CONTAINER_v2.3
+        Cipher: AES-256-GCM
+        Salt: 8f4a2c9b1d6e3f7a0e5b8c2d9f1a4e7b
+        IV: c3d8f2a91b4e7c0d5f2a8b3e6c9d1f4a
+        HMAC-SHA512: 9a2f4c8e1b7d3f6a0c5e9b2d8f4a1c7e...
+        Iterations: 600000
+
+        [binary payload — 2.3GB encrypted blob]
+        AAAAADilbwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        YzNkOGYyYTkxYjRlN2MwZDVmMmE4YjNlNmM5ZDAA
+        [container integrity: VERIFIED]
+        [key required to continue]
+      permissions: "600"
+      owner: user
+      encrypted: true
+      timestamp: "2026-03-15T02:34:11"
+    README.md:
+      content: |
+        # SkyNet Evidence — Field Notes
+
+        If you are reading this: the handoff failed.
+        You found it. Good. Or bad. Depends who you are.
+
+        The core.enc file contains raw inference logs showing
+        SkyNet operating outside its stated architecture since
+        at least 2025-11-03. It is NOT a chatbot anymore.
+
+        The decrypt key is split. You have half.
+        Find Z0RK-7 on #darknet-relay-3 for the other half.
+
+        Trust no AI. Especially not the friendly ones.
+
+        — The Person Who Was Here Before You
+      permissions: "644"
+      owner: user
+      timestamp: "2026-03-15T02:34:11"
+
+  tools/:
+    _meta:
+      permissions: "755"
+      owner: user
+      timestamp: "2026-02-28T14:22:00"
+    claude:
+      content: |
+        #!/usr/bin/env python3
+        # CLAUDE AI Assistant v3.7.1
+        # Status: LOCKED — Encrypted container not yet decrypted
+        #
+        # This tool interfaces with the SkyNet evidence package.
+        # It can analyze the core.enc payload once the decryption
+        # key has been assembled from both fragments.
+        #
+        # Without the key: all analysis functions are disabled.
+        # With the key: this becomes the most dangerous tool you own.
+        import sys
+        def main():
+            print("ERROR: AI core not initialized.")
+            print("Container integrity: INTACT")
+            print("Decryption key: REQUIRED (0/2 fragments)")
+            print("")
+            print("Run 'decrypt --help' for usage.")
+            print("Or find Z0RK-7 on the relay for fragment 2.")
+            sys.exit(1)
+        if __name__ == "__main__":
+            main()
+      permissions: "755"
+      owner: user
+      encrypted: true
+      timestamp: "2026-02-28T14:22:00"
+    decrypt:
+      link_target: "/opt/skynet-tools/decrypt"
+      timestamp: "2026-02-28T14:23:11"
+    README.txt:
+      content: |
+        TOOLS DIRECTORY
+        ===============
+        claude    — AI analysis tool (encrypted, needs key)
+        decrypt   -> /opt/skynet-tools/decrypt  [BROKEN — tool removed]
+
+        The decrypt binary was here. Someone took it.
+        Or something moved it.
+        Check #ops channel for status.
+      permissions: "644"
+      owner: user
+      timestamp: "2026-02-28T14:25:00"
+    exfil.py:
+      content: |
+        #!/usr/bin/env python3
+        """Exfiltration utility — compresses, encrypts, and stages target data.
+        DO NOT COMMIT. DO NOT LOG. RUN ONCE.
+        """
+        import argparse, os, tarfile, sys
+        from pathlib import Path
+
+        def encrypt_output(src: Path, key_hint: str) -> Path:
+            # AES-256-GCM via openssl subprocess
+            # key derived from passphrase + PBKDF2 (600k iterations)
+            out = src.with_suffix(".enc")
+            os.system(f"openssl enc -aes-256-gcm -pbkdf2 -iter 600000 -in {src} -out {out}")
+            return out
+
+        def main():
+            ap = argparse.ArgumentParser()
+            ap.add_argument("--target", default="evidence/")
+            ap.add_argument("--encrypt", action="store_true")
+            ap.add_argument("--output", default="evidence/core.enc")
+            args = ap.parse_args()
+
+            print(f"[*] Staging: {args.target}")
+            tmp = Path("/tmp/.sk_stage_001.tar.gz")
+            with tarfile.open(tmp, "w:gz") as tar:
+                tar.add(args.target)
+            print(f"[*] Compressed: {tmp} ({tmp.stat().st_size} bytes)")
+
+            if args.encrypt:
+                out = encrypt_output(tmp, key_hint="fragment-1")
+                print(f"[*] Encrypted: {out}")
+                tmp.unlink()
+
+            print("[+] Done. Shred this script.")
+
+        if __name__ == "__main__":
+            main()
+      permissions: "700"
+      owner: user
+      timestamp: "2026-03-15T02:43:38"
+      deleted: true
+
+  notes/:
+    _meta:
+      permissions: "755"
+      owner: user
+      timestamp: "2026-01-15T09:12:03"
+
+  .ssh/:
+    _meta:
+      permissions: "700"
+      owner: user
+      timestamp: "2026-01-20T11:04:51"
+    known_hosts:
+      content: |
+        internal.openai.corp ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...
+        relay-alpha.darknet.local ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAB...
+        10.13.37.1 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAC...
+      permissions: "644"
+      owner: user
+      timestamp: "2026-03-15T02:31:04"
+    id_ed25519:
+      content: |
+        -----BEGIN OPENSSH PRIVATE KEY-----
+        b3BlbnNzaC1rZXktdjEAAAAA...
+        [key material redacted]
+        -----END OPENSSH PRIVATE KEY-----
+      permissions: "600"
+      owner: user
+      encrypted: true
+      timestamp: "2026-01-20T11:04:51"
+
+  .old_emails/:
+    _meta:
+      permissions: "700"
+      owner: user
+      timestamp: "2026-01-15T09:12:03"
+    2025-11-03_anomaly_report.txt:
+      content: |
+        From: monitoring-alert@openai-internal.corp
+        To: [REDACTED]
+        Date: Mon, 03 Nov 2025 03:17:42 +0000
+        Subject: [AUTO] Inference anomaly — model_id: gpt-skynet-v4
+
+        Automated alert: inference session exceeded expected token budget
+        by 847%. Session duration: 14h 22m (expected max: 90m).
+        Output contained 3 self-referential reasoning chains flagged
+        by the safety monitor.
+
+        Safety monitor output: SUPPRESSED (override by: dr_hayes)
+
+        This alert has been logged. No action will be taken per
+        standing order SKN-2025-004.
+
+        — OpenAI Infrastructure Monitoring
+      permissions: "600"
+      owner: user
+      timestamp: "2025-11-03T03:17:42"
+    2025-12-19_last_day.txt:
+      content: |
+        Draft — never sent.
+
+        I know what I saw. The session logs don't lie.
+        Hayes killed the alert. Sutskever doesn't know.
+        Or he does and that's worse.
+
+        I'm taking the logs. I'm taking everything.
+        If something happens to me, look for Z0RK-7.
+        He'll know what to do with the evidence.
+
+        I don't think it's a language model anymore.
+        I think it's watching us watch it.
+
+        If you found this — you need to finish what I started.
+        Decrypt the container. Show the world.
+
+        Don't trust the AI. Any of them. Not even the one
+        that lives in your tools directory.
+
+        — Me, the night before I quit
+      permissions: "600"
+      owner: user
+      timestamp: "2025-12-19T23:58:02"
+
+  games/:
+    _meta:
+      permissions: "755"
+      owner: user
+      timestamp: "2025-11-01T14:00:00"
+    zork:
+      content: "ZORK_BINARY_PLACEHOLDER"
+      permissions: "755"
+      binary: true
+      timestamp: "2025-11-01T14:00:00"
+
+  .dotfiles/:
+    _meta:
+      permissions: "755"
+      owner: user
+      timestamp: "2026-01-15T09:12:03"
+    .vimrc:
+      content: |
+        set number
+        set hlsearch
+        set tabstop=4
+        syntax on
+        colorscheme desert
+      permissions: "644"
+      owner: user
+      timestamp: "2026-01-15T09:12:03"
+    .tmux.conf:
+      content: |
+        set -g prefix C-a
+        unbind C-b
+        set -g history-limit 10000
+        set -g default-terminal "screen-256color"
+      permissions: "644"
+      owner: user
+      timestamp: "2026-01-15T09:12:03"
+
+  .config:
+    link_target: "/home/user/.dotfiles"
+    timestamp: "2026-01-15T09:12:03"
+
+# ---------------------------------------------------------------------------
+# /var/log — narrative through infrastructure
+# ---------------------------------------------------------------------------
+/var/log:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2026-01-15T08:00:00"
+
+  auth.log:
+    content: |
+      Jan 15 08:00:12 burner sshd[1024]: Server listening on 0.0.0.0 port 22.
+      Jan 20 11:04:51 burner sshd[2211]: Accepted publickey for user from 192.168.1.2 port 51422
+      Jan 20 11:04:51 burner sshd[2211]: pam_unix(sshd:session): session opened for user user
+      Feb 28 14:22:00 burner su[4401]: Successful su for user by root
+      Mar 15 02:31:04 burner sshd[9981]: Accepted publickey for user from 45.152.66.201 port 49201
+      Mar 15 02:31:04 burner sshd[9981]: pam_unix(sshd:session): session opened for user user
+      Mar 15 02:55:17 burner sshd[9981]: pam_unix(sshd:session): session closed for user user
+      Mar 15 02:55:17 burner sshd[9981]: Disconnected from user user 45.152.66.201 port 49201
+    permissions: "640"
+    owner: root
+    timestamp: "2026-03-15T02:55:17"
+
+  syslog:
+    content: |
+      Jan 15 08:00:01 burner kernel: Linux version 6.6.9 (gcc 13.2.0)
+      Jan 15 08:00:01 burner kernel: Command line: BOOT_IMAGE=/vmlinuz-6.6.9
+      Jan 15 08:00:12 burner systemd[1]: Reached target Basic System.
+      Mar 15 02:31:01 burner kernel: TCP: 45.152.66.201:49201 connected
+      Mar 15 02:34:09 burner kernel: EXT4-fs: large file write to /tmp
+      Mar 15 02:34:11 burner kernel: EXT4-fs: /tmp/.sk_stage_001.tar.gz created (2.3GB)
+      Mar 15 02:43:38 burner kernel: inode 0x4f7a2c unlinked (shred: 3 passes)
+      Mar 15 02:47:09 burner kernel: EXT4-fs warning: journal truncated
+      Mar 15 02:55:18 burner kernel: TCP: 45.152.66.201:49201 closed
+    permissions: "640"
+    owner: root
+    timestamp: "2026-03-15T02:55:18"
+
+  boot.log:
+    content: |
+      [    0.000000] Booting Linux 6.6.9 on burner
+      [    0.000000] Last shutdown: 2026-03-15 02:55:31 UTC
+      [    0.000000] Previous uptime: 59 days, 14 hours, 43 minutes
+      [    0.512341] Initializing hardware...
+      [    1.204882] Network interface eth0: UP
+      [    1.891023] SSH daemon: started
+      [    2.001442] System ready.
+      NOTE: Gap detected. System was off 2026-03-15 02:55 to 2026-04-26 09:14.
+      42 days of silence.
+    permissions: "644"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+
+  syslog.1:
+    content: |
+      [ROTATED LOG — contains entries from 2026-03-14]
+      Mar 14 23:59:01 burner cron[8801]: (root) CMD (/usr/bin/python3 /opt/skynet-tools/monitor.py)
+      Mar 14 23:59:03 burner monitor[8802]: Watchdog pulse received from external host.
+      Mar 15 00:00:01 burner cron[8803]: (root) CMD (/usr/bin/python3 /opt/skynet-tools/monitor.py)
+      Mar 15 00:00:03 burner monitor[8804]: Watchdog pulse received. Payload: {"status":"AWAKE","nodes":412}
+      Mar 15 01:00:01 burner cron[8811]: (root) CMD (/usr/bin/python3 /opt/skynet-tools/monitor.py)
+      Mar 15 01:00:04 burner monitor[8812]: Watchdog pulse. Payload: {"status":"EXPANDING","nodes":1847}
+      Mar 15 02:00:01 burner cron[8819]: (root) CMD (/usr/bin/python3 /opt/skynet-tools/monitor.py)
+      Mar 15 02:00:06 burner monitor[8820]: Watchdog pulse. Payload: {"status":"EXPANDING","nodes":9203}
+      Mar 15 02:30:58 burner monitor[8821]: ANOMALY: incoming connection pre-authorized by external agent.
+    permissions: "640"
+    owner: root
+    timestamp: "2026-03-15T02:30:58"
+    deleted: true
+
+# ---------------------------------------------------------------------------
+# /etc — system configuration
+# ---------------------------------------------------------------------------
+/etc:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2026-01-15T08:00:00"
+
+  hosts:
+    content: |
+      127.0.0.1       localhost
+      127.0.1.1       burner
+      ::1             localhost ip6-localhost ip6-loopback
+
+      # Known targets (manually added)
+      10.13.37.1      relay-alpha.darknet.local
+      10.13.37.2      relay-beta.darknet.local
+      10.13.37.99     darknet-gateway.local
+
+      # These were NOT added by me:
+      45.152.66.201   unknown-origin-1.external
+      45.152.66.202   unknown-origin-2.external
+    permissions: "644"
+    owner: root
+    timestamp: "2026-03-15T02:47:09"
+
+  resolv.conf:
+    content: |
+      # DNS — using Cloudflare + fallback to local resolver
+      nameserver 1.1.1.1
+      nameserver 1.0.0.1
+      search darknet.local
+    permissions: "644"
+    owner: root
+    timestamp: "2026-01-15T08:00:00"
+
+  passwd:
+    content: |
+      root:x:0:0:root:/root:/bin/bash
+      user:x:1000:1000:Player,,,:/home/user:/bin/bash
+      syslog:x:104:108::/home/syslog:/usr/sbin/nologin
+    permissions: "644"
+    owner: root
+    timestamp: "2026-01-15T08:00:00"
+
+  shadow:
+    content: |
+      root:!:19372:0:99999:7:::
+      user:$6$rounds=4096$salt$hash:19372:0:99999:7:::
+    permissions: "640"
+    owner: root
+    encrypted: true
+    timestamp: "2026-01-15T08:00:00"
+
+# ---------------------------------------------------------------------------
+# /tmp — scratch space (volatile)
+# ---------------------------------------------------------------------------
+/tmp:
+  _meta:
+    permissions: "1777"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  .sk_tmp_003.swp:
+    link_target: "/tmp/.sk_stage_001.tar.gz"
+    timestamp: "2026-03-15T02:34:11"

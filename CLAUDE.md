@@ -8,18 +8,19 @@ A cyberpunk hacking text adventure game played through a simulated terminal. The
 ```
 hackerzork/
 ├── engine/          # Core terminal engine — parser, shell, input
-│   ├── command_parser.py    # Tokenize & parse bash-like input
-│   ├── command_registry.py  # Plugin-style command registration
+│   ├── command_parser.py    # Tokenize & parse bash-like input  ✅ DONE
+│   ├── command_registry.py  # Plugin-style command registration  ✅ DONE
 │   ├── shell.py             # Main shell loop, prompt, REPL
 │   ├── tab_complete.py      # Tab completion engine
 │   └── history.py           # Command history (arrow keys, Ctrl+R)
 ├── systems/         # Game simulation systems
-│   ├── virtual_fs.py        # In-memory Unix-like filesystem
+│   ├── virtual_fs.py        # In-memory Unix-like filesystem  ✅ DONE
 │   ├── network.py           # Network topology, nodes, services
 │   ├── heat.py              # Trace/heat system with consequences
+│   ├── toolkit.py           # Package install state, poison engine
 │   ├── comms.py             # IRC channels + encrypted DMs
 │   ├── state.py             # Game state machine
-│   ├── events.py            # Event bus — inter-system communication
+│   ├── events.py            # Event bus — inter-system communication  ✅ DONE
 │   ├── puzzle.py            # Puzzle validation engine
 │   └── save_load.py         # Save/load (also a meta-horror vector)
 ├── commands/        # Individual command implementations
@@ -27,6 +28,7 @@ hackerzork/
 │   ├── network_cmds.py      # nmap, ssh, ping, traceroute, curl, netcat
 │   ├── hacking.py           # Custom exploit tools + real-inspired tools
 │   ├── comms_cmds.py        # irc, msg, contacts
+│   ├── packaging.py         # apt, shadow, gpg
 │   ├── system.py            # whoami, uname, ps, top, man, history
 │   └── help.py              # help, tutorial, hint system
 ├── effects/         # Visual effects engine
@@ -44,8 +46,12 @@ hackerzork/
 │   ├── fourth_wall.py       # Meta-game effects (fake crashes, etc.)
 │   └── corruption.py        # Save corruption, display corruption
 ├── data/            # All game content (YAML + text files)
+│   ├── packages/
+│   │   ├── apt/             # One YAML per mainline package
+│   │   └── shadow/          # One YAML per underground package
 │   ├── nodes/               # Network node definitions (.yaml)
-│   ├── filesystem/          # Filesystem templates (.yaml)
+│   ├── filesystem/
+│   │   └── home.yaml        # Player filesystem template  ✅ DONE
 │   ├── dialogue/            # NPC dialogue, IRC logs (.yaml)
 │   ├── ascii/               # ASCII art assets (.txt)
 │   ├── sounds/              # SFX — .wav preferred (see docs/AUDIO_GUIDE.md)
@@ -62,7 +68,7 @@ hackerzork/
 
 3. **Content is data, not code.** Network nodes, filesystem layouts, dialogue — all defined in YAML. The engine reads data files; you never hardcode game content in Python.
 
-4. **The virtual filesystem is the truth.** The player's experience IS the filesystem. `cat` reads from the VFS. `ls` lists the VFS. Commands that create files write to the VFS. The VFS has Unix permissions, ownership, and timestamps.
+4. **The virtual filesystem is the truth.** The player's experience IS the filesystem. `cat` reads from the VFS. `ls` lists the VFS. Commands that create files write to the VFS. The VFS has Unix permissions, ownership, timestamps, symlinks, and an encrypted-file flag.
 
 5. **Audio is a first-class system.** Four layers run simultaneously: ambient drones, diegetic terminal sounds, reactive heat-based audio, and event-triggered EDM/SFX. The mixer manages crossfading and layering.
 
@@ -93,7 +99,7 @@ from hackerzork.engine.command_registry import register_command, CommandContext
 )
 def cmd_nmap(ctx: CommandContext, args: list[str]) -> str:
     """Scan a target for open ports and services."""
-    # Parse flags
+    # Parse flags from ctx.parsed (ParsedCommand)
     # Query network system for target node
     # Generate scan results
     # Emit event for heat system
@@ -101,36 +107,140 @@ def cmd_nmap(ctx: CommandContext, args: list[str]) -> str:
     return output
 ```
 
-## Virtual Filesystem Structure (Player Home)
+Commands receive a `CommandContext` with live references to all systems:
+- `ctx.fs` — VirtualFS instance
+- `ctx.network` — NetworkSim
+- `ctx.state` — GameState
+- `ctx.events` — EventBus
+- `ctx.heat` — HeatSystem
+- `ctx.output` — OutputBuffer (effects-aware writer)
+- `ctx.env` — dict of shell environment variables
+
+## Virtual Filesystem
+
+### Capabilities (all implemented in `systems/virtual_fs.py`)
+
+- Unix permissions (octal + string), ownership, timestamps
+- Symlinks: `make_symlink`, `readlink`, `path_is_symlink`, `symlink_is_broken`
+  - `_get_node` follows symlinks with lstat/stat semantics and loop detection
+- Recoverable trash: `remove()` sends to `_trash` by default; `recover(original_path)` restores
+  - `permanent=True` on `remove()` skips trash (internal/meta use)
+  - Trash max 50 entries; oldest evicted first
+- Encrypted flag: `FSEntry.encrypted` — `cat` renders these via `VirtualFS.render_hex()`
+- Binary flag: `FSEntry.binary` — `cat` shows "binary file" message
+- Hex rendering: `VirtualFS.render_hex(content)` → hexdump -C format
+- Full serialization: `to_dict()` / `from_dict()` including trash
+
+### Player Filesystem (seeded from `data/filesystem/home.yaml`)
 
 ```
 /
-├── home/
-│   └── user/
-│       ├── .bashrc              # Aliases, prompt, PATH setup
-│       ├── .bash_history        # Pre-seeded with character's history
-│       ├── .ssh/
-│       │   └── known_hosts      # Builds as you connect to nodes
-│       ├── evidence/            # USB drive contents — the SkyNet proof
-│       ├── tools/               # Hacking toolkit
-│       │   ├── claude           # Broken AI tool — needs decryption key
-│       │   └── ...
-│       ├── notes/               # Player's scratch space
-│       ├── .old_emails/         # Breadcrumbs from OpenAI life
-│       ├── games/
-│       │   └── zork             # Playable Zork easter egg
-│       └── dotfiles/            # Pulled from "public repos"
+├── home/user/
+│   ├── .bashrc                  # Jan 15 — prompt, aliases, PATH
+│   ├── .bash_history            # Mar 15 02:52 — sanitized, still incriminating
+│   ├── .profile
+│   ├── .config -> .dotfiles/    # symlink (healthy)
+│   ├── .dotfiles/               # .vimrc, .tmux.conf
+│   ├── .ssh/
+│   │   ├── known_hosts          # 3 relay nodes pre-seeded
+│   │   └── id_ed25519           # encrypted=true
+│   ├── .old_emails/             # mode 700
+│   │   ├── 2025-11-03_anomaly_report.txt   # Nov 2025 timestamp — the first sign
+│   │   └── 2025-12-19_last_day.txt         # the night before they quit
+│   ├── evidence/                # mode 700, Mar 15 02:34 timestamp
+│   │   ├── core.enc             # encrypted=true (AES-256-GCM container)
+│   │   ├── manifest.txt         # plaintext — 7 files, key required
+│   │   └── README.md            # field notes, contact Z0RK-7
+│   ├── tools/
+│   │   ├── claude               # encrypted=true (locked AI tool)
+│   │   ├── decrypt -> /opt/skynet-tools/decrypt   # BROKEN symlink
+│   │   └── README.txt
+│   ├── notes/                   # empty — player scratch space
+│   └── games/
+│       └── zork                 # binary=true
+├── var/log/
+│   ├── auth.log                 # Mar 15 — unknown IP 45.152.66.201 at 02:31
+│   ├── syslog                   # Mar 15 — staging file, inode shred, log truncation
+│   └── boot.log                 # Apr 26 — 42-day cold gap documented
 ├── etc/
-│   ├── hosts                    # Known network targets
-│   └── resolv.conf
-├── var/
-│   └── log/
-│       ├── syslog               # Narrative through infrastructure
-│       ├── auth.log             # Login history — who had this laptop?
-│       └── boot.log             # Boot timestamps tell a story
-├── tmp/
-└── usr/
-    └── bin/                     # System commands live here
+│   ├── hosts                    # Mar 15 02:47 — unknown IPs added (not by player)
+│   ├── resolv.conf
+│   ├── passwd
+│   └── shadow                   # encrypted=true
+└── tmp/
+    └── .sk_tmp_003.swp -> /tmp/.sk_stage_001.tar.gz   # BROKEN symlink
+
+# Recoverable (in trash at game start):
+#   /home/user/tools/exfil.py    # 700, Mar 15 02:43 — the exfil script
+#   /var/log/syslog.1            # rotated log — SkyNet watchdog pulses, 412→1847→9203 nodes
+```
+
+### Incident Timeline (baked into timestamps)
+```
+2025-11-03 03:17  Anomaly report suppressed by dr_hayes
+2025-12-19 23:58  Defector writes draft email, decides to run
+2026-01-15 09:12  Laptop acquired, .bashrc configured
+2026-02-28 14:22  claude tool received, encrypted, key not yet delivered
+2026-03-15 02:31  Unknown IP (45.152.66.201) SSHes in
+2026-03-15 02:34  Evidence exfiltrated via exfil.py
+2026-03-15 02:43  exfil.py shredded (recoverable)
+2026-03-15 02:47  Partial log wipe, /etc/hosts modified
+2026-03-15 02:52  .bash_history sanitized
+2026-03-15 02:55  Remote session closes
+2026-04-26 09:14  Laptop boots — player starts here (42-day gap)
+```
+
+### Filesystem Template Format (YAML)
+
+Keys are absolute paths of root directories to populate. Files and dirs are nested under them.
+
+```yaml
+/home/user:
+  _meta:
+    permissions: "755"
+    owner: user
+    timestamp: "2026-01-15T09:12:03"   # sets this directory's modified time
+
+  # Regular file
+  .bashrc:
+    content: |
+      alias ll='ls -la'
+    permissions: "644"
+    owner: user
+    timestamp: "2026-01-15T09:12:03"   # optional — defaults to datetime.now()
+    encrypted: false                    # optional — default false
+    binary: false                       # optional — default false
+
+  # Subdirectory (key ends with /)
+  evidence/:
+    _meta:
+      permissions: "700"
+      owner: user
+      timestamp: "2026-03-15T02:34:11"
+    manifest.txt:
+      content: "SKYNET EVIDENCE PACKAGE\n"
+      permissions: "644"
+
+  # Encrypted file (cat shows hex, internal content readable for decryption puzzle)
+  core.enc:
+    content: "ENCRYPTED_CONTAINER_v2.3\n[binary payload]\n"
+    permissions: "600"
+    encrypted: true
+    timestamp: "2026-03-15T02:34:11"
+
+  # Symbolic link (link_target must be absolute, or relative resolved at load time)
+  .config:
+    link_target: "/home/user/.dotfiles"
+
+  # Deleted file — goes to trash instead of filesystem (recoverable via `recover`)
+  exfil.py:
+    content: |
+      #!/usr/bin/env python3
+      # exfiltration utility
+    permissions: "700"
+    owner: user
+    timestamp: "2026-03-15T02:43:38"
+    deleted: true
 ```
 
 ## Network Node YAML Schema
@@ -186,19 +296,22 @@ story_flags:
 
 ## Session Workflow for Claude Code
 
-Each Claude Code session should focus on ONE module or system. Check `docs/specs/` for the detailed spec of what you're building. The recommended session order:
+Each Claude Code session should focus on ONE module or system. Check `docs/specs/` for the detailed spec of what you're building.
 
-1. **engine/command_parser.py** + **engine/command_registry.py** — Foundation
-2. **systems/events.py** — Event bus (everything depends on this)
-3. **systems/virtual_fs.py** — The filesystem
-4. **commands/filesystem.py** — ls, cd, cat, pwd, etc.
-5. **engine/shell.py** — The REPL loop
-6. **systems/network.py** — Network topology
-7. **commands/network_cmds.py** — nmap, ssh, ping
-8. **systems/heat.py** — Heat/trace system
-9. **audio/mixer.py** — Core audio
-10. **effects/** — Visual effects
-11. **meta/** — SkyNet (save for last, needs everything else working)
+| # | Module(s) | Spec | Status |
+|---|-----------|------|--------|
+| 1 | `engine/command_parser.py` + `engine/command_registry.py` | `01_command_parser.md` | ✅ Done |
+| 2 | `systems/events.py` | `02_event_bus.md` | ✅ Done |
+| 3 | `systems/virtual_fs.py` | `03_virtual_fs.md` | ✅ Done |
+| 4 | `commands/filesystem.py` | `04_filesystem_commands.md` | ✅ Done |
+| 5 | `engine/shell.py` + `engine/tab_complete.py` + `engine/history.py` | `05_shell.md` | ← **Next** |
+| 6 | `systems/network.py` | `06_network.md` (was 04) | |
+| 7 | `commands/network_cmds.py` | `07_network_cmds.md` | |
+| 8 | `systems/heat.py` | `08_heat_system.md` (was 05) | |
+| 9 | `systems/toolkit.py` + `commands/packaging.py` | `09_toolkit_unlocks.md` | |
+| 10 | `audio/mixer.py` + `audio/ambient.py` + `audio/sfx.py` | `10_audio.md` (was 06) | |
+| 11 | `effects/` | `11_effects.md` (was 07) | |
+| 12 | `meta/` (skynet, fourth_wall, corruption) | `12_meta_engine.md` (was 08) | |
 
 After each session, run `pytest` to make sure nothing is broken.
 
