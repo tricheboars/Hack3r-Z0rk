@@ -1,7 +1,11 @@
 """H@ck3r-Z0rk — Game orchestrator."""
 from __future__ import annotations
 
+import asyncio
+import pathlib
 from dataclasses import dataclass, field
+
+import yaml
 
 
 @dataclass
@@ -16,21 +20,7 @@ class GameConfig:
 
 
 class Game:
-    """Main game class — orchestrates all systems.
-
-    This is the top-level object that initializes and connects:
-    - Event bus (inter-system communication)
-    - Virtual filesystem (player's OS)
-    - Network simulation (the internet to hack)
-    - Heat system (trace/exposure tracking)
-    - Command parser & registry
-    - Shell (the REPL)
-    - Audio mixer
-    - Effects engine
-    - Meta engine (SkyNet)
-    - Comms system (IRC + DMs)
-    - Save/load
-    """
+    """Main game class — orchestrates all systems."""
 
     def __init__(
         self,
@@ -47,48 +37,77 @@ class Game:
             debug=debug,
             save_file=save_file,
         )
-
-        # Systems will be initialized in boot()
         self._booted = False
 
     def boot(self) -> None:
-        """Initialize all game systems in dependency order.
+        """Initialize all game systems in dependency order."""
+        from hackerzork.engine.command_registry import DEFAULT_REGISTRY, CommandContext
+        from hackerzork.engine.history import CommandHistory
+        from hackerzork.engine.shell import Shell
+        from hackerzork.engine.tab_complete import TabCompleter
+        from hackerzork.systems.events import EventBus
+        from hackerzork.systems.virtual_fs import VirtualFS
 
-        Order matters:
-        1. Event bus (everything depends on this)
-        2. State machine
-        3. Virtual filesystem
-        4. Network simulation
-        5. Heat system
-        6. Comms system
-        7. Command registry + parser
-        8. Audio mixer
-        9. Effects engine
-        10. Meta engine (SkyNet — needs everything else)
-        11. Shell (needs commands registered)
-        """
-        # TODO: Initialize each system
-        # TODO: Load save file if provided
-        # TODO: Register all commands
-        # TODO: Wire up event listeners
+        # 1. Event bus
+        self._events = EventBus()
+
+        # 2. Virtual filesystem — load from home.yaml template
+        data_dir = pathlib.Path(__file__).parent / "data" / "filesystem"
+        template: dict = {}
+        template_path = data_dir / "home.yaml"
+        if template_path.exists():
+            with open(template_path) as fh:
+                template = yaml.safe_load(fh) or {}
+        self._fs = VirtualFS(template=template)
+
+        # 3. Shared shell environment
+        self._env: dict[str, str] = {
+            "USER": "user",
+            "HOME": "/home/user",
+            "CWD": "/home/user",
+            "OLDPWD": "/",
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "HOSTNAME": "hackerzork",
+        }
+
+        # 4. Command context — bundle passed to every command handler
+        self._ctx = CommandContext(
+            fs=self._fs,
+            events=self._events,
+            env=self._env,
+        )
+
+        # 5. Register commands (imports trigger @register_command decorators)
+        import hackerzork.commands.filesystem  # noqa: F401
+
+        # 6. History — load from VFS .bash_history
+        self._history = CommandHistory(fs=self._fs)
+        self._history.load_from_fs()
+
+        # 7. Tab completion
+        self._completer = TabCompleter(
+            registry=DEFAULT_REGISTRY,
+            fs=self._fs,
+            env=self._env,
+        )
+        self._completer.install()
+
+        # 8. Shell REPL
+        self._shell = Shell(
+            ctx=self._ctx,
+            registry=DEFAULT_REGISTRY,
+            history=self._history,
+        )
+
         self._booted = True
 
     def run(self) -> None:
-        """Main game loop."""
+        """Boot then start the shell REPL."""
         if not self._booted:
             self.boot()
-
-        # TODO: Play boot sequence animation
-        # TODO: Start shell REPL
-        print("H@ck3r-Z0rk v0.1.0 — Engine scaffolding")
-        print("Game systems not yet implemented.")
-        print("Run 'claude code' sessions to build each module.")
-        print("See docs/specs/ for module specifications.")
-        print("See CLAUDE.md for architecture guide.")
+        asyncio.run(self._shell.run())
 
     def shutdown(self) -> None:
         """Clean shutdown of all systems."""
-        # TODO: Save state
-        # TODO: Stop audio
-        # TODO: Cleanup
-        pass
+        if self._booted and hasattr(self, "_history"):
+            self._history.save_to_fs()

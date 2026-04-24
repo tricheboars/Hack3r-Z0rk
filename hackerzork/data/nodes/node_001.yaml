@@ -1,0 +1,62 @@
+id: node_001
+name: "Proxy Relay Alpha"
+ip: "10.13.37.1"
+hostname: "relay-alpha.darknet.local"
+
+ports:
+  - port: 22
+    service: ssh
+    version: "OpenSSH 8.9p1 Ubuntu-3ubuntu0.6"
+    vuln: null
+    state: open
+
+  - port: 80
+    service: http
+    version: "nginx 1.18.0"
+    vuln: "CVE-2021-23017"
+    state: open
+
+  - port: 3306
+    service: mysql
+    version: "MySQL 5.7.38"
+    vuln: "default_credentials"
+    state: open
+
+firewall:
+  enabled: true
+  rules:
+    - "block_all_inbound_except: [80, 3306]"
+
+difficulty: 1
+heat_modifier: 0.5
+
+loot:
+  - type: credential
+    username: dbadmin
+    password: hunter2
+    service: mysql
+    description: "MySQL admin credentials found in /root/.my.cnf"
+
+  - type: file
+    path: "/var/www/html/.htpasswd"
+    content: "admin:$apr1$rT8vVLSu$MFNM1fxkEAVXL5A7dJJvL1"
+    description: "Apache htpasswd file — admin panel creds"
+
+  - type: file
+    path: "/etc/relay.conf"
+    content: |
+      # Darknet relay configuration
+      upstream_node = node_002
+      log_retention = 0
+      anonymize = true
+    description: "Relay config — references node_002"
+
+connections:
+  - node_002
+  - node_005
+
+story_flags:
+  on_compromise: relay_compromised
+  reveals:
+    - node_002_ip
+    - node_005_ip

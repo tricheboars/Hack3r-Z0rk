@@ -973,10 +973,26 @@ def cmd_grep(ctx: CommandContext, args: list[str]) -> str:
             def match_fn(line: str) -> bool:  # type: ignore[misc]
                 return pattern_str in line
 
+    stdin = ctx.env.get("STDIN", "")
+    if not raw_paths and stdin:
+        # Input from a pipe — search the piped text directly
+        lines = stdin.splitlines()
+        results: list[str] = []
+        for i, line in enumerate(lines, 1):
+            matched = match_fn(line)
+            if invert:
+                matched = not matched
+            if matched:
+                prefix = f"{i}:" if show_numbers else ""
+                results.append(f"{prefix}{line}")
+        if ctx.events:
+            ctx.events.emit("content_searched", pattern=pattern_str, path="<stdin>")
+        return "\n".join(results)
+
     if not raw_paths:
         raw_paths = [_cwd(ctx)]
 
-    results: list[str] = []
+    results = []
     multiple = len(raw_paths) > 1 or recursive
 
     for path_str in raw_paths:
