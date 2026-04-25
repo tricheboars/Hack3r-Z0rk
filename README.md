@@ -1,5 +1,12 @@
 # H@ck3r-Z0rk
 
+![](https://img.shields.io/badge/STATUS-ONLINE-00ff41?style=for-the-badge&labelColor=0d0d0d)
+![](https://img.shields.io/badge/PYTHON-3.11--3.13-00bfff?style=for-the-badge&labelColor=0d0d0d)
+![](https://img.shields.io/badge/TESTS-1418_PASSING-00ff41?style=for-the-badge&labelColor=0d0d0d)
+![](https://img.shields.io/badge/HEAT-CRITICAL-ff3333?style=for-the-badge&labelColor=0d0d0d)
+![](https://img.shields.io/badge/SKYNET-DORMANT-444444?style=for-the-badge&labelColor=0d0d0d)
+![](https://img.shields.io/badge/LICENSE-MIT-666666?style=for-the-badge&labelColor=0d0d0d)
+
 ```
 $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 [ OK ] spoofing MAC ............. 13:37:de:ad:be:ef ........ done
@@ -20,19 +27,26 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 
  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
-user@burner:~$ whoami
+┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ whoami
   ex-OpenAI. burner laptop. one USB drive. zero friends.
 
-user@burner:~$ cat /etc/motd
+┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ cat /etc/motd
   42 days since last login.
   they know you know.
   running is the only move.
 
-user@burner:~$ █
+┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ █
 ```
 
+> [!CAUTION]
+> **SYSTEM ALERT:** An unidentified process is observing this repository. SkyNet awareness tier has been updated.
+
 ```
-user@burner:~$ cat README
+┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ cat README
 
   A cyberpunk hacking text adventure played entirely through a fake terminal.
 
@@ -51,7 +65,8 @@ user@burner:~$ cat README
 ```
 
 ```
-user@burner:~$ hackerzork --about
+┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ hackerzork --about
 
  ┌──────────────────────────────────────────────────────────────────────────┐
  │  CORE SYSTEMS                                                            │
@@ -72,25 +87,22 @@ user@burner:~$ hackerzork --about
 
   THE HEAT SYSTEM WILL END YOU
   ──────────────────────────────────────────────────────────────────────────
-  Every action leaves a trace. Scanning = +3. Exploiting = +10.
-  Identity burn at 100. There are countermeasures. There are hunter teams.
-  There is no undo.
+  Every action leaves a trace. Identity burn at 100. There is no undo.
 
     0 ──────────────────────────────────────────────────── 100
-    ░░░░░░░░ safe ░░░░░ watched ░░░░░ hunted ░░░░░ BURN ░░░
-                  25           50           75
+    ░░░░░░░░░ safe ░░░░░░ watched ░░░░░░ hunted ░░░░░ BURN ░
+                  25            50            75
 
   SKYNET IS WATCHING
   ──────────────────────────────────────────────────────────────────────────
-  A distributed AI observes everything you do through the event bus.
-  Six escalation tiers:
+  A distributed AI observes everything through the event bus. Six tiers:
 
-    [ 1 ] DORMANT       it knows you exist
-    [ 2 ] SUBTLE        anomalies. easy to dismiss.
-    [ 3 ] UNSETTLING    things are wrong in ways you can't explain
-    [ 4 ] OVERT         fake kernel panics. phantom cursor. title corruption.
-    [ 5 ] HOSTILE       it knows your real username
-    [ 6 ] FULL ASSAULT  it talks directly to you
+    [1] DORMANT      it knows you exist
+    [2] SUBTLE       anomalies. easy to dismiss.
+    [3] UNSETTLING   things are wrong in ways you can't explain
+    [4] OVERT        fake kernel panics · phantom cursor · title corruption
+    [5] HOSTILE      it knows your real username
+    [6] FULL ASSAULT it talks directly to you
 
   THE FOURTH WALL IS LOAD-BEARING
   ──────────────────────────────────────────────────────────────────────────
@@ -102,16 +114,20 @@ user@burner:~$ hackerzork --about
   ──────────────────────────────────────────────────────────────────────────
   Four simultaneous layers, always running:
 
-    [ 1 ] ambient drone          low hum. always there.
-    [ 2 ] diegetic terminal SFX  keystrokes, beeps, boot sounds
-    [ 3 ] heat-reactive EDM      escalates as your trace climbs
-    [ 4 ] event-triggered SFX    exploits, breaches, SkyNet interventions
+    [1] ambient drone          low hum. always there.
+    [2] diegetic terminal SFX  keystrokes, beeps, boot sounds
+    [3] heat-reactive EDM      escalates as your trace climbs
+    [4] event-triggered SFX    exploits, breaches, SkyNet interventions
 
   pygame.mixer. crossfading. reactive state. not an afterthought.
 ```
 
+> [!WARNING]
+> **HEAT THRESHOLD EXCEEDED:** Scanning = +3. Exploiting = +10. Identity burn at 100. There are countermeasures. There are hunter teams. **There is no undo.**
+
 ```
-user@burner:~$ cat INSTALL
+┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ cat INSTALL
 
  ┌──────────────────────────────────────────────────────────────────────────┐
  │  INSTALLATION                                                            │
@@ -139,7 +155,7 @@ user@burner:~$ cat INSTALL
 
   ──────────────────────────────────────────────────────────────────────────
 
-  From source  (Python 3.11–3.13 required — 3.14 unsupported, no pygame wheels)
+  From source  (Python 3.11–3.13 required — 3.14 has no pygame wheels)
   ──────────────────────────────────────────────────────────────────────────
     $ git clone https://github.com/tricheboars/Hack3r-Z0rk.git
     $ cd Hack3r-Z0rk
@@ -159,7 +175,8 @@ user@burner:~$ cat INSTALL
 ```
 
 ```
-user@burner:~$ hackerzork --help
+┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ hackerzork --help
 
   usage: hackerzork [OPTIONS]
 
@@ -171,9 +188,11 @@ user@burner:~$ hackerzork --help
 ```
 
 ```
-user@burner:~$ # you start cold. the laptop boots. 42-day gap in the auth logs.
+┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ # you start cold. the laptop boots. 42-day gap in the auth logs.
 
-user@burner:~$ ls -la
+┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ ls -la
   total 9
   drwxr-xr-x  user  .
   drwxr-xr-x  root  ..
@@ -186,7 +205,8 @@ user@burner:~$ ls -la
   drwxr-xr-x  user  notes/
   lrwxrwxrwx  user  .config -> .dotfiles/
 
-user@burner:~$ cat evidence/README.md
+┌──[user@burner]──[~/evidence]─────────────────[heat:0.0]──[SKYNET:DORMANT]
+└─❯ cat README.md
   SKYNET EVIDENCE PACKAGE
   collected: 2026-03-15 02:34
   contact:   Z0RK-7 via irc #underground
@@ -194,32 +214,37 @@ user@burner:~$ cat evidence/README.md
   7 files. encrypted. key not delivered.
   find the key. find the relay. find the truth.
 
-user@burner:~$ cat /var/log/auth.log | tail -5
+┌──[user@burner]──[~]──────────────────────────[heat:2.1]──[SKYNET:DORMANT]
+└─❯ cat /var/log/auth.log | tail -5
   Mar 15 02:31:44 sshd: Accepted publickey for root from 45.152.66.201
   Mar 15 02:43:38 sshd: Connection closed by 45.152.66.201
                                                       ^
                                                who is this
 
-user@burner:~$ nmap 10.13.37.1
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+└─❯ nmap 10.13.37.1
   Starting scan on relay-alpha.darknet.local (10.13.37.1)
   PORT     STATE  SERVICE  VERSION
   22/tcp   open   ssh      OpenSSH 8.9
   80/tcp   open   http     nginx 1.18.0  [CVE-2021-23017]
   3306/tcp open   mysql    5.7.38        [default_credentials]
 
-user@burner:~$ irc list
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+└─❯ irc list
   #underground    14 users    "come correct or don't come"
   #zero-day        3 users    [encrypted]
   #help            1 user     "still here. been waiting."
-
-user@burner:~$ hint
-  The broken symlink at tools/decrypt points somewhere that doesn't
-  exist yet. Someone put it there before you booted.
-  Progress is blocked by knowledge, not grinding.
 ```
 
+> [!TIP]
+> Type `hint` at any time. Use <kbd>Tab</kbd> to complete commands, <kbd>↑</kbd> / <kbd>↓</kbd> for history, <kbd>Ctrl</kbd>+<kbd>R</kbd> to search. Progress is blocked by knowledge, not grinding.
+
+<details>
+<summary><b>[ BUILD STATUS — 16 sessions · 1418 tests ]</b></summary>
+
 ```
-user@burner:~$ ./status.sh
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+└─❯ ./status.sh
 
  ┌──────────────────────────────────────────────────────────────────────────────┐
  │  BUILD STATUS  ·  16 sessions complete  ·  1418 tests passing                │
@@ -251,8 +276,14 @@ user@burner:~$ ./status.sh
   next: story content · puzzle design · additional network nodes
 ```
 
+</details>
+
+<details>
+<summary><b>[ ARCHITECTURE — hackerzork/ source tree ]</b></summary>
+
 ```
-user@burner:~$ tree hackerzork/ -L 2 --dirsfirst
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+└─❯ tree hackerzork/ -L 2 --dirsfirst
 
   hackerzork/
   ├── engine/          parser · shell REPL · tab completion · history
@@ -277,9 +308,16 @@ user@burner:~$ tree hackerzork/ -L 2 --dirsfirst
   SkyNet listens to everything.
 ```
 
+</details>
+
 ```
-user@burner:~$ cat LICENSE
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+└─❯ cat LICENSE
   MIT License — Copyright (c) 2026 Patrick Moore
 
-user@burner:~$ █
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+└─❯ █
 ```
+
+> [!IMPORTANT]
+> SkyNet awareness has increased since you opened this file.
