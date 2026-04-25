@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import random
 import time
+from collections.abc import Callable
 
 from hackerzork.effects import config, get_console
 
@@ -18,36 +19,112 @@ async def _sleep(s: float) -> None:
 # boot_sequence
 # ---------------------------------------------------------------------------
 
-_BOOT_LINES = [
-    ("[dim]SeaBIOS (version 1.16.3)[/dim]",                      0.10),
-    ("[dim]Machine UUID: 4f3a-c8d2-91e7-b560[/dim]",             0.05),
-    ("[dim]Detected 7812 MB RAM[/dim]",                           0.08),
-    ("[dim]Checking memory.........................................[/dim]", 0.20),
-    ("[dim green]OK[/dim green]",                                 0.05),
-    ("[dim]Loading bootloader...[/dim]",                          0.15),
-    ("[yellow]GRUB 2.12[/yellow]",                                0.08),
-    ("[dim]Booting Linux 6.6.6-sk-patched...[/dim]",             0.12),
-    ("[dim]  Loading initial ramdisk...[/dim]",                   0.10),
-    ("[green]  [  OK  ][/green] [dim]Started udev kernel device manager[/dim]",  0.06),
-    ("[green]  [  OK  ][/green] [dim]Reached target Basic System[/dim]",         0.05),
-    ("[green]  [  OK  ][/green] [dim]Started OpenSSH server daemon[/dim]",       0.06),
-    ("[green]  [  OK  ][/green] [dim]Started rsyslog logging service[/dim]",     0.05),
-    # The suspicious line — sk_watchdog starts silently before the user session
-    ("[dim]  [  OK  ] Started sk_watchdog.service[/dim]",        0.04),
-    ("[green]  [  OK  ][/green] [dim]Reached target Multi-User System[/dim]",   0.06),
-    ("",                                                           0.10),
-    ("[bold]burner login:[/bold]",                                0.05),
+_TITLE_BANNER = """\
+[bold green]╔══════════════════════════════════════════════════════════════╗[/bold green]
+[bold green]║[/bold green]  [bold white]H@CK3R-Z0RK[/bold white]  [dim]·  cyberpunk terminal adventure  v0.1.0[/dim]   [bold green]║[/bold green]
+[bold green]║[/bold green]  [dim red]kernel 6.6.6-sk-patched  ·  SESSION ORIGIN: UNKNOWN[/dim red]       [bold green]║[/bold green]
+[bold green]╚══════════════════════════════════════════════════════════════╝[/bold green]"""
+
+# Lines before the memory test animation
+_BIOS_LINES: list[tuple[str, float]] = [
+    ("[dim]SeaBIOS (version 1.16.3)[/dim]",                                        0.08),
+    ("[dim]Machine UUID: 4f3a-c8d2-91e7-b560[/dim]",                              0.05),
+    ("[dim]CPU: Intel(R) Core(TM) i7-8750H @ 2.20GHz  x6  64-bit[/dim]",         0.06),
+    ("[dim]Detected 7812 MB RAM[/dim]",                                            0.05),
+]
+
+# Lines after the memory test, before kernel boot
+_LOADER_LINES: list[tuple[str, float]] = [
+    ("[dim]Loading bootloader...[/dim]",                                           0.12),
+    ("[yellow]GRUB 2.12[/yellow]",                                                 0.08),
+    ("",                                                                            0.04),
+    ("[dim]Booting Linux 6.6.6-sk-patched #1 SMP PREEMPT_DYNAMIC x86_64[/dim]",  0.10),
+    ("[dim]  Kernel command line: root=/dev/sda1 quiet loglevel=3[/dim]",         0.05),
+    ("[dim]  Decompressing kernel... Parsing ELF... done.[/dim]",                 0.08),
+    ("[dim]  Loading initial ramdisk...[/dim]",                                   0.08),
+    ("",                                                                            0.04),
+]
+
+# systemd service lines
+_SERVICE_LINES: list[tuple[str, float]] = [
+    ("[green]  [  OK  ][/green] [dim]Started systemd-udevd kernel device manager[/dim]",  0.05),
+    ("[green]  [  OK  ][/green] [dim]Reached target Initrd Root Device[/dim]",            0.04),
+    ("[green]  [  OK  ][/green] [dim]Started D-Bus System Message Bus[/dim]",             0.05),
+    ("[green]  [  OK  ][/green] [dim]Started Network Time Synchronization[/dim]",         0.06),
+    ("[green]  [  OK  ][/green] [dim]Started OpenSSH server daemon[/dim]",                0.05),
+    ("[green]  [  OK  ][/green] [dim]Started rsyslog logging service[/dim]",              0.04),
+    ("[green]  [  OK  ][/green] [dim]Started tor relay service[/dim]",                    0.05),
+    ("[green]  [  OK  ][/green] [dim]Started Firewall (nftables)[/dim]",                  0.04),
+    # sk_watchdog starts silently, dim — no green bracket, different formatting
+    ("[dim]  [  OK  ] Started sk_watchdog.service[/dim]",                                 0.03),
+    ("[green]  [  OK  ][/green] [dim]Started sk_comms.service[/dim]",                     0.04),
+    ("[green]  [  OK  ][/green] [dim]Reached target Multi-User System[/dim]",             0.06),
 ]
 
 
-async def boot_sequence() -> None:
-    """Full cold boot animation — POST, memory check, services starting."""
+async def _memory_test(ram_mb: int = 7812) -> None:
+    """Animated BIOS memory count — ticks up to ram_mb then prints OK."""
+    con = get_console()
+    if not config.enabled or config.speed_multiplier == 0:
+        con.print(f"[dim]Testing memory... {ram_mb:5d} MB[/dim]  [green]OK[/green]")
+        return
+
+    step = max(1, ram_mb // 40)
+    current = 0
+    while current < ram_mb:
+        current = min(current + step, ram_mb)
+        con.print(f"[dim]Testing memory...  {current:5d} MB[/dim]", end="\r")
+        await _sleep(0.015)
+
+    con.print(f"[dim]Testing memory...  {ram_mb:5d} MB[/dim]  [green]OK[/green]")
+
+
+async def boot_sequence(
+    on_beep: Callable[[], None] | None = None,
+    on_ready: Callable[[], None] | None = None,
+) -> None:
+    """Full cold boot animation — POST, memory test, kernel, services, title banner.
+
+    on_beep  — called at POST start (plays short system beep)
+    on_ready — called when Multi-User System is reached (plays boot-ready tone)
+    """
     con = get_console()
     if not config.enabled:
         return
-    for line, delay in _BOOT_LINES:
+
+    # POST / BIOS
+    if on_beep:
+        on_beep()
+    for line, delay in _BIOS_LINES:
         con.print(line)
         await _sleep(delay)
+
+    await _memory_test()
+    await _sleep(0.10)
+
+    # Bootloader + kernel
+    for line, delay in _LOADER_LINES:
+        con.print(line)
+        await _sleep(delay)
+
+    # systemd services
+    for line, delay in _SERVICE_LINES:
+        con.print(line)
+        await _sleep(delay)
+        # Slight hesitation on the sk_watchdog line — feels suspicious
+        if "sk_watchdog" in line:
+            await _sleep(0.08)
+
+    # Boot-ready tone + title banner
+    if on_ready:
+        on_ready()
+    await _sleep(0.12)
+    con.print("")
+    con.print(_TITLE_BANNER)
+    await _sleep(0.18)
+    con.print("")
+    con.print("[bold]burner login:[/bold]")
+    await _sleep(0.05)
 
 
 # ---------------------------------------------------------------------------

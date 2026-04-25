@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+import sys
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from rich.console import Console
 
 from hackerzork.engine.command_parser import ParseError, ParsedCommand, Redirect, parse
 from hackerzork.engine.command_registry import CommandContext, CommandRegistry
+from hackerzork.engine.prompt import NerdPrompt
 
 if TYPE_CHECKING:
     from hackerzork.engine.history import CommandHistory
@@ -26,6 +29,16 @@ class Shell:
         self._history = history
         self._console = console or Console(highlight=False, markup=False)
         self._running = False
+        self._click_fn: Callable[[], None] | None = None
+        self._nerd_prompt = NerdPrompt(
+            env=self._ctx.env,
+            fs=getattr(self._ctx, "fs", None),
+            heat=getattr(self._ctx, "heat", None),
+        )
+
+    def set_click_sound(self, fn: Callable[[], None] | None) -> None:
+        """Wire a per-keystroke click callback. Pass None to disable."""
+        self._click_fn = fn
 
     # -------------------------------------------------------------------------
     # Public interface
@@ -38,7 +51,10 @@ class Shell:
 
         while self._running:
             try:
-                raw = await loop.run_in_executor(None, input, self._prompt())
+                if self._click_fn is not None:
+                    raw = await loop.run_in_executor(None, self._read_with_clicks)
+                else:
+                    raw = await loop.run_in_executor(None, input, self._prompt())
             except EOFError:
                 # Ctrl+D — treat as exit
                 self._console.print("")
@@ -117,23 +133,68 @@ class Shell:
     # Internal helpers
     # -------------------------------------------------------------------------
 
+    def _read_with_clicks(self) -> str:
+        """Blocking line reader that fires _click_fn on every character typed.
+
+        Uses readline's callback interface so tab-completion and history
+        (installed by TabCompleter) keep working. Falls back to plain input()
+        if the callback API is unavailable (e.g. libedit on some macOS builds).
+        """
+        import select
+
+        try:
+            import readline as rl
+        except ImportError:
+            return input(self._prompt())
+
+        if not hasattr(rl, "callback_handler_install"):
+            return input(self._prompt())
+
+        result: list[str] = []
+        done = False
+
+        def _handler(text: str | None) -> None:
+            nonlocal done
+            result.append(text if text is not None else "")
+            done = True
+
+        prev_len = 0
+        try:
+            rl.callback_handler_install(self._prompt(), _handler)
+            while not done:
+                try:
+                    ready, _, _ = select.select([sys.stdin], [], [], 0.1)
+                except (ValueError, OSError):
+                    break
+                if ready:
+                    rl.callback_read_char()
+                    cur_len = len(rl.get_line_buffer())
+                    if cur_len > prev_len and self._click_fn is not None:
+                        self._click_fn()
+                    prev_len = cur_len
+        except KeyboardInterrupt:
+            print("^C")
+            try:
+                rl.callback_handler_remove()
+            except Exception:
+                pass
+            raise
+        except EOFError:
+            try:
+                rl.callback_handler_remove()
+            except Exception:
+                pass
+            raise
+        finally:
+            try:
+                rl.callback_handler_remove()
+            except Exception:
+                pass
+
+        return result[0] if result else ""
+
     def _prompt(self) -> str:
-        user = self._ctx.env.get("USER", "user")
-        cwd = self._ctx.env.get("CWD", "/home/user")
-        home = self._ctx.env.get("HOME", "/home/user")
-
-        if cwd == home:
-            display_cwd = "~"
-        elif cwd.startswith(home + "/"):
-            display_cwd = "~" + cwd[len(home):]
-        else:
-            display_cwd = cwd
-
-        # Wrap ANSI codes in \001...\002 so readline measures prompt width correctly
-        G = "\001\033[32m\002"
-        C = "\001\033[36m\002"
-        R = "\001\033[0m\002"
-        return f"{G}[{user}@hackerzork {C}{display_cwd}{G}]${R} "
+        return self._nerd_prompt.render()
 
     def _handle_pipe(self, cmds: list[ParsedCommand]) -> str:
         stdin = ""

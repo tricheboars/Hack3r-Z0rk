@@ -121,7 +121,9 @@ class Game:
         self._audio = None
         if self.config.audio_enabled:
             try:
+                from hackerzork.audio import keygen
                 from hackerzork.audio.mixer import AudioMixer
+                keygen.ensure_sounds(data_dir / "sounds")
                 self._audio = AudioMixer(enabled=True)
             except Exception:
                 pass
@@ -180,6 +182,10 @@ class Game:
             registry=DEFAULT_REGISTRY,
             history=self._history,
         )
+        if self._audio is not None:
+            self._shell.set_click_sound(
+                lambda: self._audio.play_sfx("sfx_key_click")  # type: ignore[union-attr]
+            )
 
         # 17. Wire audio reactive layer to heat events
         if self._audio is not None:
@@ -229,7 +235,9 @@ class Game:
         # Boot sequence animation
         if self.config.effects_enabled:
             from hackerzork.effects.animations import boot_sequence
-            await boot_sequence()
+            _on_beep  = (lambda: self._audio.play_sfx("sfx_boot_beep"))  if self._audio else None
+            _on_ready = (lambda: self._audio.play_sfx("sfx_boot_ready")) if self._audio else None
+            await boot_sequence(on_beep=_on_beep, on_ready=_on_ready)
 
         # Load save file if --load was specified
         if self.config.save_file:

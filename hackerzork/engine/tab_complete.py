@@ -24,8 +24,13 @@ class TabCompleter:
     def install(self) -> None:
         """Register this completer with readline."""
         readline.set_completer(self.complete)
-        readline.set_completer_delims(" \t\n;|")
-        readline.parse_and_bind("tab: complete")
+        readline.set_completer_delims(" \t\n;|&")
+        # libedit (macOS default) uses a different binding syntax than GNU readline.
+        # "tab: complete" is silently ignored by libedit, leaving tab as raw whitespace.
+        if "libedit" in getattr(readline, "__doc__", ""):
+            readline.parse_and_bind("bind ^I rl_complete")
+        else:
+            readline.parse_and_bind("tab: complete")
 
     def complete(self, text: str, state: int) -> str | None:
         if state == 0:
@@ -45,10 +50,16 @@ class TabCompleter:
 
     def _path_completions(self, partial: str, cwd: str) -> list[str]:
         try:
+            home = self._env.get("HOME", "/home/user")
+
             if "/" in partial:
                 dir_part, _, name_part = partial.rpartition("/")
+                # Resolve the directory portion (handles ~, .., absolute, relative)
                 dir_path = self._fs.resolve_path(dir_part or "/")
             else:
+                # No slash — could still be "~" alone
+                if partial == "~":
+                    return ["~/"]
                 dir_path = cwd
                 name_part = partial
 
@@ -58,6 +69,12 @@ class TabCompleter:
                 if entry.name.startswith(name_part):
                     if "/" in partial:
                         prefix = partial.rpartition("/")[0] + "/"
+                        # Convert absolute paths back to ~ form if they live under home
+                        resolved_prefix = self._fs.resolve_path(prefix.rstrip("/"))
+                        if resolved_prefix == home:
+                            prefix = "~/"
+                        elif resolved_prefix.startswith(home + "/"):
+                            prefix = "~/" + resolved_prefix[len(home) + 1:] + "/"
                         candidate = prefix + entry.name
                     else:
                         candidate = entry.name
