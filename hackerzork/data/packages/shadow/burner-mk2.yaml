@@ -1,0 +1,12 @@
+name: burner-mk2
+provides: [burner-mk2]
+version: "2.0-xx"
+repo: shadow
+kit: breaker
+depends: [ramroot]
+size_kb: 1200
+cost_btc: 0.006
+signer: "UNSIGNED"
+poison_chance: 0.18
+summary: "Parallel exploit runner. Every known vuln, every port, simultaneously."
+unlocks_story: []

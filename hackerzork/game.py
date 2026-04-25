@@ -19,6 +19,15 @@ class GameConfig:
     save_file: str | None = None
 
 
+_MOTD = """\
+[dim]Last login: Fri Mar 15 02:55:41 2026 from 45.152.66.201[/dim]
+
+[yellow]42 days since your last session.[/yellow]
+[dim]The laptop was sealed. The drive is intact. They don't know you're back.[/dim]
+[dim]Type [bold]help[/bold] for commands. Type [bold]hint[/bold] if you're lost.[/dim]
+"""
+
+
 class Game:
     """Main game class — orchestrates all systems."""
 
@@ -45,46 +54,119 @@ class Game:
         from hackerzork.engine.history import CommandHistory
         from hackerzork.engine.shell import Shell
         from hackerzork.engine.tab_complete import TabCompleter
+        from hackerzork.meta.fourth_wall import FourthWallBreaker
+        from hackerzork.meta.skynet import SkyNetEngine
+        from hackerzork.systems.comms import CommsSystem
         from hackerzork.systems.events import EventBus
+        from hackerzork.systems.heat import HeatSystem
+        from hackerzork.systems.network import NetworkSim
+        from hackerzork.systems.save_load import SaveSystem
+        from hackerzork.systems.state import GameState
+        from hackerzork.systems.toolkit import Toolkit
         from hackerzork.systems.virtual_fs import VirtualFS
+        import hackerzork.effects as fx
 
-        # 1. Event bus
+        # Configure visual effects based on game settings
+        fx.config.enabled = self.config.effects_enabled
+        fx.config.speed_multiplier = 1.0 if self.config.effects_enabled else 0.0
+
+        data_dir = pathlib.Path(__file__).parent / "data"
+
+        # 1. Event bus — everything talks through here
         self._events = EventBus()
 
-        # 2. Virtual filesystem — load from home.yaml template
-        data_dir = pathlib.Path(__file__).parent / "data" / "filesystem"
+        # 2. Virtual filesystem — seeded from home.yaml
         template: dict = {}
-        template_path = data_dir / "home.yaml"
+        template_path = data_dir / "filesystem" / "home.yaml"
         if template_path.exists():
             with open(template_path) as fh:
                 template = yaml.safe_load(fh) or {}
         self._fs = VirtualFS(template=template)
 
-        # 3. Shared shell environment
+        # 3. Network simulation — load nodes from data/nodes/
+        self._network = NetworkSim()
+        nodes_dir = data_dir / "nodes"
+        if nodes_dir.exists():
+            self._network.load_nodes(nodes_dir)
+
+        # 4. Heat system — wired to events
+        self._heat = HeatSystem(events=self._events)
+
+        # 5. Toolkit — package install state; catalog loaded from data/packages/
+        self._toolkit = Toolkit(fs=self._fs, events=self._events)
+        packages_dir = data_dir / "packages"
+        if packages_dir.exists():
+            self._toolkit.load_catalog(packages_dir)
+
+        # 6. Comms — IRC channels, DMs, contacts
+        self._comms = CommsSystem(events=self._events, data_dir=data_dir / "dialogue")
+        self._comms.load()
+
+        # 7. Game state machine — story flags, chapter, event timeline
+        self._state = GameState(events=self._events)
+
+        # 8. Save system
+        save_dir = pathlib.Path.home() / ".hackerzork"
+        self._save = SaveSystem(save_dir=save_dir)
+
+        # 9. Meta engine — SkyNet observation + fourth-wall breaks
+        self._fourth_wall = FourthWallBreaker(enabled=self.config.meta_enabled)
+        self._skynet = SkyNetEngine(
+            fourth_wall=self._fourth_wall,
+            enabled=self.config.meta_enabled,
+        )
+        self._skynet.bind_events(self._events)
+
+        # 10. Audio — optional; failure never crashes the game
+        self._audio = None
+        if self.config.audio_enabled:
+            try:
+                from hackerzork.audio.mixer import AudioMixer
+                self._audio = AudioMixer(enabled=True)
+            except Exception:
+                pass
+
+        # 11. Shell environment
         self._env: dict[str, str] = {
             "USER": "user",
             "HOME": "/home/user",
             "CWD": "/home/user",
             "OLDPWD": "/",
-            "PATH": "/usr/local/bin:/usr/bin:/bin",
-            "HOSTNAME": "hackerzork",
+            "PATH": "/usr/local/bin:/usr/bin:/bin:/home/user/tools",
+            "HOSTNAME": "burner",
+            "_SK_SID": "sk-9a7f3c2d-8b1e-4f6a-9c3d-2e7b1a5f4c8e",
         }
 
-        # 4. Command context — bundle passed to every command handler
+        # 12. Command context — bundle passed to every command handler
         self._ctx = CommandContext(
             fs=self._fs,
+            network=self._network,
             events=self._events,
+            heat=self._heat,
+            toolkit=self._toolkit,
+            comms=self._comms,
+            state=self._state,
+            save_system=self._save,
+            skynet=self._skynet,
             env=self._env,
         )
 
-        # 5. Register commands (imports trigger @register_command decorators)
-        import hackerzork.commands.filesystem  # noqa: F401
+        # 13. Register all command modules (imports trigger @register_command decorators)
+        import hackerzork.commands.filesystem    # noqa: F401
+        import hackerzork.commands.network_cmds  # noqa: F401
+        import hackerzork.commands.system        # noqa: F401
+        import hackerzork.commands.packaging     # noqa: F401
+        import hackerzork.commands.comms_cmds    # noqa: F401
+        import hackerzork.commands.save_cmds     # noqa: F401
+        import hackerzork.commands.help          # noqa: F401
 
-        # 6. History — load from VFS .bash_history
+        # 14. Command history — load persisted history from VFS
         self._history = CommandHistory(fs=self._fs)
         self._history.load_from_fs()
+        self._ctx.history = self._history
+        self._ctx.registry = DEFAULT_REGISTRY
 
-        # 7. Tab completion
+        # 15. Tab completion
         self._completer = TabCompleter(
             registry=DEFAULT_REGISTRY,
             fs=self._fs,
@@ -92,22 +174,96 @@ class Game:
         )
         self._completer.install()
 
-        # 8. Shell REPL
+        # 16. Shell REPL
         self._shell = Shell(
             ctx=self._ctx,
             registry=DEFAULT_REGISTRY,
             history=self._history,
         )
 
+        # 17. Wire audio reactive layer to heat events
+        if self._audio is not None:
+            self._events.on("heat_threshold_crossed", self._on_heat_threshold)
+            self._events.on("surveillance_discovered", self._on_surveillance)
+            self._events.on("skynet_process_killed", self._on_skynet_kill)
+
         self._booted = True
 
+    # -------------------------------------------------------------------------
+    # Event handlers (audio hooks)
+    # -------------------------------------------------------------------------
+
+    def _on_heat_threshold(self, **kwargs: object) -> None:
+        if self._audio is None:
+            return
+        self._audio.set_reactive_state(float(kwargs.get("level", 0.0)))
+
+    def _on_surveillance(self, **kwargs: object) -> None:
+        if self._audio is None:
+            return
+        if kwargs.get("first"):
+            self._audio.play_sfx("surveillance_alert")
+
+    def _on_skynet_kill(self, **kwargs: object) -> None:
+        if self._audio is None:
+            return
+        self._audio.play_sfx("process_kill")
+
+    # -------------------------------------------------------------------------
+    # Lifecycle
+    # -------------------------------------------------------------------------
+
     def run(self) -> None:
-        """Boot then start the shell REPL."""
+        """Boot then run the intro sequence and shell REPL."""
         if not self._booted:
             self.boot()
-        asyncio.run(self._shell.run())
+        asyncio.run(self._run_async())
+
+    async def _run_async(self) -> None:
+        """Async entry — boot animation, optional save restore, then shell."""
+        import hackerzork.effects as fx
+        from rich.console import Console
+
+        con = Console(highlight=False, markup=True)
+
+        # Boot sequence animation
+        if self.config.effects_enabled:
+            from hackerzork.effects.animations import boot_sequence
+            await boot_sequence()
+
+        # Load save file if --load was specified
+        if self.config.save_file:
+            try:
+                save_data = self._save.read(self.config.save_file)
+                self._save.apply(
+                    save_data,
+                    fs=self._fs,
+                    network=self._network,
+                    heat=self._heat,
+                    toolkit=self._toolkit,
+                    comms=self._comms,
+                    state=self._state,
+                    history=self._history,
+                    env=self._env,
+                )
+                summary = self._save.format_load_summary(save_data)
+                heat_lvl = self._heat.level if hasattr(self._heat, "level") else 0.0
+                con.print(self._save.corrupt_load_display(summary, heat_level=heat_lvl))
+            except FileNotFoundError:
+                con.print(f"[red]Save file not found: {self.config.save_file}[/red]")
+            except Exception as exc:
+                con.print(f"[red]Failed to load save: {exc}[/red]")
+
+        # Message of the day
+        con.print(_MOTD)
+
+        # Hand off to the shell REPL
+        await self._shell.run()
 
     def shutdown(self) -> None:
         """Clean shutdown of all systems."""
-        if self._booted and hasattr(self, "_history"):
-            self._history.save_to_fs()
+        if self._booted:
+            if hasattr(self, "_history"):
+                self._history.save_to_fs()
+            if self._audio is not None:
+                self._audio.shutdown()

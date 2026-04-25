@@ -1,5 +1,5 @@
 """Filesystem commands: ls, cd, cat, pwd, mkdir, rm, cp, mv, chmod, ln, stat,
-touch, file, xxd, strings, wc, head, tail, grep, find, recover."""
+touch, file, xxd, strings, wc, head, tail, grep, find, recover, more, less."""
 from __future__ import annotations
 
 import fnmatch
@@ -1106,3 +1106,53 @@ def cmd_recover(ctx: CommandContext, args: list[str]) -> str:
         return f"recover: nothing recoverable at '{path_str}'"
     except FSError as e:
         return f"recover: {e}"
+
+
+# ---------------------------------------------------------------------------
+# more / less
+# ---------------------------------------------------------------------------
+
+
+@register_command(
+    name="more",
+    usage="more [file...]",
+    help_text="Page through file contents (non-interactive)",
+    category=_CAT,
+    aliases=["less"],
+)
+def cmd_more(ctx: CommandContext, args: list[str]) -> str:
+    flags, positional = _parse_flags(args)
+
+    stdin = ctx.env.get("STDIN", "")
+    if not positional and stdin:
+        return stdin + "\n(END)"
+
+    if not positional:
+        return ""
+
+    parts: list[str] = []
+    for path_str in positional:
+        path = _resolve(ctx, path_str)
+        try:
+            node = ctx.fs._get_node(path)
+            if node.is_dir:
+                parts.append(f"more: {path_str}: Is a directory")
+                continue
+            if node.binary:
+                parts.append(f"more: {path_str}: Binary file (use xxd to inspect)")
+                continue
+            if node.encrypted:
+                parts.append("[ENCRYPTED — binary content]")
+                parts.append(ctx.fs.render_hex(node.content))
+                continue
+            content = node.content
+            if len(positional) > 1:
+                parts.append(f":::::::::::::::\n{path_str}\n:::::::::::::::")
+            parts.append(content)
+        except FSNotFoundError:
+            parts.append(f"more: {path_str}: No such file or directory")
+        except FSError as e:
+            parts.append(f"more: {path_str}: {e}")
+
+    out = "\n".join(parts)
+    return out + "\n(END)" if out else ""

@@ -1,0 +1,12 @@
+name: shade
+provides: [shade]
+version: "2.1-xx"
+repo: shadow
+kit: ghost
+depends: []
+size_kb: 340
+cost_btc: 0.003
+signer: "UNSIGNED"
+poison_chance: 0.15
+summary: "Onion-route a command. -50% heat modifier for one invocation."
+unlocks_story: ["ghost_path_taken"]

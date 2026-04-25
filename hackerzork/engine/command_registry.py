@@ -11,10 +11,14 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:  # pragma: no cover — types only
+    from hackerzork.meta.skynet import SkyNetEngine
+    from hackerzork.systems.comms import CommsSystem
     from hackerzork.systems.events import EventBus
     from hackerzork.systems.heat import HeatSystem
     from hackerzork.systems.network import NetworkSim
+    from hackerzork.systems.save_load import SaveSystem
     from hackerzork.systems.state import GameState
+    from hackerzork.systems.toolkit import Toolkit
     from hackerzork.systems.virtual_fs import VirtualFS
 
 
@@ -35,6 +39,12 @@ class CommandContext:
     state: Any = None        # GameState
     events: Any = None       # EventBus
     heat: Any = None         # HeatSystem
+    toolkit: Any = None      # Toolkit
+    comms: Any = None        # CommsSystem
+    save_system: Any = None  # SaveSystem
+    skynet: Any = None       # SkyNetEngine
+    history: Any = None      # CommandHistory
+    registry: Any = None     # CommandRegistry (for man/help)
     output: Any = None       # OutputBuffer (effects-aware writer)
     env: dict[str, str] = field(default_factory=dict)
 

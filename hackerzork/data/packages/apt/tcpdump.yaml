@@ -1,0 +1,12 @@
+name: tcpdump
+provides: [tcpdump]
+version: "4.99.4"
+repo: apt
+kit: null
+depends: [libpcap]
+size_kb: 1100
+cost_btc: 0.0
+signer: "debian.maintainer@tcpdump.org"
+poison_chance: 0.02
+summary: "Dump traffic on a network interface"
+unlocks_story: []

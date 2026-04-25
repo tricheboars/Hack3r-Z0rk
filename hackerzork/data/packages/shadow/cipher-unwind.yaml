@@ -1,0 +1,12 @@
+name: cipher-unwind
+provides: [cipher-unwind]
+version: "4.2-xx"
+repo: shadow
+kit: oracle
+depends: []
+size_kb: 620
+cost_btc: 0.003
+signer: "UNSIGNED"
+poison_chance: 0.16
+summary: "Decrypt looted files. Required for most evidence containers."
+unlocks_story: ["oracle_path_taken"]

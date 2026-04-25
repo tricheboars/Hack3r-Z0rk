@@ -1,0 +1,12 @@
+name: hashbreak
+provides: [hashbreak]
+version: "1.7-xx"
+repo: shadow
+kit: oracle
+depends: []
+size_kb: 780
+cost_btc: 0.003
+signer: "UNSIGNED"
+poison_chance: 0.16
+summary: "Offline hash cracker. Slow but thorough. Required for some credential loot."
+unlocks_story: []

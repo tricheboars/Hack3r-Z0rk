@@ -34,7 +34,7 @@ from hackerzork.commands.filesystem import (
     cmd_wc,
     cmd_xxd,
 )
-from hackerzork.engine.command_registry import CommandContext
+from hackerzork.engine.command_registry import CommandContext, DEFAULT_REGISTRY
 from hackerzork.systems.virtual_fs import VirtualFS
 
 # ---------------------------------------------------------------------------
@@ -995,3 +995,50 @@ class TestRecover:
         cmd_rm(ctx, ["hello.txt"])
         cmd_recover(ctx, ["/home/user/hello.txt"])
         assert ctx.fs.read_file("/home/user/hello.txt") == original
+
+
+# ---------------------------------------------------------------------------
+# more / less
+# ---------------------------------------------------------------------------
+
+
+class TestMore:
+    def test_more_shows_file(self):
+        ctx = make_ctx()
+        result = DEFAULT_REGISTRY.get("more")(ctx, ["hello.txt"])
+        assert "hello" in result
+        assert "(END)" in result
+
+    def test_less_alias_registered(self):
+        assert DEFAULT_REGISTRY.get("less") is not None
+
+    def test_more_multiple_files(self):
+        ctx = make_ctx()
+        ctx.fs.write_file("/home/user/a.txt", "aaa")
+        ctx.fs.write_file("/home/user/b.txt", "bbb")
+        result = DEFAULT_REGISTRY.get("more")(ctx, ["a.txt", "b.txt"])
+        assert "aaa" in result
+        assert "bbb" in result
+        assert ":::" in result  # separator
+
+    def test_more_stdin(self):
+        ctx = make_ctx()
+        ctx.env["STDIN"] = "piped content"
+        result = DEFAULT_REGISTRY.get("more")(ctx, [])
+        assert "piped content" in result
+        assert "(END)" in result
+
+    def test_more_missing_file(self):
+        ctx = make_ctx()
+        result = DEFAULT_REGISTRY.get("more")(ctx, ["no_such.txt"])
+        assert "No such file" in result
+
+    def test_more_directory(self):
+        ctx = make_ctx()
+        result = DEFAULT_REGISTRY.get("more")(ctx, ["scripts"])
+        assert "Is a directory" in result
+
+    def test_more_no_args_no_stdin(self):
+        ctx = make_ctx()
+        result = DEFAULT_REGISTRY.get("more")(ctx, [])
+        assert result == ""

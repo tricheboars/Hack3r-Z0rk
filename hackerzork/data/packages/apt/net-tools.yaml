@@ -1,0 +1,12 @@
+name: net-tools
+provides: [ifconfig, netstat, arp]
+version: "2.10"
+repo: apt
+kit: null
+depends: []
+size_kb: 220
+cost_btc: 0.0
+signer: "debian.maintainer@debian.org"
+poison_chance: 0.01
+summary: "Classic Unix networking utilities: ifconfig, netstat, arp"
+unlocks_story: []

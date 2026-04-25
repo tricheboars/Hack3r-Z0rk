@@ -1,0 +1,12 @@
+name: claude-toolkit
+provides: [claude]
+version: "0.1-CLASSIFIED"
+repo: shadow
+kit: oracle
+depends: [cipher-unwind]
+size_kb: 12000
+cost_btc: 0.005
+signer: "UNSIGNED"
+poison_chance: 0.0
+summary: "Drops the decryption key for /home/user/tools/claude. Unlocks the AI companion."
+unlocks_story: ["claude_unlocked"]

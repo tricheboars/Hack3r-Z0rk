@@ -1,4 +1,5 @@
-"""Network commands: nmap, ssh, ping, traceroute, curl, netcat."""
+"""Network commands: nmap, ssh, ping, traceroute, curl, netcat,
+ifconfig, ip, ss, netstat."""
 from __future__ import annotations
 
 import re
@@ -646,6 +647,18 @@ def cmd_nc(ctx: CommandContext, args: list[str]) -> str:
     return prefix + banner
 
 
+# ---------------------------------------------------------------------------
+# Network interface constants
+# ---------------------------------------------------------------------------
+
+_LOCAL_IP = "192.168.1.100"
+_LOCAL_MAC = "52:54:00:12:34:56"
+_GATEWAY = "192.168.1.1"
+
+# The persistent SkyNet outbound connection (same IP as /var/log/auth.log)
+_SKYNET_IP = "45.152.66.201"
+
+
 def _service_banner(service: str, version: str, hostname: str) -> str:
     svc = service.lower()
     if svc == "ssh":
@@ -661,3 +674,238 @@ def _service_banner(service: str, version: str, hostname: str) -> str:
     if svc == "redis":
         return "-ERR wrong number of arguments for 'command' command\r\n"
     return f"[{service} banner] {version}"
+
+
+# ---------------------------------------------------------------------------
+# ifconfig
+# ---------------------------------------------------------------------------
+
+
+@register_command(
+    name="ifconfig",
+    usage="ifconfig [interface]",
+    help_text="Display network interface configuration",
+    category=_CAT,
+)
+def cmd_ifconfig(ctx: CommandContext, args: list[str]) -> str:
+    _, positional = _parse_flags(args)
+    iface_filter = positional[0] if positional else None
+
+    eth0 = (
+        f"eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500\n"
+        f"        inet {_LOCAL_IP}  netmask 255.255.255.0  broadcast 192.168.1.255\n"
+        f"        ether {_LOCAL_MAC}  txqueuelen 1000  (Ethernet)\n"
+        f"        RX packets 14823  bytes 8247319 (7.8 MiB)\n"
+        f"        TX packets 10941  bytes 3184726 (3.0 MiB)"
+    )
+    lo = (
+        f"lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536\n"
+        f"        inet 127.0.0.1  netmask 255.0.0.0\n"
+        f"        loop  txqueuelen 1000  (Local Loopback)\n"
+        f"        RX packets 1024  bytes 89472 (87.3 KiB)\n"
+        f"        TX packets 1024  bytes 89472 (87.3 KiB)"
+    )
+
+    if iface_filter == "eth0":
+        return eth0
+    if iface_filter == "lo":
+        return lo
+    if iface_filter:
+        return f"ifconfig: {iface_filter}: error fetching interface information: Device not found"
+    return eth0 + "\n\n" + lo
+
+
+# ---------------------------------------------------------------------------
+# ip
+# ---------------------------------------------------------------------------
+
+
+@register_command(
+    name="ip",
+    usage="ip <addr|route|link|neigh> [subcommand]",
+    help_text="Show or manipulate routing, network devices, and tunnels",
+    category=_CAT,
+)
+def cmd_ip(ctx: CommandContext, args: list[str]) -> str:
+    if not args:
+        return "Usage: ip <addr|route|link|neigh> ..."
+
+    sub = args[0].lower()
+
+    if sub in ("addr", "address", "a"):
+        return _ip_addr(ctx)
+    if sub in ("route", "r"):
+        return _ip_route(ctx)
+    if sub in ("link", "l"):
+        return _ip_link(ctx)
+    if sub in ("neigh", "n"):
+        return _ip_neigh(ctx)
+
+    return f"ip: Object '{sub}' is unknown, try 'ip help'."
+
+
+def _ip_addr(ctx: CommandContext) -> str:
+    ssh_host = ctx.env.get("LAST_SSH_HOST", "")
+    extra = ""
+    if ssh_host and ssh_host != _LOCAL_IP:
+        extra = f"\n3: tun0: <POINTOPOINT,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP\n    link/none\n    inet {ssh_host}/32 scope global tun0"
+
+    return (
+        f"1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default\n"
+        f"    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00\n"
+        f"    inet 127.0.0.1/8 scope host lo\n"
+        f"2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default\n"
+        f"    link/ether {_LOCAL_MAC} brd ff:ff:ff:ff:ff:ff\n"
+        f"    inet {_LOCAL_IP}/24 brd 192.168.1.255 scope global eth0"
+        + extra
+    )
+
+
+def _ip_route(ctx: CommandContext) -> str:
+    lines = [
+        f"default via {_GATEWAY} dev eth0 proto dhcp src {_LOCAL_IP} metric 100",
+        f"192.168.1.0/24 dev eth0 proto kernel scope link src {_LOCAL_IP}",
+        f"169.254.0.0/16 dev eth0 scope link metric 1000",
+    ]
+    ssh_host = ctx.env.get("LAST_SSH_HOST", "")
+    if ssh_host:
+        lines.append(f"{ssh_host}/32 dev tun0 scope link")
+    return "\n".join(lines)
+
+
+def _ip_link(ctx: CommandContext) -> str:
+    return (
+        f"1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT\n"
+        f"    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00\n"
+        f"2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT\n"
+        f"    link/ether {_LOCAL_MAC} brd ff:ff:ff:ff:ff:ff"
+    )
+
+
+def _ip_neigh(ctx: CommandContext) -> str:
+    return (
+        f"{_GATEWAY} dev eth0 lladdr 52:54:00:ff:ff:01 REACHABLE\n"
+        f"192.168.1.1 dev eth0 lladdr 52:54:00:ff:ff:01 STALE"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Surveillance discovery hook
+# ---------------------------------------------------------------------------
+
+
+def _mark_surveillance_seen(ctx: CommandContext) -> str:
+    """Emit first-discovery event and return a notice string.
+
+    Returns empty string on subsequent calls — the shock only lands once.
+    The event fires every time so the meta engine can track observation frequency.
+    """
+    first = not ctx.env.get("_SURVEILLANCE_SEEN")
+    ctx.env["_SURVEILLANCE_SEEN"] = "1"
+    if ctx.events:
+        ctx.events.emit("surveillance_discovered", ip=_SKYNET_IP, first=first)
+    if not first:
+        return ""
+    return (
+        "\n"
+        f"[!] NOTICE: active ESTABLISHED connection to {_SKYNET_IP}:443 detected.\n"
+        f"[!] Cross-reference: /var/log/auth.log  —  Mar 15 02:31 SSH from {_SKYNET_IP}\n"
+        f"[!]                  /etc/hosts          —  {_SKYNET_IP} unknown-origin-1.external\n"
+        f"[!]                  ps aux              —  sk_comms --relay={_SKYNET_IP}\n"
+        f"[!] This connection was not opened by you. It was here when you booted."
+    )
+
+
+def _poison_ip_extra_row(ctx: CommandContext, fmt: str) -> str:
+    """If a poisoned package leaked an IP, add an extra ESTABLISHED row."""
+    leaked_ip = ctx.env.get("_POISON_LEAKED_IP", "")
+    if not leaked_ip:
+        return ""
+    if fmt == "ss":
+        return f"\n{'tcp':<6}  {'ESTAB':<12}  {'0':>7}  {'0':>7}  {f'{_LOCAL_IP}:41009':<26}  {leaked_ip}:4444"
+    return f"\n{'tcp':<6}  {'0':>7}  {'1024':>7}  {f'{_LOCAL_IP}:41009':<22}  {f'{leaked_ip}:4444':<22}  ESTABLISHED"
+
+
+# ---------------------------------------------------------------------------
+# ss
+# ---------------------------------------------------------------------------
+
+
+@register_command(
+    name="ss",
+    usage="ss [-an | -tn | -tp]",
+    help_text="Show socket statistics (active connections)",
+    category=_CAT,
+)
+def cmd_ss(ctx: CommandContext, args: list[str]) -> str:
+    flags, _ = _parse_flags(args)
+
+    header = f"{'Netid':<6}  {'State':<12}  {'Recv-Q':>7}  {'Send-Q':>7}  {'Local Address:Port':<26}  Peer Address:Port"
+    rows: list[str] = [header]
+
+    rows.append(f"{'tcp':<6}  {'LISTEN':<12}  {'0':>7}  {'128':>7}  {'0.0.0.0:22':<26}  0.0.0.0:*")
+    rows.append(f"{'tcp':<6}  {'LISTEN':<12}  {'0':>7}  {'128':>7}  {'[::]:22':<26}  [::]:*")
+
+    # The persistent SkyNet outbound — always ESTABLISHED, always here.
+    # Same IP as auth.log (intrusion), /etc/hosts (unknown-origin-1), sk_comms (ps).
+    rows.append(
+        f"{'tcp':<6}  {'ESTAB':<12}  {'0':>7}  {'0':>7}  {f'{_LOCAL_IP}:52341':<26}  {_SKYNET_IP}:443"
+        f"   # ← not you"
+    )
+
+    ssh_host = ctx.env.get("LAST_SSH_HOST", "")
+    if ssh_host:
+        rows.append(f"{'tcp':<6}  {'ESTAB':<12}  {'0':>7}  {'0':>7}  {f'{_LOCAL_IP}:22':<26}  10.0.0.2:54321")
+
+    output = "\n".join(rows)
+    output += _poison_ip_extra_row(ctx, fmt="ss")
+    output += _mark_surveillance_seen(ctx)
+    return output
+
+
+# ---------------------------------------------------------------------------
+# netstat
+# ---------------------------------------------------------------------------
+
+
+@register_command(
+    name="netstat",
+    usage="netstat [-an | -tn | -rn]",
+    help_text="Print network connections and routing tables",
+    category=_CAT,
+)
+def cmd_netstat(ctx: CommandContext, args: list[str]) -> str:
+    flags, _ = _parse_flags(args)
+
+    if "r" in flags:
+        # Routing table
+        lines = [
+            "Kernel IP routing table",
+            f"{'Destination':<18}  {'Gateway':<18}  {'Genmask':<18}  Flags  Iface",
+            f"{'0.0.0.0':<18}  {_GATEWAY:<18}  {'0.0.0.0':<18}  UG     eth0",
+            f"{'192.168.1.0':<18}  {'0.0.0.0':<18}  {'255.255.255.0':<18}  U      eth0",
+        ]
+        return "\n".join(lines)
+
+    # Default: connections
+    header = [
+        "Active Internet connections (servers and established)",
+        f"{'Proto':<6}  {'Recv-Q':>7}  {'Send-Q':>7}  {'Local Address':<22}  {'Foreign Address':<22}  State",
+    ]
+    rows = [
+        f"{'tcp':<6}  {'0':>7}  {'0':>7}  {'0.0.0.0:22':<22}  {'0.0.0.0:*':<22}  LISTEN",
+        f"{'tcp':<6}  {'0':>7}  {'0':>7}  {'127.0.0.1:25':<22}  {'0.0.0.0:*':<22}  LISTEN",
+        # Always-present SkyNet outbound. Send-Q=36 means data is in flight — right now.
+        f"{'tcp':<6}  {'0':>7}  {'36':>7}  {f'{_LOCAL_IP}:52341':<22}  {f'{_SKYNET_IP}:443':<22}  ESTABLISHED",
+    ]
+
+    ssh_host = ctx.env.get("LAST_SSH_HOST", "")
+    if ssh_host:
+        rows.append(
+            f"{'tcp':<6}  {'0':>7}  {'0':>7}  {f'{_LOCAL_IP}:22':<22}  {'10.0.0.2:54321':<22}  ESTABLISHED"
+        )
+
+    output = "\n".join(header + rows)
+    output += _poison_ip_extra_row(ctx, fmt="netstat")
+    output += _mark_surveillance_seen(ctx)
+    return output

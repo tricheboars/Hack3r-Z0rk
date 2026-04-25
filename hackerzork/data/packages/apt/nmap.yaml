@@ -1,0 +1,12 @@
+name: nmap
+provides: [nmap]
+version: "7.94"
+repo: apt
+kit: null
+depends: [libpcap]
+size_kb: 4200
+cost_btc: 0.0
+signer: "debian.maintainer@fyodor.lyon"
+poison_chance: 0.02
+summary: "Network exploration tool and port scanner"
+unlocks_story: ["first_scanner"]

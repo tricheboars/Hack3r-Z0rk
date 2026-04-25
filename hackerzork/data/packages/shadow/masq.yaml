@@ -1,0 +1,12 @@
+name: masq
+provides: [masq]
+version: "1.4-xx"
+repo: shadow
+kit: ghost
+depends: []
+size_kb: 210
+cost_btc: 0.002
+signer: "UNSIGNED"
+poison_chance: 0.15
+summary: "Spoof MAC-equivalent fingerprint. Nodes can't link you to prior actions."
+unlocks_story: []

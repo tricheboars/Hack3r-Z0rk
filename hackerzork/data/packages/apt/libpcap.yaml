@@ -1,0 +1,12 @@
+name: libpcap
+provides: []
+version: "1.10.4"
+repo: apt
+kit: null
+depends: []
+size_kb: 380
+cost_btc: 0.0
+signer: "debian.maintainer@tcpdump.org"
+poison_chance: 0.005
+summary: "Portable C/C++ library for network traffic capture (dependency)"
+unlocks_story: []

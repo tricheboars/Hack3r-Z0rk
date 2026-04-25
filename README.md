@@ -59,7 +59,26 @@ python -m hackerzork.main
 
 ## Status
 
-🚧 **Early development** — Engine scaffolding in progress. The systems are being built module by module.
+Active development — core engine complete, narrative systems wiring in progress. 1025 tests passing.
+
+| # | Module | Status |
+|---|--------|--------|
+| 1 | Command parser + registry | ✅ Done |
+| 2 | Event bus | ✅ Done |
+| 3 | Virtual filesystem | ✅ Done |
+| 4 | Filesystem commands (`ls`, `cat`, `chmod`, 20+ more) | ✅ Done |
+| 5 | Shell REPL, tab completion, command history | ✅ Done |
+| 6 | Network simulation (nodes, ports, firewall, loot) | ✅ Done |
+| 7 | Network commands (`nmap`, `ssh`, `curl`, `netcat`, 9 more) | ✅ Done |
+| 8 | Heat / trace system (escalation, decay, burn at 100) | ✅ Done |
+| 9 | Toolkit + packaging (`apt`, `shadow`, kit commits, poison vectors) | ✅ Done |
+| 10 | System commands (`ps`, `top`, `kill`, `env`, `history`, 25+ more) | ✅ Done |
+| 11 | Audio engine (4-layer: ambient, diegetic, reactive, music) | ✅ Done |
+| 12 | Visual effects (typewriter, glitch, matrix rain, animations) | ✅ Done |
+| 13 | Comms system (IRC channels, encrypted DMs) | 🔨 In progress |
+| 14 | Save / load + game state machine | |
+| 15 | SkyNet meta engine + fourth-wall breaks | |
+| 16 | Full integration + boot sequence | |
 
 ## License
 

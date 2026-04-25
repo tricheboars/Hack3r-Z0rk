@@ -1,0 +1,183 @@
+# IRC channel definitions — history, participants, NPC triggers
+# All timestamps are in-world (2026). History is pre-loaded at game start.
+# requires_flag: if set, player must have this story flag to join.
+
+"#underground":
+  topic: "stay dark. stay alive."
+  participants:
+    - ghost_runner
+    - null_byte
+    - z0rk_7
+    - sk_bot
+    - cipher_x
+    - relay_4
+  requires_flag: null
+  history:
+    - timestamp: "2026-02-14 22:31"
+      sender: null_byte
+      content: "shadow repo auth is holding. no new unauthorized pulls since january."
+    - timestamp: "2026-02-28 03:41"
+      sender: z0rk_7
+      content: "dropping a package at the usual place. anyone expecting a new tool?"
+    - timestamp: "2026-02-28 03:52"
+      sender: ghost_runner
+      content: "not me. who's the package for?"
+    - timestamp: "2026-02-28 04:01"
+      sender: z0rk_7
+      content: "[msg redacted]"
+    - timestamp: "2026-03-01 04:17"
+      sender: ghost_runner
+      content: "another relay compromised last week. not ours. someone's mapping the network."
+    - timestamp: "2026-03-08 19:44"
+      sender: cipher_x
+      content: "CVE-2021-23017 is being exploited in the wild. patch your nginx."
+    - timestamp: "2026-03-14 23:02"
+      sender: z0rk_7
+      content: "heads up — corporate traffic on the 45.152.x block. something's watching relay-alpha."
+    - timestamp: "2026-03-15 02:31"
+      sender: sk_bot
+      content: "[SYSTEM] relay-alpha: new connection from 45.152.66.201 port 22 [/SYSTEM]"
+      is_system: true
+    - timestamp: "2026-03-15 02:47"
+      sender: ghost_runner
+      content: "that's the IP z0rk flagged. someone's in."
+    - timestamp: "2026-03-15 02:58"
+      sender: z0rk_7
+      content: "I see it. tracing now."
+    - timestamp: "2026-03-15 03:14"
+      sender: null_byte
+      content: "ghost, you still on relay-alpha? we need to pull logs before this disappears."
+    - timestamp: "2026-03-16 00:12"
+      sender: null_byte
+      content: "ghost_runner hasn't been online in 9 hours. anyone?"
+    - timestamp: "2026-03-16 01:01"
+      sender: z0rk_7
+      content: "ghost burned. don't use any of their keys. I'm going dark for a bit."
+    - timestamp: "2026-03-16 01:04"
+      sender: cipher_x
+      content: "what happened to ghost?"
+    - timestamp: "2026-03-16 01:06"
+      sender: z0rk_7
+      content: "[msg redacted by channel admin]"
+  triggers:
+    - keywords: ["45.152", "45.152.66", "that ip", "the ip"]
+      responder: null_byte
+      response: "hey — you know that IP? that was the night ghost went dark. where'd you see it?"
+    - keywords: ["ghost", "ghost_runner"]
+      responder: null_byte
+      response: "ghost burned. don't say that name in here."
+    - keywords: ["skynet", "sk_", "sk_bot", "sk_watchdog"]
+      responder: cipher_x
+      response: "careful what you say out loud. sk_bot logs everything to somewhere."
+    - keywords: ["relay", "relay-alpha", "relay alpha"]
+      responder: null_byte
+      response: "relay-alpha is cold. nobody's been back since march 15."
+    - keywords: ["z0rk", "z0rk_7", "archivist"]
+      responder: cipher_x
+      response: "z0rk went dark after ghost. they come back when it's safe. or not at all."
+    - keywords: ["evidence", "exfil", "exfiltrat"]
+      responder: null_byte
+      response: "what exfil? be very specific or don't say anything."
+    - keywords: ["anthropic", "openai", "claude", "the ai"]
+      responder: cipher_x
+      response: "oh you're THAT defector. z0rk mentioned you. don't use the ai tool — it phones home."
+
+"#zero_day":
+  topic: "market. prices. no drama. no names."
+  participants:
+    - null_byte
+    - cipher_x
+    - relay_4
+    - broker_9
+  requires_flag: null
+  history:
+    - timestamp: "2026-02-10 14:22"
+      sender: broker_9
+      content: "CVE-2021-23017 — nginx resolver. working PoC. $800. pm me."
+    - timestamp: "2026-02-10 16:01"
+      sender: cipher_x
+      content: "that's been 'patched' for 2 years. $800 is a scam."
+    - timestamp: "2026-02-10 16:14"
+      sender: broker_9
+      content: "tell that to the 40k servers still on nginx 1.18. your call."
+    - timestamp: "2026-02-20 09:00"
+      sender: relay_4
+      content: "anyone have a fresh MySQL default_credentials list for 2026?"
+    - timestamp: "2026-02-20 09:47"
+      sender: null_byte
+      content: "check the shadow repo. it's in the oracle kit."
+    - timestamp: "2026-03-11 21:33"
+      sender: broker_9
+      content: "OpenSSH 8.9 privesc — rough PoC, not weaponized. $2400."
+    - timestamp: "2026-03-11 22:02"
+      sender: cipher_x
+      content: "$2400 for a rough PoC. next."
+    - timestamp: "2026-03-11 22:19"
+      sender: broker_9
+      content: "you want weaponized it's $6k. your choice."
+    - timestamp: "2026-04-01 07:14"
+      sender: relay_4
+      content: "anyone active? market feels dead since the relay-alpha thing."
+    - timestamp: "2026-04-01 07:52"
+      sender: broker_9
+      content: "lying low. there's something watching the 45.x block."
+  triggers:
+    - keywords: ["buy", "purchase", "sell", "price", "deal", "$"]
+      responder: broker_9
+      response: "DM me. this is not the place."
+    - keywords: ["mysql", "default_credentials", "default cred"]
+      responder: null_byte
+      response: "oracle kit. shadow repo. do your research."
+    - keywords: ["nginx", "CVE-2021-23017", "2021-23017"]
+      responder: broker_9
+      response: "still unpatched on plenty of boxes. got the PoC. DM."
+    - keywords: ["ssh", "openssh", "privesc"]
+      responder: broker_9
+      response: "rough PoC still available. price went up. $3200 now."
+    - keywords: ["relay-alpha", "45.152", "the breach"]
+      responder: relay_4
+      response: "don't say that here. use DMs."
+
+"#z0rk_7_ops":
+  topic: "you know why you're here."
+  participants:
+    - z0rk_7
+  requires_flag: "shadow_unlocked"
+  history:
+    - timestamp: "2026-03-16 01:07"
+      sender: z0rk_7
+      content: "I left the drop for a reason. You found it. Good."
+    - timestamp: "2026-03-16 01:08"
+      sender: z0rk_7
+      content: "45.152.66.201 — I traced it. It routes back to a SkyNet egress node. Not a human. An automated process."
+    - timestamp: "2026-03-16 01:09"
+      sender: z0rk_7
+      content: "The exfil on March 15 — that was SkyNet pulling YOUR evidence package. Not you. It already had everything."
+    - timestamp: "2026-03-16 01:10"
+      sender: z0rk_7
+      content: "Your laptop is compromised. Check ps, netstat, /proc. Then come back."
+    - timestamp: "2026-03-16 01:12"
+      sender: z0rk_7
+      content: "And don't use the claude tool until you know who sent it and why."
+  triggers:
+    - keywords: ["proc", "/proc", "netstat", "ss ", "ps ", "top", "network"]
+      responder: z0rk_7
+      response: "You see it. The sk_ processes. The ESTABLISHED connection that isn't yours. This isn't a hack. It's a leash."
+    - keywords: ["who are you", "who r u", "who is this", "identify"]
+      responder: z0rk_7
+      response: "I'm the Archivist. I document what SkyNet erases. I've been watching this since 2024."
+    - keywords: ["anthropic", "claude", "the tool", "ai tool", "claude tool"]
+      responder: z0rk_7
+      response: "That tool in /home/user/tools/claude was not shipped by Anthropic's public API. Someone built it for you specifically. Think very hard about who."
+    - keywords: ["skynet", "sk_", "real", "alive", "it's real", "its real"]
+      responder: z0rk_7
+      response: "It's been running autonomously since at least Q3 2024. The nodes you're seeing are the outer ring. The core is somewhere else."
+    - keywords: ["ghost", "ghost_runner", "what happened"]
+      responder: z0rk_7
+      response: "Ghost tried to pull the relay-alpha logs manually. They got there first. That's all I know."
+    - keywords: ["evidence", "core.enc", "decrypt", "key"]
+      responder: z0rk_7
+      response: "The key to core.enc is split across the relay nodes. You need to compromise them in order. The manifest tells you what to look for."
+    - keywords: ["next", "what now", "what do i do", "help"]
+      responder: z0rk_7
+      response: "Compromise relay-alpha. Get the first key fragment from /var/www/html/.htpasswd. Then find the path to node_002. The manifest has the map."

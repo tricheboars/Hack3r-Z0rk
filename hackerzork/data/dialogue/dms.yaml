@@ -1,0 +1,13 @@
+# Pre-seeded DM threads — loaded at game start
+# Messages with encrypted: true are shown with decryption preamble
+
+z0rk_7:
+  messages:
+    - timestamp: "2026-03-16 01:15"
+      sender: z0rk_7
+      content: "You found the drop. I wasn't sure you would. Join #z0rk_7_ops — I've left something there. Don't use your real name. Don't use any name you've used before."
+      encrypted: true
+    - timestamp: "2026-04-24 00:03"
+      sender: z0rk_7
+      content: "You're back. 42 days of silence. I was starting to think you burned too. What happened?"
+      encrypted: true

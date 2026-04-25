@@ -1,0 +1,12 @@
+name: gpg
+provides: [gpg]
+version: "2.4.3"
+repo: apt
+kit: null
+depends: []
+size_kb: 2100
+cost_btc: 0.0
+signer: "debian.maintainer@gnupg.org"
+poison_chance: 0.01
+summary: "GNU Privacy Guard — signature verification and encryption"
+unlocks_story: ["gpg_installed"]

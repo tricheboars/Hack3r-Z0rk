@@ -10,13 +10,13 @@ hackerzork/
 ├── engine/          # Core terminal engine — parser, shell, input
 │   ├── command_parser.py    # Tokenize & parse bash-like input  ✅ DONE
 │   ├── command_registry.py  # Plugin-style command registration  ✅ DONE
-│   ├── shell.py             # Main shell loop, prompt, REPL
-│   ├── tab_complete.py      # Tab completion engine
-│   └── history.py           # Command history (arrow keys, Ctrl+R)
+│   ├── shell.py             # Main shell loop, prompt, REPL  ✅ DONE
+│   ├── tab_complete.py      # Tab completion engine  ✅ DONE
+│   └── history.py           # Command history (arrow keys, Ctrl+R)  ✅ DONE
 ├── systems/         # Game simulation systems
 │   ├── virtual_fs.py        # In-memory Unix-like filesystem  ✅ DONE
-│   ├── network.py           # Network topology, nodes, services
-│   ├── heat.py              # Trace/heat system with consequences
+│   ├── network.py           # Network topology, nodes, services  ✅ DONE
+│   ├── heat.py              # Trace/heat system with consequences  ✅ DONE
 │   ├── toolkit.py           # Package install state, poison engine
 │   ├── comms.py             # IRC channels + encrypted DMs
 │   ├── state.py             # Game state machine
@@ -24,8 +24,8 @@ hackerzork/
 │   ├── puzzle.py            # Puzzle validation engine
 │   └── save_load.py         # Save/load (also a meta-horror vector)
 ├── commands/        # Individual command implementations
-│   ├── filesystem.py        # ls, cd, cat, pwd, mkdir, rm, chmod, etc.
-│   ├── network_cmds.py      # nmap, ssh, ping, traceroute, curl, netcat
+│   ├── filesystem.py        # ls, cd, cat, pwd, mkdir, rm, chmod, etc.  ✅ DONE
+│   ├── network_cmds.py      # nmap, ssh, ping, traceroute, curl, netcat  ✅ DONE
 │   ├── hacking.py           # Custom exploit tools + real-inspired tools
 │   ├── comms_cmds.py        # irc, msg, contacts
 │   ├── packaging.py         # apt, shadow, gpg
@@ -49,7 +49,7 @@ hackerzork/
 │   ├── packages/
 │   │   ├── apt/             # One YAML per mainline package
 │   │   └── shadow/          # One YAML per underground package
-│   ├── nodes/               # Network node definitions (.yaml)
+│   ├── nodes/               # Network node definitions (.yaml)  ✅ node_001.yaml
 │   ├── filesystem/
 │   │   └── home.yaml        # Player filesystem template  ✅ DONE
 │   ├── dialogue/            # NPC dialogue, IRC logs (.yaml)
@@ -57,7 +57,7 @@ hackerzork/
 │   ├── sounds/              # SFX — .wav preferred (see docs/AUDIO_GUIDE.md)
 │   └── music/               # Music + ambient drones — .ogg (see docs/AUDIO_GUIDE.md)
 ├── main.py          # Entry point
-└── game.py          # Game class — orchestrates everything
+└── game.py          # Game class — orchestrates everything  ✅ DONE (sessions 1-10 wired)
 ```
 
 ## Design Principles
@@ -99,11 +99,11 @@ from hackerzork.engine.command_registry import register_command, CommandContext
 )
 def cmd_nmap(ctx: CommandContext, args: list[str]) -> str:
     """Scan a target for open ports and services."""
-    # Parse flags from ctx.parsed (ParsedCommand)
-    # Query network system for target node
-    # Generate scan results
-    # Emit event for heat system
-    ctx.events.emit("scan_performed", target=args[-1], stealth="-sS" in args)
+    # args is a flat list: flags + positional args (e.g. ["-sV", "-p", "22,80", "10.0.0.1"])
+    # Parse flags yourself — see _parse_flags() pattern in filesystem.py or network_cmds.py
+    # Query network system via ctx.network
+    # Emit event so heat system picks it up automatically
+    ctx.events.emit("scan_performed", target=ip, stealth=stealth, port_count=len(results))
     return output
 ```
 
@@ -304,14 +304,18 @@ Each Claude Code session should focus on ONE module or system. Check `docs/specs
 | 2 | `systems/events.py` | `02_event_bus.md` | ✅ Done |
 | 3 | `systems/virtual_fs.py` | `03_virtual_fs.md` | ✅ Done |
 | 4 | `commands/filesystem.py` | `04_filesystem_commands.md` | ✅ Done |
-| 5 | `engine/shell.py` + `engine/tab_complete.py` + `engine/history.py` | `05_shell.md` | ← **Next** |
-| 6 | `systems/network.py` | `06_network.md` (was 04) | |
-| 7 | `commands/network_cmds.py` | `07_network_cmds.md` | |
-| 8 | `systems/heat.py` | `08_heat_system.md` (was 05) | |
-| 9 | `systems/toolkit.py` + `commands/packaging.py` | `09_toolkit_unlocks.md` | |
-| 10 | `audio/mixer.py` + `audio/ambient.py` + `audio/sfx.py` | `10_audio.md` (was 06) | |
-| 11 | `effects/` | `11_effects.md` (was 07) | |
-| 12 | `meta/` (skynet, fourth_wall, corruption) | `12_meta_engine.md` (was 08) | |
+| 5 | `engine/shell.py` + `engine/tab_complete.py` + `engine/history.py` | `05_shell.md` | ✅ Done |
+| 6 | `systems/network.py` | `04_network.md` | ✅ Done |
+| 7 | `commands/network_cmds.py` | — | ✅ Done |
+| 8 | `systems/heat.py` | `05_heat_system.md` | ✅ Done |
+| 9 | `systems/toolkit.py` + `commands/packaging.py` | `09_toolkit_unlocks.md` | ✅ Done |
+| 10 | `commands/system.py` | — | ✅ Done |
+| 11 | `audio/mixer.py` + `audio/ambient.py` + `audio/sfx.py` + `audio/reactive.py` | `06_audio.md` | ✅ Done |
+| 12 | `effects/typing.py` + `effects/glitch.py` + `effects/matrix.py` + `effects/animations.py` | `07_effects.md` | ✅ Done |
+| 13 | `systems/comms.py` + `commands/comms_cmds.py` | — | ✅ Done |
+| 14 | `systems/state.py` + `systems/save_load.py` | — | ✅ Done |
+| 15 | `meta/skynet.py` + `meta/fourth_wall.py` + `meta/corruption.py` | `08_meta_engine.md` | ✅ Done |
+| 16 | Integration & boot sequence — wire all systems in `game.py` | — | ✅ Done |
 
 After each session, run `pytest` to make sure nothing is broken.
 

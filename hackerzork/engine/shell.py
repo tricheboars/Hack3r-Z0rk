@@ -67,6 +67,10 @@ class Shell:
             if result:
                 self._console.print(result)
 
+            # SkyNet observes every command — may fire a fourth-wall effect
+            if self._ctx.skynet is not None:
+                await self._ctx.skynet.maybe_intervene()
+
         if self._history is not None:
             self._history.save_to_fs()
 

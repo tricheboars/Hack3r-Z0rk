@@ -1,0 +1,12 @@
+name: ramroot
+provides: [ramroot, rr]
+version: "0.9-xx"
+repo: shadow
+kit: breaker
+depends: []
+size_kb: 830
+cost_btc: 0.004
+signer: "UNSIGNED"
+poison_chance: 0.18
+summary: "Memory-resident brute forcer. Fast. Loud."
+unlocks_story: ["breaker_path_taken"]

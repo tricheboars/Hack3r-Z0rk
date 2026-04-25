@@ -1,0 +1,32 @@
+# Pre-seeded contacts — discovered gradually through gameplay
+# status: ONLINE | AWAY | OFFLINE | UNKNOWN | BURNED
+
+z0rk_7:
+  alias: "The Archivist"
+  status: ONLINE
+  key_fingerprint: "4A:8F:2C:B1:9D:E3:77:0A:C6:55:18:F2:3B:9E:4D:61"
+  notes: "Left the dead drop at /home/user/notes/z0rk7_drop.txt. Knows about the breach. Traces egress routes. Trust: high."
+
+null_byte:
+  alias: "null_byte"
+  status: AWAY
+  key_fingerprint: "B7:3E:9A:12:C4:8D:F6:55:2A:01:9C:47:E8:3F:B2:D9"
+  notes: "Regular #underground presence. Cautious. Good for intel on shadow repo activity."
+
+ghost_runner:
+  alias: "ghost"
+  status: BURNED
+  key_fingerprint: "DE:AD:BE:EF:00:11:22:33:44:55:66:77:88:99:AA:BB"
+  notes: "Last seen 2026-03-15 03:14. Went dark after relay-alpha breach. Keys compromised — do not use."
+
+cipher_x:
+  alias: "cipher"
+  status: AWAY
+  key_fingerprint: "C1:0A:7F:33:88:D2:14:92:AF:56:0E:B3:29:71:CC:4D"
+  notes: "Security researcher. Knows the exploit markets. Neutral — not an ally."
+
+broker_9:
+  alias: "broker"
+  status: ONLINE
+  key_fingerprint: "F9:22:5B:44:D7:83:CC:19:A1:6E:30:94:07:2F:8B:E5"
+  notes: "Zero-day broker in #zero_day. Mercenary. Info for sale, not loyalty."

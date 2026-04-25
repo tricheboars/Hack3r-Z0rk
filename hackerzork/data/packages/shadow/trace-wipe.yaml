@@ -1,0 +1,12 @@
+name: trace-wipe
+provides: [trace-wipe]
+version: "3.0-xx"
+repo: shadow
+kit: ghost
+depends: []
+size_kb: 180
+cost_btc: 0.002
+signer: "UNSIGNED"
+poison_chance: 0.15
+summary: "One-shot: drop current heat by 15 flat. 30-minute cooldown."
+unlocks_story: []

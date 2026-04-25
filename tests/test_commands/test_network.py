@@ -538,3 +538,188 @@ class TestNc:
         ctx = CommandContext(env={})
         result = cmd_nc(ctx, ["-z", "10.0.0.1", "80"])
         assert "not available" in result.lower()
+
+
+# ---------------------------------------------------------------------------
+# ifconfig
+# ---------------------------------------------------------------------------
+
+
+class TestIfconfig:
+    def test_shows_eth0(self):
+        ctx = CommandContext(env={})
+        from hackerzork.commands.network_cmds import cmd_ifconfig
+        out = cmd_ifconfig(ctx, [])
+        assert "eth0" in out
+        assert "192.168.1.100" in out
+
+    def test_shows_lo(self):
+        from hackerzork.commands.network_cmds import cmd_ifconfig
+        ctx = CommandContext(env={})
+        out = cmd_ifconfig(ctx, [])
+        assert "lo" in out
+        assert "127.0.0.1" in out
+
+    def test_filter_eth0(self):
+        from hackerzork.commands.network_cmds import cmd_ifconfig
+        ctx = CommandContext(env={})
+        out = cmd_ifconfig(ctx, ["eth0"])
+        assert "eth0" in out
+        assert "lo" not in out
+
+    def test_filter_lo(self):
+        from hackerzork.commands.network_cmds import cmd_ifconfig
+        ctx = CommandContext(env={})
+        out = cmd_ifconfig(ctx, ["lo"])
+        assert "127.0.0.1" in out
+        assert "192.168.1.100" not in out
+
+    def test_unknown_interface(self):
+        from hackerzork.commands.network_cmds import cmd_ifconfig
+        ctx = CommandContext(env={})
+        out = cmd_ifconfig(ctx, ["wlan99"])
+        assert "not found" in out.lower() or "Device not found" in out
+
+    def test_shows_mac(self):
+        from hackerzork.commands.network_cmds import cmd_ifconfig
+        ctx = CommandContext(env={})
+        out = cmd_ifconfig(ctx, [])
+        assert "52:54:00" in out
+
+
+# ---------------------------------------------------------------------------
+# ip
+# ---------------------------------------------------------------------------
+
+
+class TestIp:
+    def test_no_args(self):
+        from hackerzork.commands.network_cmds import cmd_ip
+        ctx = CommandContext(env={})
+        out = cmd_ip(ctx, [])
+        assert "Usage" in out
+
+    def test_ip_addr(self):
+        from hackerzork.commands.network_cmds import cmd_ip
+        ctx = CommandContext(env={})
+        out = cmd_ip(ctx, ["addr"])
+        assert "eth0" in out
+        assert "192.168.1.100" in out
+        assert "lo" in out
+
+    def test_ip_addr_alias_a(self):
+        from hackerzork.commands.network_cmds import cmd_ip
+        ctx = CommandContext(env={})
+        out = cmd_ip(ctx, ["a"])
+        assert "eth0" in out
+
+    def test_ip_route(self):
+        from hackerzork.commands.network_cmds import cmd_ip
+        ctx = CommandContext(env={})
+        out = cmd_ip(ctx, ["route"])
+        assert "default" in out
+        assert "192.168.1" in out
+
+    def test_ip_link(self):
+        from hackerzork.commands.network_cmds import cmd_ip
+        ctx = CommandContext(env={})
+        out = cmd_ip(ctx, ["link"])
+        assert "eth0" in out
+        assert "lo" in out
+
+    def test_ip_neigh(self):
+        from hackerzork.commands.network_cmds import cmd_ip
+        ctx = CommandContext(env={})
+        out = cmd_ip(ctx, ["neigh"])
+        assert "192.168.1.1" in out
+
+    def test_ip_unknown_object(self):
+        from hackerzork.commands.network_cmds import cmd_ip
+        ctx = CommandContext(env={})
+        out = cmd_ip(ctx, ["frob"])
+        assert "unknown" in out.lower() or "frob" in out
+
+    def test_ip_addr_with_ssh_host(self):
+        from hackerzork.commands.network_cmds import cmd_ip
+        net = NetworkSim()
+        ctx = CommandContext(env={"LAST_SSH_HOST": "10.13.37.1"}, network=net)
+        out = cmd_ip(ctx, ["addr"])
+        # tun0 should appear when LAST_SSH_HOST is set
+        assert "tun0" in out or "10.13.37.1" in out
+
+
+# ---------------------------------------------------------------------------
+# ss
+# ---------------------------------------------------------------------------
+
+
+class TestSs:
+    def test_shows_header(self):
+        from hackerzork.commands.network_cmds import cmd_ss
+        ctx = CommandContext(env={})
+        out = cmd_ss(ctx, [])
+        assert "State" in out
+        assert "Netid" in out
+
+    def test_shows_skynet_connection(self):
+        from hackerzork.commands.network_cmds import cmd_ss
+        ctx = CommandContext(env={})
+        out = cmd_ss(ctx, [])
+        assert "45.152.66.201" in out
+
+    def test_shows_listen(self):
+        from hackerzork.commands.network_cmds import cmd_ss
+        ctx = CommandContext(env={})
+        out = cmd_ss(ctx, [])
+        assert "LISTEN" in out
+
+    def test_shows_established(self):
+        from hackerzork.commands.network_cmds import cmd_ss
+        ctx = CommandContext(env={})
+        out = cmd_ss(ctx, [])
+        assert "ESTAB" in out
+
+    def test_ssh_session_visible(self):
+        from hackerzork.commands.network_cmds import cmd_ss
+        ctx = CommandContext(env={"LAST_SSH_HOST": "10.13.37.1"})
+        out = cmd_ss(ctx, [])
+        # With an active SSH session, should show more ESTAB entries
+        assert out.count("ESTAB") >= 2
+
+
+# ---------------------------------------------------------------------------
+# netstat
+# ---------------------------------------------------------------------------
+
+
+class TestNetstat:
+    def test_shows_header(self):
+        from hackerzork.commands.network_cmds import cmd_netstat
+        ctx = CommandContext(env={})
+        out = cmd_netstat(ctx, [])
+        assert "Proto" in out
+
+    def test_shows_skynet_connection(self):
+        from hackerzork.commands.network_cmds import cmd_netstat
+        ctx = CommandContext(env={})
+        out = cmd_netstat(ctx, [])
+        assert "45.152.66.201" in out
+
+    def test_shows_listen(self):
+        from hackerzork.commands.network_cmds import cmd_netstat
+        ctx = CommandContext(env={})
+        out = cmd_netstat(ctx, [])
+        assert "LISTEN" in out
+
+    def test_routing_flag(self):
+        from hackerzork.commands.network_cmds import cmd_netstat
+        ctx = CommandContext(env={})
+        out = cmd_netstat(ctx, ["-r"])
+        assert "Kernel IP routing table" in out
+        assert "Destination" in out
+
+    def test_ssh_session_in_netstat(self):
+        from hackerzork.commands.network_cmds import cmd_netstat
+        ctx = CommandContext(env={"LAST_SSH_HOST": "10.13.37.1"})
+        out = cmd_netstat(ctx, [])
+        assert out.count("ESTABLISHED") >= 2
