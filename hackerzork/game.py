@@ -226,11 +226,14 @@ class Game:
         asyncio.run(self._run_async())
 
     async def _run_async(self) -> None:
-        """Async entry — boot animation, optional save restore, then shell."""
+        """Async entry — font check, boot animation, optional save restore, then shell."""
         import hackerzork.effects as fx
         from rich.console import Console
 
         con = Console(highlight=False, markup=True)
+
+        # ── Nerd Font detection + auto-install (runs before boot animation) ──
+        await self._check_fonts(con)
 
         # Boot sequence animation
         if self.config.effects_enabled:
@@ -267,6 +270,43 @@ class Game:
 
         # Hand off to the shell REPL
         await self._shell.run()
+
+    async def _check_fonts(self, con) -> None:
+        """Detect Nerd Font support; auto-install if fonts are in data/fonts/."""
+        import asyncio
+        from hackerzork.engine import fonts as fnt
+        from hackerzork.engine import prompt as pmt
+
+        data_dir  = pathlib.Path(__file__).parent / "data"
+        cache_dir = pathlib.Path.home() / ".hackerzork" / "fonts"
+
+        loop = asyncio.get_event_loop()
+        result, msgs = await loop.run_in_executor(
+            None,
+            lambda: fnt.ensure_nerd_font(
+                data_fonts_dir=data_dir / "fonts",
+                cache_dir=cache_dir,
+                ask=True,
+            ),
+        )
+
+        active = (result == fnt.FontResult.active)
+        pmt.set_nerd_font_active(active)
+
+        for msg in msgs:
+            style = "dim green" if "installed" in msg.lower() else "dim yellow"
+            con.print(f"[{style}]{msg}[/{style}]")
+
+        if result == fnt.FontResult.needs_restart:
+            con.print(
+                f"[dim yellow]  → Set terminal font to '{fnt.FONT_NAME}' "
+                f"and restart for full visuals.[/dim yellow]"
+            )
+        elif result == fnt.FontResult.downloaded:
+            con.print(
+                f"[dim green]  → Restart your terminal and set font to "
+                f"'{fnt.FONT_NAME}' to activate glyphs.[/dim green]"
+            )
 
     def shutdown(self) -> None:
         """Clean shutdown of all systems."""
