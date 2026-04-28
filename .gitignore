@@ -45,3 +45,8 @@ hackerzork/data/music/*.mp3
 # Secrets (if any API keys end up here during dev)
 .env
 *.key
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfvars

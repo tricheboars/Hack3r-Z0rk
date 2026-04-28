@@ -1,0 +1,26 @@
+[Unit]
+Description=H@ck3r-Z0rk WebSocket Game Server
+After=network.target
+
+[Service]
+Type=simple
+User=hackerzork
+WorkingDirectory=/opt/hackerzork/repo
+ExecStart=/opt/hackerzork/repo/.venv/bin/python -m browser_deploy.server.ws_server
+Restart=on-failure
+RestartSec=5
+
+Environment=HZ_HOST=127.0.0.1
+Environment=HZ_PORT=8765
+Environment=HZ_MAX_SESSIONS=20
+Environment=HZ_SESSION_TIMEOUT=1800
+Environment=HZ_DEBUG=0
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/hackerzork/repo
+
+[Install]
+WantedBy=multi-user.target
