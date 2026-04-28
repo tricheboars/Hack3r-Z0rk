@@ -1,0 +1,4 @@
+# H@ck3r-Z0rk browser-deploy — server dependencies
+# Install on top of the main project's requirements.txt
+
+websockets>=12.0

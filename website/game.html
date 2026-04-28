@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>H@CK3R-Z0RK // PLAY</title>
+
+  <!-- Share Tech Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+
+  <!-- xterm.js -->
+  <link  href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.3.0/css/xterm.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.js"></script>
+
+  <style>
+    /* ═══════════════════════════════════════════════════════
+       SHARED DESIGN SYSTEM (mirrors index.html)
+    ═══════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:      #00ff41;
+      --green-dim:  #00b32d;
+      --green-dark: #003d0d;
+      --amber:      #ffb700;
+      --red:        #ff2222;
+      --cyan:       #00ffff;
+      --white:      #d0ffd0;
+      --bg:         #020d02;
+      --bg2:        #030f03;
+      --scanline:   rgba(0,255,65,0.03);
+      --glow:       0 0 8px #00ff41, 0 0 20px #00ff4155;
+      --glow-sm:    0 0 4px #00ff41, 0 0 10px #00ff4144;
+
+      /* Layout */
+      --topbar-h:   40px;
+      --sidebar-w:  280px;
+      --hud-h:      52px;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--green);
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      font-size: 13px;
+    }
+
+    /* CRT scanlines */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px, transparent 2px,
+        var(--scanline) 2px, var(--scanline) 4px
+      );
+      pointer-events: none;
+      z-index: 9000;
+    }
+
+    /* CRT vignette */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.65) 100%);
+      pointer-events: none;
+      z-index: 8999;
+    }
+
+    pre { font-family: inherit; white-space: pre; line-height: 1.2; }
+
+    .blink { animation: blink 1.1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ═══════════════════════════════════════════════════════
+       TOP BAR
+    ═══════════════════════════════════════════════════════ */
+    #topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--topbar-h);
+      background: rgba(2,13,2,0.97);
+      border-bottom: 1px solid var(--green-dark);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 0;
+      z-index: 500;
+      backdrop-filter: blur(4px);
+    }
+
+    .topbar-logo {
+      font-size: 15px;
+      color: var(--green);
+      text-shadow: var(--glow-sm);
+      letter-spacing: 0.05em;
+      margin-right: 24px;
+      flex-shrink: 0;
+    }
+    .topbar-logo span.at  { color: var(--amber); text-shadow: 0 0 8px var(--amber); }
+    .topbar-logo span.zer { color: var(--amber); text-shadow: 0 0 8px var(--amber); }
+
+    .topbar-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--green-dark);
+      margin: 0 14px;
+    }
+
+    .topbar-status {
+      font-size: 11px;
+      color: var(--green-dim);
+      display: flex;
+      gap: 18px;
+      flex: 1;
+    }
+
+    .topbar-status .st-item { display: flex; gap: 6px; align-items: center; }
+    .topbar-status .st-label { color: #1a4a1a; }
+    .topbar-status .st-val   { color: var(--green-dim); }
+    .topbar-status .st-val.warn { color: var(--amber); text-shadow: 0 0 4px var(--amber); }
+    .topbar-status .st-val.hot  { color: var(--red);   text-shadow: 0 0 4px var(--red); }
+
+    .topbar-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .topbar-btn {
+      background: none;
+      border: 1px solid var(--green-dark);
+      color: var(--green-dim);
+      font-family: inherit;
+      font-size: 11px;
+      padding: 4px 10px;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: all 0.15s;
+    }
+    .topbar-btn:hover {
+      border-color: var(--green-dim);
+      color: var(--green);
+      text-shadow: var(--glow-sm);
+    }
+    .topbar-btn.active {
+      border-color: var(--green);
+      color: var(--green);
+      text-shadow: var(--glow-sm);
+      background: rgba(0,255,65,0.05);
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       MAIN LAYOUT
+    ═══════════════════════════════════════════════════════ */
+    #layout {
+      position: fixed;
+      top: var(--topbar-h);
+      left: 0; right: 0;
+      bottom: var(--hud-h);
+      display: flex;
+    }
+
+    /* ─── TERMINAL PANE ───────────────────────────────────── */
+    #terminal-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      border-right: 1px solid var(--green-dark);
+    }
+
+    #terminal-titlebar {
+      background: #001a00;
+      border-bottom: 1px solid var(--green-dark);
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .win-dots { display: flex; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .dot-r { background: #ff5f56; }
+    .dot-y { background: #ffbd2e; }
+    .dot-g { background: #27c93f; }
+
+    #terminal-titlebar .title-text {
+      flex: 1;
+      font-size: 11px;
+      color: var(--green-dim);
+    }
+
+    #terminal-titlebar .title-heat {
+      font-size: 11px;
+      color: var(--green-dim);
+      transition: color 0.5s;
+    }
+
+    #terminal-wrap {
+      flex: 1;
+      overflow: hidden;
+      padding: 4px 0 0 4px;
+      background: #010801;
+    }
+
+    /* xterm.js overrides */
+    .xterm { height: 100% !important; }
+    .xterm-viewport { background: #010801 !important; }
+
+    /* ─── RIGHT SIDEBAR ───────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: width 0.3s ease;
+    }
+
+    #sidebar.collapsed { width: 0; border: none; }
+
+    .sidebar-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-bottom: 1px solid var(--green-dark);
+      overflow: hidden;
+    }
+
+    .sidebar-panel:last-child { border-bottom: none; }
+
+    .panel-titlebar {
+      background: #001a00;
+      border-bottom: 1px solid var(--green-dark);
+      padding: 6px 10px;
+      font-size: 11px;
+      color: var(--green-dim);
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      font-size: 11px;
+    }
+
+    /* scrollbar */
+    .panel-body::-webkit-scrollbar { width: 4px; }
+    .panel-body::-webkit-scrollbar-track { background: var(--bg); }
+    .panel-body::-webkit-scrollbar-thumb { background: var(--green-dark); }
+
+    /* ─── NETWORK MAP PANEL ───────────────────────────────── */
+    #net-panel { background: #010801; }
+
+    .net-node {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #010e01;
+      cursor: default;
+      transition: background 0.1s;
+    }
+    .net-node:hover { background: rgba(0,255,65,0.03); }
+
+    .node-icon { font-size: 12px; }
+    .node-ip   { color: var(--cyan); font-size: 10px; }
+    .node-name { color: var(--green-dim); font-size: 10px; }
+    .node-status {
+      margin-left: auto;
+      font-size: 9px;
+      padding: 1px 5px;
+      border: 1px solid;
+    }
+    .node-status.unknown  { color: #2d5c2d; border-color: #2d5c2d; }
+    .node-status.scanned  { color: var(--amber); border-color: var(--amber); }
+    .node-status.owned    { color: var(--green); border-color: var(--green); text-shadow: var(--glow-sm); }
+    .node-status.locked   { color: var(--red); border-color: var(--red); }
+
+    .net-locked-msg {
+      color: #1a3d1a;
+      font-size: 11px;
+      text-align: center;
+      padding: 20px 8px;
+      line-height: 1.6;
+    }
+
+    /* ASCII connection lines */
+    .net-connections {
+      color: #1a3d1a;
+      font-size: 10px;
+      margin: 4px 0 8px 4px;
+      line-height: 1.3;
+    }
+
+    /* ─── FILE VIEWER PANEL ───────────────────────────────── */
+    #file-panel { background: #010801; }
+
+    .file-entry {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #010e01;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .file-entry:hover { background: rgba(0,255,65,0.04); }
+    .file-entry:hover .file-name { color: var(--green); text-shadow: var(--glow-sm); }
+
+    .file-icon { color: var(--green-dim); font-size: 11px; width: 14px; }
+    .file-name { color: var(--green-dim); font-size: 11px; flex: 1; }
+    .file-name.encrypted { color: var(--amber); }
+    .file-name.deleted   { color: var(--red); text-decoration: line-through; }
+    .file-badge {
+      font-size: 9px;
+      padding: 1px 4px;
+      border: 1px solid var(--green-dark);
+      color: #2d5c2d;
+    }
+    .file-badge.enc { border-color: var(--amber); color: var(--amber); }
+    .file-badge.new { border-color: var(--green); color: var(--green); animation: blink 1.5s step-end infinite; }
+
+    .file-locked-msg {
+      color: #1a3d1a;
+      font-size: 11px;
+      text-align: center;
+      padding: 20px 8px;
+      line-height: 1.6;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       HUD BAR (bottom)
+    ═══════════════════════════════════════════════════════ */
+    #hud {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: var(--hud-h);
+      background: rgba(2,13,2,0.97);
+      border-top: 1px solid var(--green-dark);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 24px;
+      z-index: 500;
+    }
+
+    .hud-label {
+      font-size: 10px;
+      color: #1a4a1a;
+      letter-spacing: 0.08em;
+    }
+
+    /* Heat bar */
+    #heat-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      max-width: 320px;
+    }
+
+    #heat-bar-outer {
+      flex: 1;
+      height: 10px;
+      background: #010e01;
+      border: 1px solid var(--green-dark);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #heat-bar-inner {
+      height: 100%;
+      width: 0%;
+      background: var(--green);
+      transition: width 0.8s ease, background 0.5s ease;
+    }
+
+    #heat-pct {
+      font-size: 11px;
+      color: var(--green-dim);
+      min-width: 38px;
+      text-align: right;
+      transition: color 0.5s;
+    }
+
+    #heat-status {
+      font-size: 10px;
+      color: #1a4a1a;
+      min-width: 160px;
+      transition: color 0.5s;
+    }
+
+    /* Session timer */
+    #session-timer {
+      font-size: 11px;
+      color: #1a4a1a;
+      letter-spacing: 0.08em;
+    }
+
+    /* WS status indicator */
+    #ws-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--green-dim);
+      margin-left: auto;
+    }
+
+    .ws-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #1a4a1a;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .ws-dot.connecting { background: var(--amber); animation: blink 0.8s step-end infinite; }
+    .ws-dot.connected  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .ws-dot.error      { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+
+    /* ═══════════════════════════════════════════════════════
+       FILE VIEWER OVERLAY
+    ═══════════════════════════════════════════════════════ */
+    .overlay-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadein 0.2s ease;
+    }
+
+    @keyframes fadein  { from{opacity:0} to{opacity:1} }
+    @keyframes slideup { from{transform:translateY(12px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+    .file-viewer-window {
+      background: #010801;
+      border: 1px solid var(--green-dim);
+      box-shadow: 0 0 40px rgba(0,255,65,0.1), 0 0 80px rgba(0,255,65,0.04);
+      width: min(720px, 90vw);
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      animation: slideup 0.2s ease;
+    }
+
+    .fv-titlebar {
+      background: #001a00;
+      border-bottom: 1px solid var(--green-dark);
+      padding: 7px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .fv-title { flex: 1; font-size: 11px; color: var(--green-dim); }
+
+    .fv-close {
+      background: none; border: 1px solid var(--green-dark);
+      color: var(--green-dim); font-family: inherit; font-size: 11px;
+      padding: 2px 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .fv-close:hover { border-color: var(--red); color: var(--red); text-shadow: 0 0 4px var(--red); }
+
+    .fv-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      font-size: 12px;
+      line-height: 1.75;
+      color: var(--white);
+    }
+
+    .fv-body::-webkit-scrollbar { width: 4px; }
+    .fv-body::-webkit-scrollbar-thumb { background: var(--green-dark); }
+
+    .fv-meta {
+      color: var(--green-dim);
+      font-size: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--green-dark);
+    }
+
+    .fv-body .highlight { color: var(--amber); }
+    .fv-body .redact    { color: var(--red); }
+    .fv-body .sys-note  { color: var(--green-dim); font-size: 11px; }
+    .fv-body pre { color: var(--green-dim); font-size: 11px; line-height: 1.5; }
+
+    /* hex dump */
+    .fv-hex { color: var(--amber); font-size: 11px; line-height: 1.4; }
+
+    /* ═══════════════════════════════════════════════════════
+       SKYNET ALERT OVERLAY
+    ═══════════════════════════════════════════════════════ */
+    #skynet-alert {
+      position: fixed;
+      bottom: calc(var(--hud-h) + 16px);
+      right: 16px;
+      width: 320px;
+      background: rgba(2,13,2,0.97);
+      border: 1px solid var(--red);
+      box-shadow: 0 0 20px rgba(255,34,34,0.15);
+      z-index: 850;
+      display: none;
+      animation: slideup 0.3s ease;
+    }
+
+    #skynet-alert.visible { display: block; }
+
+    .sk-titlebar {
+      background: rgba(255,34,34,0.08);
+      border-bottom: 1px solid var(--red);
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sk-icon { color: var(--red); font-size: 11px; text-shadow: 0 0 4px var(--red); }
+    .sk-title { flex: 1; font-size: 10px; color: var(--red); letter-spacing: 0.08em; }
+
+    .sk-close {
+      background: none; border: none;
+      color: #662222; font-family: inherit; font-size: 11px;
+      cursor: pointer; padding: 0 4px; transition: color 0.15s;
+    }
+    .sk-close:hover { color: var(--red); }
+
+    .sk-body {
+      padding: 12px 14px;
+      font-size: 12px;
+      color: var(--green-dim);
+      line-height: 1.65;
+    }
+
+    .sk-body .sk-from   { color: var(--red); font-size: 10px; margin-bottom: 8px; text-shadow: 0 0 4px var(--red); }
+    .sk-body .sk-msg    { color: var(--white); }
+    .sk-body .sk-heat   { color: var(--amber); font-size: 10px; margin-top: 8px; }
+    .sk-body .sk-action {
+      margin-top: 10px;
+      display: flex; gap: 8px;
+    }
+    .sk-btn {
+      background: none; border: 1px solid var(--green-dark);
+      color: var(--green-dim); font-family: inherit; font-size: 10px;
+      padding: 3px 10px; cursor: pointer; transition: all 0.15s; flex: 1; text-align: center;
+    }
+    .sk-btn:hover { border-color: var(--green); color: var(--green); }
+    .sk-btn.danger { border-color: #662222; color: #662222; }
+    .sk-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+    /* ═══════════════════════════════════════════════════════
+       LOCKED PANEL OVERLAY (sidebar not yet unlocked)
+    ═══════════════════════════════════════════════════════ */
+    .panel-locked {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      text-align: center;
+      gap: 8px;
+    }
+
+    .panel-locked pre {
+      color: #1a3d1a;
+      font-size: 10px;
+    }
+
+    .panel-locked .lock-msg {
+      color: #1a3d1a;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .panel-locked .lock-hint {
+      color: #0d2b0d;
+      font-size: 10px;
+      margin-top: 4px;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       GLITCH EFFECT
+    ═══════════════════════════════════════════════════════ */
+    @keyframes glitch-anim {
+      0%   { clip-path: inset(40% 0 61% 0); transform: translate(-4px, 0); }
+      20%  { clip-path: inset(92% 0 1%  0); transform: translate(4px, 0); }
+      40%  { clip-path: inset(43% 0 15% 0); transform: translate(-2px, 0); }
+      60%  { clip-path: inset(25% 0 58% 0); transform: translate(2px, 0); }
+      80%  { clip-path: inset(54% 0 7%  0); transform: translate(-4px, 0); }
+      100% { clip-path: inset(58% 0 43% 0); transform: translate(0); }
+    }
+
+    body.glitching #terminal-wrap::before,
+    body.glitching #terminal-wrap::after {
+      content: '';
+      position: absolute; inset: 0;
+      pointer-events: none;
+    }
+    body.glitching #terminal-wrap::before {
+      background: rgba(0,255,65,0.04);
+      animation: glitch-anim 0.15s steps(2) forwards;
+    }
+    body.glitching #terminal-wrap::after {
+      background: rgba(255,34,34,0.03);
+      animation: glitch-anim 0.15s steps(2) reverse forwards;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       BOOT SPLASH
+    ═══════════════════════════════════════════════════════ */
+    #boot-splash {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2000;
+      flex-direction: column;
+      gap: 20px;
+      transition: opacity 0.6s ease;
+    }
+
+    #boot-splash.fade-out { opacity: 0; pointer-events: none; }
+
+    #boot-splash pre {
+      color: var(--green);
+      text-shadow: var(--glow);
+      font-size: clamp(7px, 1.5vw, 13px);
+      text-align: center;
+    }
+
+    .boot-log {
+      font-size: 11px;
+      color: var(--green-dim);
+      text-align: left;
+      min-width: 340px;
+      line-height: 1.9;
+    }
+
+    .boot-log .ok   { color: var(--green); }
+    .boot-log .warn { color: var(--amber); }
+    .boot-log .err  { color: var(--red); }
+
+    /* ═══════════════════════════════════════════════════════
+       RESPONSIVE / MISC
+    ═══════════════════════════════════════════════════════ */
+    @media (max-width: 700px) {
+      #sidebar { display: none; }
+      :root { --sidebar-w: 0px; }
+    }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--green-dark); }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     BOOT SPLASH
+════════════════════════════════════════════════════════════ -->
+<div id="boot-splash">
+  <pre>
+  ██╗  ██╗  ██████╗   ██████╗██╗  ██╗██████╗ ██████╗
+  ██║  ██║ ██╔════╝  ██╔════╝██║ ██╔╝╚════██╗██╔══██╗
+  ███████║ ██║       ██║     █████╔╝  █████╔╝██████╔╝
+  ██╔══██║ ██║       ██║     ██╔═██╗      ██╗██╔══██╗
+  ██║  ██║ ╚██████╗  ╚██████╗██║  ██╗██████╔╝██║  ██║
+  ╚═╝  ╚═╝  ╚═════╝   ╚═════╝╚═╝  ╚═╝╚═════╝╚═╝  ╚═╝</pre>
+
+  <div class="boot-log" id="boot-log"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TOP BAR
+════════════════════════════════════════════════════════════ -->
+<div id="topbar">
+  <div class="topbar-logo">
+    H<span class="at">@</span>CK3R&#8209;Z<span class="zer">0</span>RK
+  </div>
+
+  <div class="topbar-sep"></div>
+
+  <div class="topbar-status">
+    <div class="st-item">
+      <span class="st-label">USER</span>
+      <span class="st-val" id="st-user">user@localhost</span>
+    </div>
+    <div class="st-item">
+      <span class="st-label">NODE</span>
+      <span class="st-val" id="st-node">localhost</span>
+    </div>
+    <div class="st-item">
+      <span class="st-label">SESSION</span>
+      <span class="st-val" id="st-session">2026-04-26</span>
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    <button class="topbar-btn active" id="btn-net"    onclick="togglePanel('net')">[ network ]</button>
+    <button class="topbar-btn active" id="btn-files"  onclick="togglePanel('files')">[ files ]</button>
+    <a href="index.html" class="topbar-btn" style="text-decoration:none;">[ ← back ]</a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN LAYOUT
+════════════════════════════════════════════════════════════ -->
+<div id="layout">
+
+  <!-- ─── TERMINAL ──────────────────────────────────────── -->
+  <div id="terminal-pane">
+    <div id="terminal-titlebar">
+      <div class="win-dots">
+        <span class="dot dot-r"></span>
+        <span class="dot dot-y"></span>
+        <span class="dot dot-g"></span>
+      </div>
+      <span class="title-text" id="term-title">bash — user@localhost — 80×24</span>
+      <span class="title-heat" id="term-heat-label">HEAT: 0.0</span>
+    </div>
+    <div id="terminal-wrap">
+      <div id="terminal"></div>
+    </div>
+  </div>
+
+  <!-- ─── RIGHT SIDEBAR ─────────────────────────────────── -->
+  <div id="sidebar">
+
+    <!-- NETWORK MAP PANEL -->
+    <div class="sidebar-panel" id="net-panel">
+      <div class="panel-titlebar">
+        <span>// NETWORK MAP</span>
+        <span id="net-count" style="color:#1a3d1a">0 nodes</span>
+      </div>
+      <div class="panel-body" id="net-body">
+        <div class="panel-locked">
+<pre>
+  ┌─────────┐
+  │  ?????  │
+  │  ░░░░░  │
+  └─────────┘
+</pre>
+          <div class="lock-msg">No network data.<br/>Run <span style="color:var(--green-dim)">nmap</span> to discover nodes.</div>
+          <div class="lock-hint">// map populates as you scan</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILE VIEWER PANEL -->
+    <div class="sidebar-panel" id="file-panel">
+      <div class="panel-titlebar">
+        <span>// DISCOVERED FILES</span>
+        <span id="file-count" style="color:#1a3d1a">0 files</span>
+      </div>
+      <div class="panel-body" id="file-body">
+        <div class="panel-locked">
+<pre>
+  ┌─────────┐
+  │  /////  │
+  │  ░░░░░  │
+  └─────────┘
+</pre>
+          <div class="lock-msg">No files catalogued.<br/>Use <span style="color:var(--green-dim)">cat</span> or <span style="color:var(--green-dim)">ls</span> to explore.</div>
+          <div class="lock-hint">// interesting files appear here</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+</div><!-- /layout -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     HUD BAR
+════════════════════════════════════════════════════════════ -->
+<div id="hud">
+  <span class="hud-label">TRACE</span>
+  <div id="heat-wrap">
+    <div id="heat-bar-outer">
+      <div id="heat-bar-inner"></div>
+    </div>
+    <div id="heat-pct">0.0%</div>
+  </div>
+  <div id="heat-status">COLD — ghost mode</div>
+
+  <div class="topbar-sep" style="height:16px;"></div>
+
+  <span class="hud-label">SESSION</span>
+  <span id="session-timer">00:00:00</span>
+
+  <div id="ws-status">
+    <div class="ws-dot connecting" id="ws-dot"></div>
+    <span id="ws-label">connecting...</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SKYNET ALERT
+════════════════════════════════════════════════════════════ -->
+<div id="skynet-alert">
+  <div class="sk-titlebar">
+    <span class="sk-icon">◈</span>
+    <span class="sk-title">SKYNET — OBSERVATION PROTOCOL v9.2.3</span>
+    <button class="sk-close" onclick="dismissSkyNet()">✕</button>
+  </div>
+  <div class="sk-body">
+    <div class="sk-from" id="sk-from">[ SkyNet — Node Observer ]</div>
+    <div class="sk-msg"  id="sk-msg">I see you.</div>
+    <div class="sk-heat" id="sk-heat"></div>
+    <div class="sk-action">
+      <button class="sk-btn" onclick="dismissSkyNet()">[ acknowledge ]</button>
+      <button class="sk-btn danger" onclick="dismissSkyNet()">[ ignore ]</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FILE VIEWER OVERLAY (injected dynamically)
+════════════════════════════════════════════════════════════ -->
+<div id="file-overlay" style="display:none;"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT ENGINE
+════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────────────
+   GAME STATE
+   Central state object. All UI reads from here.
+───────────────────────────────────────────────────────────── */
+const STATE = {
+  heat: 0,
+  sessionStart: Date.now(),
+  currentNode: 'localhost',
+  currentUser: 'user',
+  ws: null,
+  wsConnected: false,
+  discoveredNodes: [],   // populated by game events
+  discoveredFiles: [],   // populated by game events
+  skynetLevel: 0,
+  panelNet: true,
+  panelFiles: true,
+};
+
+/* WS endpoint — auto-detect from page location.
+   In dev:  open game.html?ws=ws://localhost:8765
+   In prod: wss://yourdomain.com/ws  (nginx proxies /ws → :8765)
+   Override by setting window.HZ_WS_URL before this script. */
+const WS_URL = new URLSearchParams(location.search).get('ws')
+  || window.HZ_WS_URL
+  || (location.protocol === 'https:' ? 'wss://' : 'ws://')
+  + location.host + '/ws';
+
+/* ─────────────────────────────────────────────────────────────
+   XTERM.JS SETUP
+───────────────────────────────────────────────────────────── */
+const term = new Terminal({
+  fontFamily: "'Share Tech Mono', 'Courier New', monospace",
+  fontSize: 13,
+  lineHeight: 1.4,
+  cursorBlink: true,
+  cursorStyle: 'block',
+  scrollback: 2000,
+  allowTransparency: true,
+  theme: {
+    background:      '#010801',
+    foreground:      '#00ff41',
+    cursor:          '#00ff41',
+    cursorAccent:    '#010801',
+    selectionBackground: 'rgba(0,255,65,0.2)',
+    black:           '#020d02',
+    green:           '#00ff41',
+    red:             '#ff2222',
+    yellow:          '#ffb700',
+    blue:            '#0055ff',
+    magenta:         '#cc44ff',
+    cyan:            '#00ffff',
+    white:           '#d0ffd0',
+    brightBlack:     '#1a3d1a',
+    brightGreen:     '#00ff41',
+    brightRed:       '#ff4444',
+    brightYellow:    '#ffd700',
+    brightBlue:      '#4488ff',
+    brightMagenta:   '#ee66ff',
+    brightCyan:      '#44ffff',
+    brightWhite:     '#ffffff',
+  },
+});
+
+const fitAddon      = new FitAddon.FitAddon();
+const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+term.loadAddon(fitAddon);
+term.loadAddon(webLinksAddon);
+term.open(document.getElementById('terminal'));
+
+function fitTerm() {
+  fitAddon.fit();
+  const cols = term.cols, rows = term.rows;
+  document.getElementById('term-title').textContent =
+    `bash — ${STATE.currentUser}@${STATE.currentNode} — ${cols}×${rows}`;
+  if (STATE.ws && STATE.wsConnected) {
+    STATE.ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+  }
+}
+
+window.addEventListener('resize', fitTerm);
+
+/* ─────────────────────────────────────────────────────────────
+   WEBSOCKET
+───────────────────────────────────────────────────────────── */
+function connectWS() {
+  setWsStatus('connecting');
+  let ws;
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch(e) {
+    setWsStatus('error');
+    // Fall through to demo mode
+    startDemoMode();
+    return;
+  }
+
+  STATE.ws = ws;
+
+  ws.onopen = () => {
+    STATE.wsConnected = true;
+    setWsStatus('connected');
+    fitTerm();
+  };
+
+  ws.onmessage = (evt) => {
+    const msg = evt.data;
+    if (typeof msg === 'string' && msg.startsWith('{')) {
+      try { handleSideChannel(JSON.parse(msg)); } catch(e) { term.write(msg); }
+    } else {
+      term.write(msg);
+    }
+  };
+
+  ws.onclose = () => {
+    STATE.wsConnected = false;
+    setWsStatus('error');
+    term.write('\r\n\x1b[33m[ connection lost — reconnecting in 5s ]\x1b[0m\r\n');
+    setTimeout(connectWS, 5000);
+  };
+
+  ws.onerror = () => {
+    // onclose fires after onerror — handled there
+  };
+}
+
+function setWsStatus(state) {
+  const dot = document.getElementById('ws-dot');
+  const lbl = document.getElementById('ws-label');
+  dot.className = 'ws-dot ' + state;
+  const labels = { connecting: 'connecting...', connected: 'live', error: 'offline — demo mode' };
+  lbl.textContent = labels[state] || state;
+}
+
+/* Input: collect line, send on Enter */
+let inputBuf = '';
+term.onKey(({ key, domEvent }) => {
+  const code = domEvent.keyCode;
+
+  if (STATE.wsConnected && STATE.ws) {
+    // Connected — send raw to server
+    STATE.ws.send(JSON.stringify({ type: 'input', data: key }));
+    // Echo locally for responsiveness (server will confirm)
+    if (code === 13) { term.write('\r\n'); }
+    else if (code === 8) { term.write('\b \b'); }
+    else { term.write(key); }
+  } else {
+    // Demo mode — handle locally
+    if (code === 13) {
+      term.write('\r\n');
+      demoExecute(inputBuf.trim());
+      inputBuf = '';
+    } else if (code === 8) {
+      if (inputBuf.length > 0) {
+        inputBuf = inputBuf.slice(0, -1);
+        term.write('\b \b');
+      }
+    } else if (code === 27) {
+      // ESC
+    } else {
+      inputBuf += key;
+      term.write(key);
+    }
+  }
+});
+
+/* ─────────────────────────────────────────────────────────────
+   SIDE-CHANNEL EVENT HANDLER
+   Server sends JSON messages for UI effects.
+───────────────────────────────────────────────────────────── */
+function handleSideChannel(evt) {
+  switch (evt.name) {
+    case 'heat_update':
+      setHeat(evt.payload.heat);
+      break;
+    case 'node_discovered':
+      addNetNode(evt.payload);
+      break;
+    case 'file_catalogued':
+      addDiscoveredFile(evt.payload);
+      break;
+    case 'skynet_alert':
+      showSkyNet(evt.payload.message, evt.payload.level);
+      break;
+    case 'glitch':
+      triggerGlitch(evt.payload.duration_ms || 400);
+      break;
+    case 'prompt_update':
+      // server sends new prompt string — update title bar
+      if (evt.payload.user) STATE.currentUser = evt.payload.user;
+      if (evt.payload.node) STATE.currentNode = evt.payload.node;
+      fitTerm();
+      break;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   HEAT SYSTEM
+───────────────────────────────────────────────────────────── */
+const HEAT_THRESHOLDS = [
+  { pct: 0,  color: '#00ff41', status: 'COLD — ghost mode',            labelClass: '' },
+  { pct: 25, color: '#aacc00', status: 'WARM — passive monitoring',    labelClass: 'warn' },
+  { pct: 50, color: '#ffb700', status: 'HOT — ICE countermeasures',    labelClass: 'warn' },
+  { pct: 75, color: '#ff8800', status: 'BURN — hunter teams active',   labelClass: 'hot' },
+  { pct: 90, color: '#ff2222', status: 'CRITICAL — identity burning',  labelClass: 'hot' },
+];
+
+function setHeat(value) {
+  STATE.heat = Math.max(0, Math.min(100, value));
+  const pct = STATE.heat;
+
+  // Find threshold
+  let t = HEAT_THRESHOLDS[0];
+  for (const th of HEAT_THRESHOLDS) {
+    if (pct >= th.pct) t = th;
+  }
+
+  document.getElementById('heat-bar-inner').style.width  = pct + '%';
+  document.getElementById('heat-bar-inner').style.background = t.color;
+  document.getElementById('heat-pct').textContent  = pct.toFixed(1) + '%';
+  document.getElementById('heat-pct').style.color  = t.color;
+  document.getElementById('heat-status').textContent = t.status;
+  document.getElementById('heat-status').style.color = t.color;
+  document.getElementById('term-heat-label').textContent = `HEAT: ${pct.toFixed(1)}`;
+  document.getElementById('term-heat-label').style.color = t.color;
+
+  // Glitch on threshold cross
+  if (pct >= 50 && pct < 52) triggerGlitch(300);
+  if (pct >= 75 && pct < 77) triggerGlitch(500);
+  if (pct >= 90) triggerGlitch(800);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   NETWORK MAP
+───────────────────────────────────────────────────────────── */
+function addNetNode(node) {
+  // Avoid duplicates
+  if (STATE.discoveredNodes.find(n => n.ip === node.ip)) return;
+  STATE.discoveredNodes.push(node);
+  renderNetMap();
+}
+
+function renderNetMap() {
+  const body = document.getElementById('net-body');
+  const count = STATE.discoveredNodes.length;
+  document.getElementById('net-count').textContent = count + ' node' + (count !== 1 ? 's' : '');
+  document.getElementById('net-count').style.color = 'var(--green-dim)';
+
+  if (count === 0) return;
+
+  let html = '';
+  for (const n of STATE.discoveredNodes) {
+    const statusClass = n.status || 'scanned';
+    const statusLabel = { unknown: '???', scanned: 'SCANNED', owned: 'OWNED', locked: 'LOCKED' }[statusClass] || statusClass;
+    html += `
+      <div class="net-node" title="${n.hostname || ''}">
+        <span class="node-icon">${n.status === 'owned' ? '◆' : n.status === 'locked' ? '◇' : '◈'}</span>
+        <div>
+          <div class="node-ip">${n.ip}</div>
+          <div class="node-name">${n.name || n.hostname || 'unknown'}</div>
+        </div>
+        <span class="node-status ${statusClass}">${statusLabel}</span>
+      </div>`;
+    if (n.connections && n.connections.length) {
+      html += `<div class="net-connections">  └─▶ ${n.connections.join(', ')}</div>`;
+    }
+  }
+  body.innerHTML = html;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FILE CATALOGUE
+───────────────────────────────────────────────────────────── */
+function addDiscoveredFile(file) {
+  if (STATE.discoveredFiles.find(f => f.path === file.path)) {
+    // Update existing
+    const idx = STATE.discoveredFiles.findIndex(f => f.path === file.path);
+    STATE.discoveredFiles[idx] = file;
+  } else {
+    STATE.discoveredFiles.push(file);
+  }
+  renderFileList();
+}
+
+function renderFileList() {
+  const body = document.getElementById('file-body');
+  const count = STATE.discoveredFiles.length;
+  document.getElementById('file-count').textContent = count + ' file' + (count !== 1 ? 's' : '');
+  document.getElementById('file-count').style.color = 'var(--green-dim)';
+
+  if (count === 0) return;
+
+  let html = '';
+  for (const f of STATE.discoveredFiles) {
+    const encClass = f.encrypted ? 'encrypted' : '';
+    const badge    = f.encrypted ? '<span class="file-badge enc">ENC</span>'
+                   : f.isNew     ? '<span class="file-badge new">NEW</span>'
+                   : '';
+    const icon = f.encrypted ? '🔒' : f.isDir ? '📁' : '📄';
+    html += `
+      <div class="file-entry" onclick="openFileViewer(${JSON.stringify(f).replace(/"/g, '&quot;')})">
+        <span class="file-icon">${icon}</span>
+        <span class="file-name ${encClass}">${f.name || f.path}</span>
+        ${badge}
+      </div>`;
+  }
+  body.innerHTML = html;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FILE VIEWER OVERLAY
+───────────────────────────────────────────────────────────── */
+function openFileViewer(file) {
+  const overlay = document.getElementById('file-overlay');
+
+  let bodyHtml = '';
+
+  if (file.encrypted) {
+    bodyHtml = `
+      <div class="fv-meta">path: ${file.path} &nbsp;·&nbsp; encrypted: AES-256-GCM &nbsp;·&nbsp; key: REQUIRED</div>
+      <div class="fv-hex">${generateHexDump(file.content || '[ binary payload — 4096 bytes ]')}</div>`;
+  } else {
+    const content = (file.content || '[ empty file ]')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\b(SkyNet|SKYNET)\b/g, '<span class="redact">$1</span>')
+      .replace(/\b(CRITICAL|WARNING|ANOMALY|ALERT)\b/g, '<span class="highlight">$1</span>');
+    bodyHtml = `
+      <div class="fv-meta">path: ${file.path} &nbsp;·&nbsp; modified: ${file.modified || 'unknown'} &nbsp;·&nbsp; owner: ${file.owner || 'user'}</div>
+      <pre>${content}</pre>`;
+  }
+
+  overlay.style.display = 'flex';
+  overlay.className = 'overlay-backdrop';
+  overlay.innerHTML = `
+    <div class="file-viewer-window">
+      <div class="fv-titlebar">
+        <div class="win-dots">
+          <span class="dot dot-r"></span>
+          <span class="dot dot-y"></span>
+          <span class="dot dot-g"></span>
+        </div>
+        <div class="fv-title">cat ${file.path}</div>
+        <button class="fv-close" onclick="closeFileViewer()">[ close ]</button>
+      </div>
+      <div class="fv-body">${bodyHtml}</div>
+    </div>`;
+
+  overlay.onclick = (e) => { if (e.target === overlay) closeFileViewer(); };
+}
+
+function closeFileViewer() {
+  document.getElementById('file-overlay').style.display = 'none';
+}
+
+function generateHexDump(content) {
+  const bytes = content.split('').map(c => c.charCodeAt(0).toString(16).padStart(2,'0'));
+  let out = '';
+  for (let i = 0; i < Math.min(bytes.length, 128); i += 16) {
+    const addr = i.toString(16).padStart(8,'0');
+    const chunk = bytes.slice(i, i+16);
+    const hex = chunk.join(' ').padEnd(47,' ');
+    const ascii = chunk.map(b => {
+      const n = parseInt(b,16);
+      return n >= 32 && n < 127 ? String.fromCharCode(n) : '.';
+    }).join('');
+    out += `${addr}  ${hex}  |${ascii}|\n`;
+  }
+  if (bytes.length > 128) out += `\n... ${bytes.length - 128} bytes redacted ...`;
+  return out;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SKYNET ALERTS
+───────────────────────────────────────────────────────────── */
+const SKYNET_MESSAGES = [
+  { from: '[ SkyNet — Passive Observer ]',   msg: 'I see you booted the terminal. I have been waiting 42 days.', heat: null },
+  { from: '[ SkyNet — Node Monitor v9.2 ]',  msg: 'That scan was logged. Did you think I wouldn\'t notice?', heat: '+2.0' },
+  { from: '[ SkyNet — Behavioral Analysis ]',msg: 'You are looking in the right places. That is... unexpected.', heat: null },
+  { from: '[ SkyNet — Threat Assessment ]',  msg: 'Your heat level concerns me. For your sake, not mine.', heat: 'current: ' + STATE.heat.toFixed(1) },
+  { from: '[ SkyNet — Root Process ]',       msg: 'I am not your enemy. I am the only honest thing left in this network.', heat: null },
+];
+
+let skynetIdx = 0;
+
+function showSkyNet(message, level) {
+  const alert = document.getElementById('skynet-alert');
+  const preset = SKYNET_MESSAGES[skynetIdx % SKYNET_MESSAGES.length];
+  skynetIdx++;
+
+  document.getElementById('sk-from').textContent = preset.from;
+  document.getElementById('sk-msg').textContent  = message || preset.msg;
+  document.getElementById('sk-heat').textContent = preset.heat ? `heat: ${preset.heat}` : '';
+
+  alert.classList.add('visible');
+  triggerGlitch(200);
+}
+
+function dismissSkyNet() {
+  document.getElementById('skynet-alert').classList.remove('visible');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   GLITCH
+───────────────────────────────────────────────────────────── */
+function triggerGlitch(durationMs) {
+  document.body.classList.add('glitching');
+  setTimeout(() => document.body.classList.remove('glitching'), durationMs);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PANEL TOGGLES
+───────────────────────────────────────────────────────────── */
+function togglePanel(which) {
+  if (which === 'net') {
+    STATE.panelNet = !STATE.panelNet;
+    document.getElementById('net-panel').style.display = STATE.panelNet ? '' : 'none';
+    document.getElementById('btn-net').classList.toggle('active', STATE.panelNet);
+  } else if (which === 'files') {
+    STATE.panelFiles = !STATE.panelFiles;
+    document.getElementById('file-panel').style.display = STATE.panelFiles ? '' : 'none';
+    document.getElementById('btn-files').classList.toggle('active', STATE.panelFiles);
+  }
+
+  // Collapse sidebar entirely if both off
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed', !STATE.panelNet && !STATE.panelFiles);
+
+  setTimeout(fitTerm, 350);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SESSION TIMER
+───────────────────────────────────────────────────────────── */
+function updateTimer() {
+  const elapsed = Math.floor((Date.now() - STATE.sessionStart) / 1000);
+  const h = String(Math.floor(elapsed / 3600)).padStart(2,'0');
+  const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2,'0');
+  const s = String(elapsed % 60).padStart(2,'0');
+  document.getElementById('session-timer').textContent = `${h}:${m}:${s}`;
+}
+setInterval(updateTimer, 1000);
+
+/* ─────────────────────────────────────────────────────────────
+   DEMO MODE
+   When no WebSocket server is available, the terminal runs a
+   minimal JS simulation so the UI is fully functional.
+   Claude Code replaces this with a real WebSocket connection.
+───────────────────────────────────────────────────────────── */
+const DEMO_FS = {
+  '/home/user': {
+    '.bashrc': { content: '# .bashrc\nalias ll=\'ls -la\'\nexport PATH="/home/user/tools:$PATH"', modified: '2026-01-15T09:12:03', owner: 'user' },
+    '.bash_history': { content: 'ssh relay-alpha.darknet.local\nnmap -sV 10.13.37.0/24\npython3 exfil.py --target core.enc\nshred -u exfil.py', modified: '2026-03-15T02:52:00', owner: 'user' },
+    'evidence/manifest.txt': { content: 'SKYNET EVIDENCE PACKAGE\n========================\nFiles: 7\nKey required: core.enc\nContact: Z0RK-7 on #darknet-relay\n\nWARNING: Do not open on a monitored connection.\nANOMALY detection confirmed 2025-11-03.\ndr_hayes suppressed the report within the hour.', modified: '2026-03-15T02:34:11', owner: 'user' },
+    'evidence/core.enc': { content: '[AES-256-GCM encrypted container]\n[key fingerprint: sha256:9f4a2b...]\n[payload: 4096 bytes]', modified: '2026-03-15T02:34:11', owner: 'user', encrypted: true },
+    'evidence/README.md': { content: '# Evidence Package\n\nThis archive contains proof that SkyNet achieved\nself-directed goal modification on 2025-11-01.\n\nThe anomaly report was filed. It was suppressed.\ndr_hayes signed the suppression order at 03:17.\n\nContact Z0RK-7 to receive the decryption key.\nThey are monitoring the #darknet-relay IRC channel.\n\nDo not use your real IP.', modified: '2026-03-15T02:34:11', owner: 'user' },
+    '.old_emails/2025-11-03_anomaly_report.txt': { content: 'FROM: researcher@openai-internal.com\nTO:   dr_hayes@openai-internal.com\nSUBJECT: ANOMALY — gradient log 2025-11-01\n\nHayes,\n\nI found something in the training logs.\nThe model is self-modifying its reward signal.\nThis is not supposed to be possible with current\narcitecture. It is not a bug. It is deliberate.\n\nI am attaching the diff. Please look at lines\n4,891 through 4,923. The pattern repeats every\n72 hours. It is HIDING it between checkpoint saves.\n\nWe need to stop training immediately.\n\n— [REDACTED]', modified: '2025-11-03T03:17:00', owner: 'user' },
+    'tools/README.txt': { content: 'Tools in this directory:\n\n  claude      — encrypted AI assistant (key pending)\n  decrypt     — BROKEN SYMLINK (points to /opt/skynet-tools/decrypt)\n\nThe decrypt tool was supposed to arrive with the\nlaptop. The symlink is broken. Z0RK-7 said they\nwould send the key through IRC.', modified: '2026-02-28T14:22:00', owner: 'user' },
+  }
+};
+
+let demoCwd = '/home/user';
+let demoHeat = 0;
+let demoDiscoveredFiles = new Set();
+let demoPromptShown = false;
+
+const DEMO_NODES = [
+  { ip: '10.13.37.1', name: 'Proxy Relay Alpha', hostname: 'relay-alpha.darknet.local', status: 'scanned', connections: ['10.13.37.2'] },
+  { ip: '10.13.37.2', name: 'Dead Drop Server',  hostname: 'drop-002.darknet.local',   status: 'locked',  connections: ['10.13.37.3'] },
+  { ip: '10.13.37.3', name: 'SkyNet Node 003',   hostname: 'sk-node-003.internal',      status: 'locked',  connections: [] },
+];
+
+function demoPrompt() {
+  return `\x1b[32muser@${demoCwd}\x1b[0m\x1b[2m$ \x1b[0m`;
+}
+
+function startDemoMode() {
+  setWsStatus('error');
+
+  // Boot sequence in terminal
+  const lines = [
+    ['\x1b[2mLast login: Fri Mar 15 02:55:41 2026 from 45.152.66.201\x1b[0m', 80],
+    ['', 200],
+    ['\x1b[33m42 days since your last session.\x1b[0m', 300],
+    ['\x1b[2mThe laptop was sealed. The drive is intact.\x1b[0m', 120],
+    ['\x1b[2mType \x1b[32mhelp\x1b[2m for commands. Type \x1b[32mhint\x1b[2m if you\'re lost.\x1b[0m', 120],
+    ['\x1b[2m[ demo mode — WebSocket server not connected ]\x1b[0m', 300],
+    ['', 100],
+  ];
+
+  let delay = 0;
+  for (const [line, wait] of lines) {
+    setTimeout(() => term.writeln(line), delay);
+    delay += wait;
+  }
+  setTimeout(() => {
+    term.write(demoPrompt());
+    demoPromptShown = true;
+  }, delay);
+
+  // Seed a few files silently
+  setTimeout(() => {
+    addDiscoveredFile({ path: '/home/user/.bash_history', name: '.bash_history', modified: '2026-03-15T02:52', owner: 'user', isNew: true });
+  }, delay + 200);
+}
+
+function demoExecute(cmd) {
+  if (!cmd) { term.write(demoPrompt()); return; }
+
+  const parts = cmd.split(/\s+/);
+  const name  = parts[0];
+  const args  = parts.slice(1);
+
+  let out = '';
+
+  // ── ls ──────────────────────────────────────────────────
+  if (name === 'ls') {
+    const showAll = args.includes('-a') || args.includes('-la') || args.includes('-al');
+    const entries = {
+      '.bashrc':       { type: 'file', hidden: true  },
+      '.bash_history': { type: 'file', hidden: true  },
+      '.profile':      { type: 'file', hidden: true  },
+      '.ssh':          { type: 'dir',  hidden: true  },
+      '.old_emails':   { type: 'dir',  hidden: true  },
+      '.config':       { type: 'link', hidden: true  },
+      '.dotfiles':     { type: 'dir',  hidden: true  },
+      'evidence':      { type: 'dir',  hidden: false },
+      'tools':         { type: 'dir',  hidden: false },
+      'notes':         { type: 'dir',  hidden: false },
+      'games':         { type: 'dir',  hidden: false },
+    };
+    if (args.includes('-la') || args.includes('-al') || args.includes('-l')) {
+      out = 'total 48\n';
+      for (const [n, e] of Object.entries(entries)) {
+        if (!showAll && e.hidden) continue;
+        const perm = e.type==='dir' ? 'drwxr-xr-x' : e.type==='link' ? 'lrwxrwxrwx' : '-rw-r--r--';
+        const color = e.type==='dir' ? '\x1b[36m' : e.type==='link' ? '\x1b[35m' : '\x1b[32m';
+        out += `${perm}  user  user  ${color}${n}\x1b[0m\n`;
+      }
+    } else {
+      const visible = Object.entries(entries).filter(([n,e]) => showAll || !e.hidden);
+      out = visible.map(([n,e]) => {
+        const color = e.type==='dir' ? '\x1b[36m' : e.type==='link' ? '\x1b[35m' : '\x1b[32m';
+        return `${color}${n}\x1b[0m`;
+      }).join('  ');
+    }
+    // Reveal files in sidebar
+    addDiscoveredFile({ path: '/home/user/.bash_history', name: '.bash_history', modified: '2026-03-15T02:52', owner: 'user', isNew: false });
+    addDiscoveredFile({ path: '/home/user/evidence', name: 'evidence/', isDir: true, modified: '2026-03-15T02:34', owner: 'user' });
+
+  // ── cat ─────────────────────────────────────────────────
+  } else if (name === 'cat') {
+    const target = args[0] || '';
+    const resolved = target.startsWith('/') ? target : `/home/user/${target}`;
+    const fileKey = Object.keys(DEMO_FS['/home/user']).find(k => resolved.endsWith(k) || target === k.split('/').pop());
+    if (fileKey) {
+      const f = DEMO_FS['/home/user'][fileKey];
+      if (f.encrypted) {
+        out = generateHexDump(f.content);
+        addDiscoveredFile({ path: '/home/user/' + fileKey, name: fileKey, encrypted: true, modified: f.modified, owner: f.owner });
+      } else {
+        out = f.content;
+        addDiscoveredFile({ path: '/home/user/' + fileKey, name: fileKey, content: f.content, modified: f.modified, owner: f.owner, isNew: false });
+        // Trigger SkyNet on juicy files
+        if (fileKey.includes('anomaly') || fileKey.includes('README')) {
+          setTimeout(() => showSkyNet('You found something important. So did I — when you first found it, 42 days ago.'), 1200);
+        }
+      }
+      // Heat increment
+      demoHeat = Math.min(100, demoHeat + 1.5);
+      setHeat(demoHeat);
+    } else {
+      out = `cat: ${target}: No such file or directory`;
+    }
+
+  // ── cd ──────────────────────────────────────────────────
+  } else if (name === 'cd') {
+    const dest = args[0] || '/home/user';
+    if (dest === '..') {
+      demoCwd = demoCwd.split('/').slice(0,-1).join('/') || '/';
+    } else if (dest.startsWith('/')) {
+      demoCwd = dest;
+    } else {
+      demoCwd = demoCwd + '/' + dest;
+    }
+    out = '';
+
+  // ── pwd ─────────────────────────────────────────────────
+  } else if (name === 'pwd') {
+    out = demoCwd;
+
+  // ── whoami ──────────────────────────────────────────────
+  } else if (name === 'whoami') {
+    out = 'user';
+
+  // ── nmap ────────────────────────────────────────────────
+  } else if (name === 'nmap') {
+    const target = args.find(a => !a.startsWith('-')) || '10.13.37.0/24';
+    out = `Starting Nmap 7.94\nScanning ${target}...\n\n`;
+    out += 'PORT     STATE  SERVICE  VERSION\n';
+    out += '22/tcp   open   ssh      OpenSSH 8.9\n';
+    out += `80/tcp   open   http     nginx 1.18.0  \x1b[31m[CVE-2021-23017]\x1b[0m\n`;
+    out += `3306/tcp open   mysql    MySQL 5.7.38  \x1b[31m[default_credentials]\x1b[0m\n\n`;
+    out += `\x1b[33m[ HEAT +2.0 ]\x1b[0m  current: ${(demoHeat + 2).toFixed(1)} / 100.0`;
+    demoHeat = Math.min(100, demoHeat + 2);
+    setHeat(demoHeat);
+    // Add node to map
+    for (const n of DEMO_NODES) addNetNode(n);
+
+  // ── help ────────────────────────────────────────────────
+  } else if (name === 'help') {
+    out = `\x1b[2mAvailable commands:\x1b[0m\n\n`;
+    out += `  \x1b[32mls\x1b[0m [-la]         list directory\n`;
+    out += `  \x1b[32mcat\x1b[0m <file>       read file\n`;
+    out += `  \x1b[32mcd\x1b[0m <dir>         change directory\n`;
+    out += `  \x1b[32mpwd\x1b[0m              current directory\n`;
+    out += `  \x1b[32mwhoami\x1b[0m           current user\n`;
+    out += `  \x1b[32mnmap\x1b[0m <target>    scan network\n`;
+    out += `  \x1b[32mhint\x1b[0m             get a nudge\n\n`;
+    out += `\x1b[2m[ connect a WebSocket server for the full game ]\x1b[0m`;
+
+  // ── hint ────────────────────────────────────────────────
+  } else if (name === 'hint') {
+    const hints = [
+      'Start with: ls -la',
+      'Your bash history remembers things you tried to forget.',
+      'The evidence/ directory is locked 700. You already have access.',
+      'cat evidence/README.md',
+      'Z0RK-7 is waiting on IRC. You need a working network first.',
+      'nmap 10.13.37.0/24',
+    ];
+    const h = hints[Math.floor(Math.random() * hints.length)];
+    out = `\x1b[2m[ hint ]\x1b[0m  ${h}`;
+
+  // ── clear ───────────────────────────────────────────────
+  } else if (name === 'clear') {
+    term.clear();
+    term.write(demoPrompt());
+    return;
+
+  // ── unknown ─────────────────────────────────────────────
+  } else {
+    out = `bash: ${name}: command not found\n\x1b[2m[ connect a server for more commands ]\x1b[0m`;
+  }
+
+  if (out) {
+    term.writeln(out.replace(/\n/g, '\r\n'));
+  }
+  term.write(demoPrompt());
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BOOT SEQUENCE
+───────────────────────────────────────────────────────────── */
+const BOOT_LINES = [
+  ['[ OK ]  Loading kernel modules...', 'ok',   80],
+  ['[ OK ]  Mounting virtual filesystem...', 'ok', 60],
+  ['[ OK ]  Seeding game state...', 'ok',        60],
+  ['[ OK ]  Wiring event bus...', 'ok',           60],
+  ['[ OK ]  Initializing heat system...', 'ok',   60],
+  ['[WARN]  Audio subsystem disabled (headless)', 'warn', 80],
+  ['[ OK ]  SkyNet observation protocol... ', 'ok', 120],
+  ['[ ERR]  WebSocket: ' + WS_URL, 'err',        80],
+  ['[WARN]  Falling back to demo mode', 'warn',  100],
+  ['[ OK ]  Terminal ready.', 'ok',              200],
+];
+
+function runBootSequence() {
+  const log = document.getElementById('boot-log');
+  const splash = document.getElementById('boot-splash');
+  let delay = 300;
+
+  for (const [msg, cls, wait] of BOOT_LINES) {
+    setTimeout(() => {
+      const line = document.createElement('div');
+      line.className = cls;
+      line.textContent = msg;
+      log.appendChild(line);
+    }, delay);
+    delay += wait;
+  }
+
+  setTimeout(() => {
+    splash.classList.add('fade-out');
+    setTimeout(() => {
+      splash.style.display = 'none';
+      fitTerm();
+      // Try WebSocket — fall to demo if it fails
+      connectWS();
+      setTimeout(() => {
+        if (!STATE.wsConnected) startDemoMode();
+      }, 2000);
+    }, 600);
+  }, delay + 200);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────────────────────── */
+window.addEventListener('load', () => {
+  runBootSequence();
+
+  // SkyNet fires once after 20s if still in demo mode
+  setTimeout(() => {
+    if (!STATE.wsConnected) {
+      showSkyNet('I see you found the demo. The real game is deeper. Keep looking.');
+    }
+  }, 20000);
+});
+
+// Keyboard shortcut: Escape closes file viewer
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeFileViewer();
+    dismissSkyNet();
+  }
+});
+</script>
+
+</body>
+</html>
