@@ -224,7 +224,7 @@ class GameSession:
         them as garbage characters.  Also converts bare \\n to \\r\\n so the
         two-line Powerline prompt (bar + ╰─❯) lands at column 0 on line 2.
         """
-        raw = self._ws_prompt()
+        raw = self._shell._prompt()
         raw = raw.replace("\x01", "").replace("\x02", "")
         raw = raw.replace("\n", "\r\n")
         return raw
