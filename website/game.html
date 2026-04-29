@@ -1382,6 +1382,8 @@ const term = new Terminal({
   cursorStyle: 'block',
   scrollback: 2000,
   allowTransparency: true,
+  copyOnSelect: true,        // mouse selection auto-copies to clipboard
+  rightClickSelectsWord: false,
   theme: {
     background:      '#010801',
     foreground:      '#00ff41',
@@ -1487,13 +1489,77 @@ function setWsStatus(state) {
 
 /* Input: collect line, send on Enter */
 let inputBuf = '';
-// Prevent xterm.js from scrolling on arrow keys — we handle them ourselves
+// Prevent xterm.js from scrolling on arrow keys — we handle them ourselves.
+// Also intercept Ctrl+Shift+V / Ctrl+V for paste.
 term.attachCustomKeyEventHandler((evt) => {
-  if (evt.type === 'keydown' && (evt.key === 'ArrowUp' || evt.key === 'ArrowDown')) {
+  if (evt.type !== 'keydown') return true;
+
+  // Block arrow-key scroll
+  if (evt.key === 'ArrowUp' || evt.key === 'ArrowDown') {
     evt.preventDefault();
-    return false;  // block xterm's default scroll behaviour
+    return false;
   }
+
+  // Ctrl+Shift+C → copy selection (browser handles it natively via copyOnSelect;
+  // this just makes the shortcut feel familiar without blocking Ctrl+C / SIGINT)
+  if (evt.ctrlKey && evt.shiftKey && evt.key === 'C') {
+    document.execCommand('copy');
+    return false;
+  }
+
+  // Ctrl+Shift+V  OR  Ctrl+V → paste from clipboard
+  if ((evt.ctrlKey && evt.shiftKey && evt.key === 'V') ||
+      (evt.ctrlKey && !evt.shiftKey && evt.key === 'v')) {
+    evt.preventDefault();
+    navigator.clipboard.readText().then(text => {
+      if (!text) return;
+      termPaste(text);
+    }).catch(() => {});
+    return false;
+  }
+
   return true;
+});
+
+// Paste handler — injects clipboard text into the current input line
+function termPaste(text) {
+  // Strip carriage returns; treat newlines as Enter presses
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const chunk = lines[i];
+    if (chunk) {
+      if (STATE.wsConnected && STATE.ws) {
+        // Send each character of the chunk
+        for (const ch of chunk) STATE.ws.send(JSON.stringify({ type: 'input', data: ch }));
+        term.write(chunk);
+        inputBuf += chunk;
+      } else {
+        inputBuf += chunk;
+        term.write(chunk);
+      }
+    }
+    // If there are multiple lines, press Enter between them
+    if (i < lines.length - 1) {
+      if (STATE.wsConnected && STATE.ws) {
+        STATE.ws.send(JSON.stringify({ type: 'input', data: '\r' }));
+        term.write('\r\n');
+      } else {
+        term.write('\r\n');
+        const line = inputBuf.trim();
+        if (line) { demoHistory.unshift(line); demoHistoryIdx = -1; }
+        demoExecute(line);
+        inputBuf = '';
+      }
+    }
+  }
+}
+
+// Right-click on terminal → paste from clipboard
+document.getElementById('terminal').addEventListener('contextmenu', (evt) => {
+  evt.preventDefault();
+  navigator.clipboard.readText().then(text => {
+    if (text) termPaste(text);
+  }).catch(() => {});
 });
 
 term.onKey(({ key, domEvent }) => {
