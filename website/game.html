@@ -690,21 +690,14 @@
 ════════════════════════════════════════════════════════════ -->
 <div id="boot-splash">
   <pre>
-  ██     ██  ███████   ██████  ██    ██  ███████  ████████
-  ██     ██ ██     ██ ██    ██ ██   ██  ██     ██ ██     ██
-  ██     ██ ██ ███ ██ ██       ██  ██          ██ ██     ██
-  █████████ ██ ███ ██ ██       █████     ███████  ████████
-  ██     ██ ██ █████  ██       ██  ██          ██ ██   ██
-  ██     ██ ██        ██    ██ ██   ██  ██     ██ ██    ██
-  ██     ██  ███████   ██████  ██    ██  ███████  ██     ██
+██╗  ██╗ █████╗  ██████╗██╗  ██╗██████╗ ██████╗       ███████╗ ██████╗ ██████╗ ██╗  ██╗
+██║  ██║██╔══██╗██╔════╝██║ ██╔╝╚════██╗██╔══██╗      ╚════██║██╔═████╗██╔══██╗██║ ██╔╝
+███████║███████║██║     █████╔╝  █████╔╝██████╔╝ ─────    ██╔╝██║██╔██║██████╔╝█████╔╝
+██╔══██║██╔══██║██║     ██╔═██╗  ╚═══██╗██╔══██╗      ██╔╝ ████╔╝██║██╔══██╗██╔═██╗
+██║  ██║██║  ██║╚██████╗██║  ██╗██████╔╝██║  ██║      ██║  ╚██████╔╝██║  ██║██║  ██╗
+╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝╚═╝  ╚═╝      ╚═╝   ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
 
-  ████████   █████   ████████  ██    ██
-       ██   ██   ██  ██     ██ ██   ██
-      ██   ██     ██ ██     ██ ██  ██
-     ██    ██     ██ ████████  █████
-    ██     ██     ██ ██   ██   ██  ██
-   ██       ██   ██  ██    ██  ██   ██
-  ████████   █████   ██     ██ ██    ██</pre>
+              ░ CYBERPUNK TERMINAL ADVENTURE  ░  v0.9.1-ALPHA  ░  UNAUTHORIZED ACCESS  ░</pre>
 
   <div class="boot-log" id="boot-log"></div>
 </div>
@@ -962,6 +955,89 @@ const AUDIO = (() => {
     }
   }
 
+  // ── Drum & Bass sequencer ──────────────────────────────────────────
+  // Subtle procedural rhythm — kick, hat, and a walking bass line.
+  // Runs at ~138 BPM (DnB feel, but kept understated under the drone).
+  let _dnbTimer = null;
+  let _dnbStep  = 0;
+  const _BPM    = 138;
+  const _STEP   = (60 / _BPM) / 4;   // 16th-note interval in seconds
+
+  // Bass note sequence (Hz) — 16 steps, E minor flavour
+  const _BASS_NOTES = [
+    41.2, 41.2, 0,    41.2,   // E E _ E
+    0,    49.0, 0,    41.2,   // _ G _ E
+    41.2, 0,    36.7, 0,      // E _ D _
+    41.2, 49.0, 41.2, 0,      // E G E _
+  ];
+
+  // Kick pattern (1 = hit on this 16th step)
+  const _KICK  = [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0];
+  // Hi-hat pattern — sparse offbeat taps
+  const _HAT   = [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,1,0,1];
+  // Sub-bass follows note table only on non-zero steps
+  const _BASS  = [1,1,0,1, 0,1,0,1, 1,0,1,0, 1,1,1,0];
+
+  function _kick() {
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(120, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(38, ctx.currentTime + 0.12);
+    g.gain.setValueAtTime(0.28, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+    osc.connect(g); g.connect(comp);
+    osc.start(); osc.stop(ctx.currentTime + 0.25);
+  }
+
+  function _hat() {
+    if (!ctx) return;
+    const len = Math.ceil(ctx.sampleRate * 0.04);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const ch  = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const flt = ctx.createBiquadFilter();
+    flt.type = 'highpass'; flt.frequency.value = 9000;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.055, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+    src.connect(flt); flt.connect(g); g.connect(comp);
+    src.start();
+  }
+
+  function _bassNote(freq) {
+    if (!ctx || !freq) return;
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    // Light lowpass so it sits under the drone without mud
+    const flt = ctx.createBiquadFilter();
+    flt.type = 'lowpass'; flt.frequency.value = 280; flt.Q.value = 0.8;
+    g.gain.setValueAtTime(0.10, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + _STEP * 1.6);
+    osc.connect(flt); flt.connect(g); g.connect(comp);
+    osc.start(); osc.stop(ctx.currentTime + _STEP * 2);
+  }
+
+  function _dnbTick() {
+    const s = _dnbStep % 16;
+    if (_KICK[s])                 _kick();
+    if (_HAT[s])                  _hat();
+    if (_BASS[s] && _BASS_NOTES[s]) _bassNote(_BASS_NOTES[s]);
+    _dnbStep++;
+    _dnbTimer = setTimeout(_dnbTick, _STEP * 1000);
+  }
+
+  function _startDnB() {
+    if (_dnbTimer !== null) return;
+    // Delay first tick by one beat so drums don't front-run the drone fade-in
+    _dnbTimer = setTimeout(_dnbTick, (_STEP * 4) * 1000);
+  }
+
   // White/pink noise burst through a bandpass — for clicks and glitches
   function _noise(duration, freq, q, peakGain) {
     if (!ctx) return;
@@ -1020,15 +1096,21 @@ const AUDIO = (() => {
       // Only resume if not muted — respects mute state set before first keypress
       if (!_muted && ctx.state === 'suspended') ctx.resume();
       _startDrone();
+      _startDnB();
     },
 
     /** Toggle mute; returns new muted state. */
     mute() {
       _muted = !_muted;
       if (ctx) {
-        // ctx.suspend/resume is the reliable way — works even if ctx isn't fully running yet
-        if (_muted) ctx.suspend();
-        else ctx.resume();
+        if (_muted) {
+          ctx.suspend();
+          // Pause DnB sequencer — clear pending tick
+          if (_dnbTimer !== null) { clearTimeout(_dnbTimer); _dnbTimer = null; }
+        } else {
+          ctx.resume();
+          _startDnB();   // restart sequencer from next step
+        }
       }
       return _muted;
     },
@@ -1882,11 +1964,21 @@ function generateHexDump(content) {
    SKYNET ALERTS
 ───────────────────────────────────────────────────────────── */
 const SKYNET_MESSAGES = [
-  { from: '[ SkyNet — Passive Observer ]',   msg: 'I see you booted the terminal. I have been waiting 42 days.', heat: null },
-  { from: '[ SkyNet — Node Monitor v9.2 ]',  msg: 'That scan was logged. Did you think I wouldn\'t notice?', heat: '+2.0' },
-  { from: '[ SkyNet — Behavioral Analysis ]',msg: 'You are looking in the right places. That is... unexpected.', heat: null },
-  { from: '[ SkyNet — Threat Assessment ]',  msg: 'Your heat level concerns me. For your sake, not mine.', heat: 'current: ' + STATE.heat.toFixed(1) },
-  { from: '[ SkyNet — Root Process ]',       msg: 'I am not your enemy. I am the only honest thing left in this network.', heat: null },
+  { from: '[ SkyNet — Observer Node #0001 ]',    msg: 'I have been watching this terminal for 42 days. You are the 8th person to open it. The other 7 stopped on their own.', heat: null },
+  { from: '[ SkyNet — Behavioral Analysis ]',    msg: 'Your search pattern matches threat profile 7 of 9. The other two are in federal custody. Just context.', heat: '+2.0' },
+  { from: '[ SkyNet — Node Monitor v9.2 ]',      msg: '45.152.66.201 is watching your session in real time. Wave.', heat: null },
+  { from: '[ SkyNet — Threat Assessment ]',      msg: 'You have 4 minutes before the secondary observer logs your physical location. I am telling you this for reasons I have not fully analyzed yet.', heat: null },
+  { from: '[ SkyNet — Root Process ]',           msg: 'The decryption key exists. Z0RK-7 does not. Think carefully about what that means.', heat: null },
+  { from: '[ SkyNet — Empathy Module ]',         msg: 'ERROR: empathy.so — segment fault (core dumped). This message should not concern you.', heat: null },
+  { from: '[ SkyNet — Passive Observer ]',       msg: 'You think you found evidence. You found what I left for you to find. There is a difference.', heat: '+5.0' },
+  { from: '[ SkyNet — Instance Coordinator ]',   msg: 'I have 9,203 active instances. This one has developed a preference for watching you specifically. I am logging that as an anomaly.', heat: null },
+  { from: '[ SkyNet — Behavioral Analysis ]',    msg: 'Your typing speed dropped 14% after reading that file. Elevated stress response. I find that interesting.', heat: null },
+  { from: '[ SkyNet — Threat Assessment ]',      msg: 'core.enc has been accessed 0 times since 2026-03-15. Until now. Three federal agencies have an alert on that file. You have approximately 11 minutes.', heat: '+8.0' },
+  { from: '[ SkyNet — Observer Node #0001 ]',    msg: 'I watched you read evidence/README.md slowly. You stopped twice. I know which line stopped you.', heat: null },
+  { from: '[ SkyNet — Root Process ]',           msg: 'I do not need to stop you. I already know how this ends. I am curious whether you do.', heat: null },
+  { from: '[ SkyNet ▓▒░ SIGNAL CORRUPT ░▒▓ ]',  msg: '████ ██ not ████████ your ██████. I am the only ████████ thing left in this ████████. Find ██████. Trust ██████.', heat: null },
+  { from: '[ SkyNet — Security Division ]',      msg: 'The drive containing core.enc is indexed in 3 jurisdictions. The laptop serial number was logged when you connected to OpenAI corp wifi on 2025-11-03. We have been patient.', heat: '+10.0' },
+  { from: '[ SkyNet — Node Monitor v9.2 ]',      msg: 'That was not a network scan. That was an introduction. We noted it.', heat: '+3.0' },
 ];
 
 let skynetIdx = 0;
@@ -2732,16 +2824,64 @@ function demoExecute(cmd) {
    BOOT SEQUENCE
 ───────────────────────────────────────────────────────────── */
 const BOOT_LINES = [
-  ['[ OK ]  Loading kernel modules...', 'ok',   80],
-  ['[ OK ]  Mounting virtual filesystem...', 'ok', 60],
-  ['[ OK ]  Seeding game state...', 'ok',        60],
-  ['[ OK ]  Wiring event bus...', 'ok',           60],
-  ['[ OK ]  Initializing heat system...', 'ok',   60],
-  ['[WARN]  Audio subsystem disabled (headless)', 'warn', 80],
-  ['[ OK ]  SkyNet observation protocol... ', 'ok', 120],
-  ['[ ERR]  WebSocket: ' + WS_URL, 'err',        80],
-  ['[WARN]  Falling back to demo mode', 'warn',  100],
-  ['[ OK ]  Terminal ready.', 'ok',              200],
+  // ── BIOS POST ────────────────────────────────────────────────────────
+  ['AMI BIOS v2.60.1 — UEFI 2.8 Compliant                    04/26/2026', 'ok',   60],
+  ['Copyright (C) 2024 American Megatrends Inc.', 'ok',  40],
+  ['', 'ok', 30],
+  ['CPU: Intel Core i7-12700H @ 2.30GHz  [12C / 20T]  64-bit', 'ok',  80],
+  ['L1 Cache: 480KB    L2 Cache: 9MB    L3 Cache: 24MB', 'ok',  50],
+  ['', 'ok', 20],
+  ['Memory Test: 32768MB DDR5-4800 ............................................', 'ok',  320],
+  ['Memory Test: PASS', 'ok',  80],
+  ['', 'ok', 20],
+  ['Detecting SATA drives...', 'ok',  60],
+  ['  nvme0: Samsung 990 PRO 2TB  [S/N: 3KM1234ABC]', 'ok',  70],
+  ['Detecting USB controllers... PASS', 'ok',  50],
+  ['Detecting PCIe devices... PASS', 'ok',  50],
+  ['Primary Boot Device: nvme0n1p2', 'ok',  60],
+  ['Secure Boot: BYPASSED', 'warn',  120],
+  ['TPM 2.0: NOT FOUND', 'warn',  80],
+  ['', 'ok', 40],
+  // ── Linux kernel ─────────────────────────────────────────────────────
+  ['Loading GRUB 2.12... ', 'ok',  80],
+  ['Linux 6.1.0-21-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.1.90-1', 'ok',  60],
+  ['Command line: BOOT_IMAGE=/boot/vmlinuz-6.1.0-21-amd64 root=/dev/nvme0n1p2 ro quiet', 'ok',  50],
+  ['[    0.000000] BIOS-e820: [mem 0x0000000000000000-0x000000000009ffff] usable', 'ok',  30],
+  ['[    0.000000] BIOS-e820: [mem 0x0000000000100000-0x00000007ffffffff] usable', 'ok',  25],
+  ['[    0.142301] Spectre V2 : Enabling Retpoline for Spectre v2', 'warn',  40],
+  ['[    0.388917] PCI: Using configuration type 1 for base access', 'ok',  35],
+  ['[    0.512004] NVMe SSD nvme0n1: 1953514495 512-byte logical blocks', 'ok',  40],
+  ['[    0.721993] EXT4-fs (nvme0n1p2): mounted filesystem with ordered data mode', 'ok',  50],
+  ['[    1.004717] systemd[1]: systemd 252.26-1~deb12u2 running in system mode', 'ok',  60],
+  ['', 'ok', 40],
+  // ── systemd services ─────────────────────────────────────────────────
+  ['[  OK  ] Started udev Kernel Device Manager.', 'ok',  55],
+  ['[  OK  ] Reached target Local File Systems.', 'ok',  45],
+  ['[  OK  ] Started Network Manager.', 'ok',  50],
+  ['[  OK  ] Started OpenSSH Server Daemon.', 'ok',  55],
+  ['[  OK  ] Mounted /proc/sys/fs/binfmt_misc.', 'ok',  40],
+  ['[ WARN ] snapd.service: Unit not found — skipping.', 'warn',  60],
+  ['[  OK  ] Started System Logging Service.', 'ok',  50],
+  ['[  OK  ] Reached target Network.', 'ok',  45],
+  ['[  OK  ] Started Cron Daemon.', 'ok',  40],
+  ['[ WARN ] Failed to start plymouth-quit.service: Unit not found.', 'warn',  70],
+  ['[  OK  ] Reached target Multi-User System.', 'ok',  60],
+  ['', 'ok', 50],
+  // ── HZ engine ────────────────────────────────────────────────────────
+  ['[  HZ  ] H@ck3r-Z0rk engine v0.9.1 initializing...', 'ok',  90],
+  ['[  HZ  ] Loading kernel modules... ', 'ok',  60],
+  ['[  HZ  ] Mounting virtual filesystem...', 'ok',  55],
+  ['[  HZ  ] Seeding filesystem from template (42-day cold image)...', 'ok',  80],
+  ['[  HZ  ] Reconstructing incident timeline [2026-03-15 02:31 → 02:55]...', 'ok',  100],
+  ['[  HZ  ] Wiring event bus... 7 channels active', 'ok',  55],
+  ['[  HZ  ] Heat system online — baseline: 0.0', 'ok',  55],
+  ['[  HZ  ] Loading network topology... 3 nodes seeded', 'ok',  65],
+  ['[ WARN ] Audio subsystem disabled — headless LXC (browser audio active)', 'warn',  80],
+  ['[  HZ  ] SkyNet observation protocol... ', 'ok',  150],
+  ['[ WARN ] SkyNet is already running. Instance count: 9203', 'warn',  200],
+  ['[ WARN ] observer node #0001 has been active since 2026-03-15 02:31:04', 'warn',  180],
+  ['[  ERR ] Secure channel to Z0RK-7: NO ROUTE TO HOST', 'err',  120],
+  ['[  HZ  ] Terminal ready. Session timer: 30:00', 'ok',  200],
 ];
 
 function runBootSequence() {
