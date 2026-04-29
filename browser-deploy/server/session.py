@@ -70,7 +70,7 @@ class GameSession:
         log.info("session=%s  game booted", self.session_id)
 
         # Send initial prompt
-        await self.ws.send(self._shell._prompt())
+        await self.ws.send(self._ws_prompt())
 
     async def run(self) -> None:
         """Main async loop: buffer keystrokes, execute on Enter, tab-complete on Tab.
@@ -146,7 +146,7 @@ class GameSession:
                             }))
                     await self._flush_events()
 
-                await self.ws.send("\r\n" + self._shell._prompt())
+                await self.ws.send("\r\n" + self._ws_prompt())
 
             # ── Backspace — remove last char from buffer ───────────────
             elif data in ("\x7f", "\x08"):
@@ -171,16 +171,16 @@ class GameSession:
                 else:
                     # Multiple matches: print list then reprint prompt + current input.
                     await self.ws.send("\r\n" + "  ".join(completions) + "\r\n")
-                    await self.ws.send(self._shell._prompt() + line_buf)
+                    await self.ws.send(self._ws_prompt() + line_buf)
 
             # ── Ctrl+C — cancel current line ──────────────────────────
             elif data == "\x03":
                 line_buf = ""
-                await self.ws.send("^C\r\n" + self._shell._prompt())
+                await self.ws.send("^C\r\n" + self._ws_prompt())
 
             # ── Ctrl+L — clear screen ─────────────────────────────────
             elif data == "\x0c":
-                await self.ws.send("\x1b[2J\x1b[H" + self._shell._prompt() + line_buf)
+                await self.ws.send("\x1b[2J\x1b[H" + self._ws_prompt() + line_buf)
 
             # ── Printable character — accumulate in buffer ────────────
             elif len(data) == 1 and ord(data) >= 32:
@@ -215,6 +215,19 @@ class GameSession:
             # Typing a path/argument
             partial = "" if line.endswith(" ") else parts[-1]
             return completer._path_completions(partial, cwd)
+
+    def _ws_prompt(self) -> str:
+        """Render the shell prompt for xterm.js.
+
+        Strips readline non-printing markers (\\x01/\\x02) which are only
+        meaningful to readline's cursor-width accounting — xterm.js renders
+        them as garbage characters.  Also converts bare \\n to \\r\\n so the
+        two-line Powerline prompt (bar + ╰─❯) lands at column 0 on line 2.
+        """
+        raw = self._ws_prompt()
+        raw = raw.replace("\x01", "").replace("\x02", "")
+        raw = raw.replace("\n", "\r\n")
+        return raw
 
     def _drain_buf(self) -> str:
         """Drain the Rich console StringIO buffer and return its contents."""

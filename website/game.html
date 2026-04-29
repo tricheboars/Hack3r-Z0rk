@@ -5,9 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>H@CK3R-Z0RK // PLAY</title>
 
-  <!-- Share Tech Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <!-- JetBrains Mono Nerd Font Mono — Powerline + Nerd glyphs, 1-cell-wide -->
+  <style>
+    @font-face {
+      font-family: 'JetBrainsMonoNF';
+      src: url('https://cdn.jsdelivr.net/gh/ryanoasis/nerd-fonts@v3.2.1/patched-fonts/JetBrainsMono/Ligatures/Regular/JetBrainsMonoNerdFontMono-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'JetBrainsMonoNF';
+      src: url('https://cdn.jsdelivr.net/gh/ryanoasis/nerd-fonts@v3.2.1/patched-fonts/JetBrainsMono/Ligatures/Bold/JetBrainsMonoNerdFontMono-Bold.ttf') format('truetype');
+      font-weight: bold;
+      font-style: normal;
+      font-display: swap;
+    }
+  </style>
 
   <!-- xterm.js -->
   <link  href="https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/css/xterm.css" rel="stylesheet" />
@@ -46,7 +60,7 @@
       overflow: hidden;
       background: var(--bg);
       color: var(--green);
-      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      font-family: 'JetBrainsMonoNF', 'JetBrains Mono', 'Courier New', monospace;
       font-size: 13px;
     }
 
@@ -1375,7 +1389,8 @@ const WS_URL = new URLSearchParams(location.search).get('ws')
    XTERM.JS SETUP
 ───────────────────────────────────────────────────────────── */
 const term = new Terminal({
-  fontFamily: "'Share Tech Mono', 'Courier New', monospace",
+  fontFamily: "'JetBrainsMonoNF', 'JetBrains Mono', 'Courier New', monospace",
+  convertEol: true,         // bare \n → \r\n so Powerline prompt lines up
   fontSize: 13,
   lineHeight: 1.4,
   cursorBlink: true,
