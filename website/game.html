@@ -2514,12 +2514,164 @@ function demoExecute(cmd) {
     term.write(demoPrompt());
     return;
 
+  // ── apt ─────────────────────────────────────────────────
+  } else if (name === 'apt') {
+    const sub = args[0];
+    const pkg = args[1];
+    if (!sub || sub === 'help') {
+      out  = 'apt 2.6.1 (amd64)\n';
+      out += 'Usage: apt {update|search|show|install|remove|list|verify} ...\n\n';
+      out += '  \x1b[32mapt install <pkg>\x1b[0m   install a package\n';
+      out += '  \x1b[32mapt search <term>\x1b[0m   search available packages\n';
+      out += '  \x1b[32mapt list\x1b[0m            list installed packages\n';
+      out += '  \x1b[32mapt update\x1b[0m          refresh package index\n\n';
+      out += '\x1b[2mFor underground packages: shadow install <pkg>\x1b[0m';
+    } else if (sub === 'update') {
+      out  = 'Hit:1 http://deb.debian.org/debian bookworm InRelease\n';
+      out += 'Hit:2 http://security.debian.org/debian-security bookworm-security InRelease\n';
+      out += '\x1b[33mWarn\x1b[0m: tor+http://shadowpkg7x2al9kk.onion/apt stable InRelease — cannot verify\n';
+      out += 'Reading package lists... Done\n';
+      out += 'Building dependency tree... Done\n';
+      out += '\x1b[2m2 packages can be upgraded. Run apt list --upgradable\x1b[0m';
+    } else if (sub === 'list') {
+      out  = 'Listing installed packages:\n';
+      out += '  nmap/bookworm 7.93 amd64\n';
+      out += '  python3/bookworm 3.11.2 amd64\n';
+      out += '  tor/bookworm 0.4.7.13 amd64\n';
+      out += '  openssl/bookworm 3.0.11 amd64\n';
+      out += '  \x1b[31msk-observer/unknown 9203.1 amd64  [UNSIGNED]\x1b[0m\n';
+      out += '\x1b[2mUse shadow list for underground packages\x1b[0m';
+    } else if (sub === 'install' && pkg) {
+      out  = `Reading package lists... Done\n`;
+      out += `Building dependency tree... Done\n`;
+      out += `The following NEW packages will be installed: ${pkg}\n`;
+      out += `0 upgraded, 1 newly installed, 0 to remove.\n`;
+      out += `Unpacking ${pkg} ...\n`;
+      out += `Setting up ${pkg} ...\n`;
+      out += `\x1b[32m${pkg} installed.\x1b[0m\n`;
+      out += `\x1b[2m[ demo — full package system available when connected ]\x1b[0m`;
+      demoHeat = Math.min(100, demoHeat + 1); setHeat(demoHeat);
+    } else if (sub === 'search' && pkg) {
+      out  = `Sorting... Done\nFull Text Search... Done\n`;
+      out += `  ${pkg}/bookworm — matched package\n`;
+      out += `\x1b[2m[ demo — full package catalogue available when connected ]\x1b[0m`;
+    } else {
+      out = `apt: unrecognized command: ${sub}`;
+    }
+
+  // ── shadow ───────────────────────────────────────────────
+  } else if (name === 'shadow') {
+    const sub = args[0]; const pkg = args[1];
+    if (!sub) {
+      out  = '\x1b[2mshadow 0.3.1-unstable — underground package manager\x1b[0m\n';
+      out += '\x1b[2mrepo: tor+http://shadowpkg7x2al9kk.onion/apt\x1b[0m\n\n';
+      out += '  \x1b[32mshadow install <pkg>\x1b[0m   install from dark repo\n';
+      out += '  \x1b[32mshadow list\x1b[0m            installed packages\n';
+      out += '  \x1b[32mshadow search <term>\x1b[0m   search dark repo\n\n';
+      out += '\x1b[33mWARN: packages are unsigned. No receipt. Heat +3.\x1b[0m';
+    } else if (sub === 'install' && pkg) {
+      out  = `\x1b[2mconnecting to tor+http://shadowpkg7x2al9kk.onion...\x1b[0m\n`;
+      out += `\x1b[2mresolving... OK\x1b[0m\n`;
+      out += `fetching ${pkg}...\n`;
+      out += `verifying... \x1b[33m[UNSIGNED — proceeding anyway]\x1b[0m\n`;
+      out += `installing ${pkg}...\n`;
+      out += `\x1b[32m${pkg} installed. No receipt.\x1b[0m\n`;
+      out += `\x1b[31m[ HEAT +3.0 ]\x1b[0m`;
+      demoHeat = Math.min(100, demoHeat + 3); setHeat(demoHeat);
+      setTimeout(() => showSkyNet(`shadow install ${pkg} — logged. All dark repo installs are logged.`), 1500);
+    } else if (sub === 'list') {
+      out  = '\x1b[2mInstalled (dark):\x1b[0m\n';
+      out += '  \x1b[31msk-observer 9203.1  [UNSIGNED]\x1b[0m\n';
+      out += '  \x1b[2m(you did not install this)\x1b[0m';
+    } else {
+      out = `shadow: unrecognized: ${sub}`;
+    }
+
+  // ── ping ─────────────────────────────────────────────────
+  } else if (name === 'ping') {
+    const host = args.find(a => !a.startsWith('-')) || '10.13.37.1';
+    out  = `PING ${host}: 56 data bytes\n`;
+    out += `64 bytes from ${host}: icmp_seq=0 ttl=64 time=1.2 ms\n`;
+    out += `64 bytes from ${host}: icmp_seq=1 ttl=64 time=0.9 ms\n`;
+    out += `64 bytes from ${host}: icmp_seq=2 ttl=64 time=1.1 ms\n`;
+    out += `--- ${host} ping statistics ---\n`;
+    out += `3 packets transmitted, 3 received, 0% packet loss\n`;
+    demoHeat = Math.min(100, demoHeat + 0.5); setHeat(demoHeat);
+
+  // ── traceroute ───────────────────────────────────────────
+  } else if (name === 'traceroute') {
+    const host = args.find(a => !a.startsWith('-')) || '10.13.37.1';
+    out  = `traceroute to ${host}, 30 hops max\n`;
+    out += ` 1  192.168.1.1  1.2 ms\n`;
+    out += ` 2  10.0.0.1  3.4 ms\n`;
+    out += ` 3  45.152.66.1  12.1 ms\n`;
+    out += ` 4  * * *  \x1b[2m(filtered)\x1b[0m\n`;
+    out += ` 5  ${host}  18.7 ms\n`;
+    demoHeat = Math.min(100, demoHeat + 1); setHeat(demoHeat);
+
+  // ── ssh ──────────────────────────────────────────────────
+  } else if (name === 'ssh') {
+    const host = args.find(a => !a.startsWith('-')) || '';
+    if (!host) { out = 'usage: ssh [-i identity] [user@]host'; }
+    else {
+      out  = `\x1b[2mSSH client — connecting to ${host}...\x1b[0m\n`;
+      out += `\x1b[33mPermission denied (publickey).\x1b[0m\n`;
+      out += `\x1b[2mYou need to exploit a vulnerability first. Try nmap.\x1b[0m`;
+      demoHeat = Math.min(100, demoHeat + 2); setHeat(demoHeat);
+    }
+
+  // ── curl / wget ──────────────────────────────────────────
+  } else if (name === 'curl' || name === 'wget') {
+    const url = args.find(a => !a.startsWith('-')) || '';
+    if (!url) { out = `${name}: no URL specified`; }
+    else {
+      out  = `\x1b[2mconnecting to ${url}...\x1b[0m\n`;
+      out += `\x1b[33mcurl: (35) error:14094410:SSL routines::sslv3 alert handshake failure\x1b[0m\n`;
+      out += `\x1b[2mHint: you may need to tunnel through the relay node first.\x1b[0m`;
+      demoHeat = Math.min(100, demoHeat + 1); setHeat(demoHeat);
+    }
+
+  // ── gpg ──────────────────────────────────────────────────
+  } else if (name === 'gpg') {
+    out  = 'gpg (GnuPG) 2.2.40\n';
+    out += '\x1b[2mUsage: gpg [--decrypt|--encrypt|--verify] <file>\x1b[0m\n';
+    out += '\x1b[33mgpg: no default key — get the key from Z0RK-7 first.\x1b[0m';
+
+  // ── irc ──────────────────────────────────────────────────
+  } else if (name === 'irc') {
+    out  = '\x1b[2mConnecting to darknet-relay IRC...\x1b[0m\n';
+    out += '\x1b[33m[ERROR] Connection refused — you need a working relay node.\x1b[0m\n';
+    out += '\x1b[2mHint: nmap 10.13.37.0/24 and exploit relay-alpha first.\x1b[0m';
+    demoHeat = Math.min(100, demoHeat + 1.5); setHeat(demoHeat);
+
+  // ── grep ─────────────────────────────────────────────────
+  } else if (name === 'grep') {
+    const pat = args.find(a => !a.startsWith('-'));
+    const file = args[args.length - 1];
+    if (!pat || !file) { out = 'usage: grep [-r] pattern file'; }
+    else {
+      const absPath = demoResolvePath(file);
+      const entry = demoGetFile(absPath);
+      if (!entry || !entry.content) { out = `grep: ${file}: No such file or directory`; }
+      else {
+        const lines = entry.content.split('\n').filter(l => l.toLowerCase().includes(pat.toLowerCase()));
+        out = lines.length ? lines.map(l => l.replace(new RegExp(pat,'gi'), m => `\x1b[1;31m${m}\x1b[0m`)).join('\n') : '';
+      }
+    }
+
+  // ── find ─────────────────────────────────────────────────
+  } else if (name === 'find') {
+    const root = args[0] ? demoResolvePath(args[0]) : demoCwd;
+    // List all DEMO_FS paths that start with root
+    const matches = Object.keys(DEMO_FS).filter(p => p === root || p.startsWith(root === '/' ? '/' : root + '/'));
+    const fileMatches = matches.flatMap(dir =>
+      Object.keys(DEMO_FS[dir] || {}).map(n => dir === '/' ? '/' + n : dir + '/' + n)
+    );
+    out = [root, ...matches.slice(1), ...fileMatches].slice(0, 40).join('\n');
+
   // ── unknown ─────────────────────────────────────────────
   } else {
     out = `bash: ${name}: command not found`;
-    if (['ssh','curl','wget','ping','traceroute','apt','shadow','gpg','irc','msg'].includes(name)) {
-      out += `\n\x1b[2m[ ${name} available in full game — connect a WebSocket server ]\x1b[0m`;
-    }
   }
 
   if (out) term.writeln(out.replace(/\n/g, '\r\n'));
@@ -2566,7 +2718,7 @@ function runBootSequence() {
       connectWS();
       setTimeout(() => {
         if (!STATE.wsConnected) startDemoMode();
-      }, 2000);
+      }, 5000);  // 5s — enough time for the WS handshake over LAN
     }, 600);
   }, delay + 200);
 }
