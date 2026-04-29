@@ -1522,6 +1522,8 @@ term.onKey(({ key, domEvent }) => {
         inputBuf = inputBuf.slice(0, -1);
         term.write('\b \b');
       }
+    } else if (code === 9) {
+      demoTabComplete();
     } else if (code === 27) {
       // ESC
     } else {
@@ -1842,6 +1844,52 @@ const DEMO_NODES = [
   { ip: '10.13.37.2', name: 'Dead Drop Server',  hostname: 'drop-002.darknet.local',   status: 'locked',  connections: ['10.13.37.3'] },
   { ip: '10.13.37.3', name: 'SkyNet Node 003',   hostname: 'sk-node-003.internal',      status: 'locked',  connections: [] },
 ];
+
+/* All commands known to the demo shell — for Tab completion */
+const DEMO_COMMANDS = [
+  'alias','apt','cat','cd','chmod','clear','contacts','cp','curl',
+  'echo','find','grep','help','hint','history','id','irc','less',
+  'ln','ls','man','mkdir','msg','mv','nmap','ping','ps','pwd',
+  'rm','rmdir','shadow','ssh','traceroute','uname','whoami',
+];
+
+function demoTabComplete() {
+  if (!inputBuf && inputBuf !== '') return;
+  const words   = inputBuf.split(' ');
+  const partial = words[words.length - 1];
+  const isCmd   = words.length === 1 && !inputBuf.endsWith(' ');
+
+  let candidates = [];
+
+  if (isCmd) {
+    // Complete command names
+    candidates = DEMO_COMMANDS.filter(c => c.startsWith(partial));
+  } else {
+    // Complete paths from DEMO_FS relative to demoCwd
+    const fsEntries = DEMO_FS['/home/user'] || {};
+    // Build a flat + dir-level entry list for the current directory
+    const names = new Set();
+    const prefix = (demoCwd === '/home/user') ? '' : demoCwd.replace('/home/user/', '') + '/';
+    for (const key of Object.keys(fsEntries)) {
+      const rel = prefix ? (key.startsWith(prefix) ? key.slice(prefix.length) : null) : key;
+      if (rel === null) continue;
+      const topLevel = rel.split('/')[0] + (rel.includes('/') ? '/' : '');
+      names.add(topLevel);
+    }
+    candidates = [...names].filter(n => n.startsWith(partial)).sort();
+  }
+
+  if (candidates.length === 0) return;
+
+  if (candidates.length === 1) {
+    const suffix = candidates[0].slice(partial.length);
+    inputBuf += suffix;
+    term.write(suffix);
+  } else {
+    term.write('\r\n' + candidates.join('  ') + '\r\n');
+    term.write(demoPrompt() + inputBuf);
+  }
+}
 
 function demoPrompt() {
   return `\x1b[32muser@${demoCwd}\x1b[0m\x1b[2m$ \x1b[0m`;
