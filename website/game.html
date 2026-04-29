@@ -1433,10 +1433,12 @@ window.addEventListener('resize', fitTerm);
 function connectWS() {
   if (STATE.demoMode) return;
   setWsStatus('connecting');
+  console.info('[HZ] Attempting WebSocket:', WS_URL);
   let ws;
   try {
     ws = new WebSocket(WS_URL);
   } catch(e) {
+    console.error('[HZ] WebSocket constructor threw:', e.message, '— URL was:', WS_URL);
     setWsStatus('error');
     startDemoMode();
     return;
@@ -1445,8 +1447,10 @@ function connectWS() {
   STATE.ws = ws;
 
   ws.onopen = () => {
+    console.info('[HZ] WebSocket connected ✓');
     STATE.wsConnected = true;
     STATE.everConnected = true;
+    STATE.demoMode = false;
     setWsStatus('connected');
     fitTerm();
   };
@@ -1460,22 +1464,22 @@ function connectWS() {
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (evt) => {
+    console.warn('[HZ] WebSocket closed — code:', evt.code, 'reason:', evt.reason || '(none)');
     STATE.wsConnected = false;
     if (STATE.demoMode) return;
     if (STATE.everConnected) {
-      // Was live — show reconnect message and retry
       setWsStatus('error');
       term.write('\r\n\x1b[33m[ connection lost — reconnecting in 5s ]\x1b[0m\r\n');
       setTimeout(connectWS, 5000);
     } else {
-      // Never connected — fall to demo mode silently
+      console.warn('[HZ] Never connected — starting demo mode. WS_URL was:', WS_URL);
       startDemoMode();
     }
   };
 
-  ws.onerror = () => {
-    // onclose fires after onerror — handled there
+  ws.onerror = (evt) => {
+    console.error('[HZ] WebSocket error:', evt);
   };
 }
 
@@ -2279,6 +2283,8 @@ function demoPrompt() {
 }
 
 function startDemoMode() {
+  if (STATE.demoMode) return;   // prevent double-init
+  STATE.demoMode = true;
   setWsStatus('error');
 
   // Boot sequence in terminal
@@ -2288,7 +2294,8 @@ function startDemoMode() {
     ['\x1b[33m42 days since your last session.\x1b[0m', 300],
     ['\x1b[2mThe laptop was sealed. The drive is intact.\x1b[0m', 120],
     ['\x1b[2mType \x1b[32mhelp\x1b[2m for commands. Type \x1b[32mhint\x1b[2m if you\'re lost.\x1b[0m', 120],
-    ['\x1b[2m[ demo mode — WebSocket server not connected ]\x1b[0m', 300],
+    [`\x1b[33m[ DEMO MODE — server unreachable at ${WS_URL} ]\x1b[0m`, 300],
+    ['\x1b[2mType \x1b[32mreconnect\x1b[2m to retry the server connection.\x1b[0m', 100],
     ['', 100],
   ];
 
@@ -2507,6 +2514,28 @@ function demoExecute(cmd) {
       'ls /opt/skynet-tools  — those binaries were not installed by you.',
     ];
     out = `\x1b[2m[ hint ]\x1b[0m  ${hints[Math.floor(Math.random() * hints.length)]}`;
+
+  // ── status ──────────────────────────────────────────────
+  } else if (name === 'status') {
+    const mode = STATE.wsConnected ? '\x1b[1;32mCONNECTED\x1b[0m — real game server' : '\x1b[1;33mDEMO MODE\x1b[0m — no server';
+    out  = `Mode:    ${mode}\n`;
+    out += `WS URL:  ${WS_URL}\n`;
+    out += STATE.wsConnected ? '' : `\x1b[2mType reconnect to retry the server.\x1b[0m`;
+
+  // ── reconnect ───────────────────────────────────────────
+  } else if (name === 'reconnect') {
+    STATE.demoMode = false;
+    STATE.everConnected = false;
+    term.writeln(`\x1b[2mAttempting ${WS_URL} ...\x1b[0m`);
+    connectWS();
+    setTimeout(() => {
+      if (!STATE.wsConnected) {
+        term.writeln('\x1b[31m[ still unreachable — staying in demo mode ]\x1b[0m');
+        STATE.demoMode = true;
+      }
+      term.write(demoPrompt());
+    }, 5000);
+    return;  // don't write prompt twice
 
   // ── clear ───────────────────────────────────────────────
   } else if (name === 'clear') {
