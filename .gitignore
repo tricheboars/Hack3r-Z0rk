@@ -42,9 +42,15 @@ hackerzork/data/music/*.mp3
 !hackerzork/data/sounds/.gitkeep
 !hackerzork/data/music/.gitkeep
 
+# Claude Code workspace config (local paths, machine-specific)
+.claude/
+
 # Claude Code instructions (local dev only — not for repo)
 CLAUDE.md
 **/CLAUDE.md
+
+# Terraform — contains SSH keys + private network topology
+terraform/
 
 # Secrets (if any API keys end up here during dev)
 .env
