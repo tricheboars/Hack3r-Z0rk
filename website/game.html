@@ -1072,6 +1072,286 @@ const AUDIO = (() => {
         );
       }
     },
+
+    /** Expose shared AudioContext for MUSIC module. */
+    getCtx()       { _init(); return ctx;  },
+
+    /** Expose master compressor bus for MUSIC module to feed into. */
+    getMasterBus() { _init(); return comp; },
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────
+   MUSIC ENGINE
+   Generative electronic score. Shares AudioContext with AUDIO.
+
+   Heat 0–27  : Pure ambient pad (SAW Vol II — cold, oceanic)
+   Heat 28–44 : Kick enters (sparse 4/4)
+   Heat 45–54 : Snare joins (full beat)
+   Heat 55+   : Hi-hats + acid 303 bass
+   Heat 70+   : Busier bass pattern
+   Heat 85+   : Octave-jumping acid pattern
+
+   BPM scales 120→132 with heat.
+   Chord changes every 8 bars through A natural minor pool.
+───────────────────────────────────────────────────────────── */
+const MUSIC = (() => {
+  let _ac      = null;   // AudioContext (shared from AUDIO)
+  let _bus     = null;   // music master gain
+  let _wet     = null;   // reverb send
+  let _started = false;
+  let _tmr     = null;
+  let _tick    = 0;      // ctx.currentTime of next 16th note
+  let _step    = 0;      // 0–15 within current bar
+  let _barN    = 0;      // absolute bar count
+  let _bpm     = 120;
+  let _heat    = 0;
+  let _chord   = 0;      // index into CHORDS
+
+  /* ── Music content ──────────────────────────────────────── */
+
+  const ROOT = 45;  // A2 — dark, minor, fits the game perfectly
+
+  // Chord pool in A natural minor (semitone offsets from ROOT)
+  const CHORDS = [
+    [0, 3, 7],    // Am  (tonic)
+    [5, 8, 12],   // Dm  (iv)
+    [3, 7, 10],   // C   (bIII)
+    [7, 10, 14],  // Em  (v)
+    [8, 12, 15],  // F   (bVI)
+    [0, 3, 7],    // Am  (return — weights the tonic)
+  ];
+
+  // Bass patterns: 16 steps, semitone from ROOT or null=rest
+  const BASS_PAT = [
+    // 0: sparse root/fifth — first thing you hear
+    [0,null,0,null,  7,null,0,null,  0,null,3,null,  5,null,0,null],
+    // 1: walking minor
+    [0,null,null,null, 0,null,3,null, 7,null,null,null, 5,3,0,null],
+    // 2: busier, more melodic
+    [0,0,3,null, 5,null,7,null, 0,null,3,3, 5,null,7,null],
+    // 3: acid octave jumps — chaos mode
+    [0,12,0,null, 3,null,7,null, 5,null,3,null, 0,12,3,null],
+  ];
+
+  // Drum patterns (16 steps)
+  const KICK_PAT  = [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0]; // 4-on-floor
+  const SNARE_PAT = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0]; // 2 & 4
+  const HIHAT_PAT = [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,1]; // 8ths + fill
+
+  /* ── Helpers ────────────────────────────────────────────── */
+
+  function _hz(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+  function _s16()    { return 60 / _bpm / 4; }          // one 16th note (s)
+  function _barDur() { return _s16() * 16; }             // one bar (s)
+
+  /* ── Synthetic hall reverb (no external files) ─────────── */
+
+  function _mkReverb() {
+    const conv = _ac.createConvolver();
+    const sr   = _ac.sampleRate;
+    const len  = Math.floor(sr * 3.2);
+    const ir   = _ac.createBuffer(2, len, sr);
+    for (let c = 0; c < 2; c++) {
+      const ch  = ir.getChannelData(c);
+      const er  = Math.floor(sr * 0.07); // 70ms early reflections
+      for (let i = 0; i < er; i++)
+        ch[i] = (Math.random() * 2 - 1) * (1 - i / er) * 0.28;
+      for (let i = er; i < len; i++) {
+        const t = (i - er) / (len - er);
+        ch[i]   = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.25) * 0.72;
+      }
+    }
+    conv.buffer = ir;
+    return conv;
+  }
+
+  /* ── Instruments ────────────────────────────────────────── */
+
+  function _kick(t) {
+    // Body: sine with pitch drop 160→38 Hz
+    const osc = _ac.createOscillator();
+    const g   = _ac.createGain();
+    osc.frequency.setValueAtTime(160, t);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 0.17);
+    g.gain.setValueAtTime(0.88, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    osc.connect(g); g.connect(_bus);
+    osc.start(t); osc.stop(t + 0.6);
+    // Transient click
+    const nlen = Math.floor(_ac.sampleRate * 0.007);
+    const nbuf = _ac.createBuffer(1, nlen, _ac.sampleRate);
+    const nd   = nbuf.getChannelData(0);
+    for (let i = 0; i < nlen; i++) nd[i] = Math.random() * 2 - 1;
+    const ns = _ac.createBufferSource(); ns.buffer = nbuf;
+    const ng = _ac.createGain();
+    ng.gain.setValueAtTime(0.65, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.007);
+    ns.connect(ng); ng.connect(_bus); ns.start(t);
+  }
+
+  function _snare(t) {
+    // Noise body (bandpassed, into reverb)
+    const nlen = Math.floor(_ac.sampleRate * 0.19);
+    const nbuf = _ac.createBuffer(1, nlen, _ac.sampleRate);
+    const nd   = nbuf.getChannelData(0);
+    for (let i = 0; i < nlen; i++) nd[i] = Math.random() * 2 - 1;
+    const ns = _ac.createBufferSource(); ns.buffer = nbuf;
+    const bp = _ac.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 3100; bp.Q.value = 0.65;
+    const ng = _ac.createGain();
+    ng.gain.setValueAtTime(0.52, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.19);
+    ns.connect(bp); bp.connect(ng);
+    ng.connect(_bus); ng.connect(_wet); // reverb on snare
+    ns.start(t);
+    // Tone: triangle with pitch drop (crack)
+    const osc = _ac.createOscillator(); osc.type = 'triangle';
+    osc.frequency.setValueAtTime(190, t);
+    osc.frequency.exponentialRampToValueAtTime(62, t + 0.09);
+    const tg = _ac.createGain();
+    tg.gain.setValueAtTime(0.35, t);
+    tg.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    osc.connect(tg); tg.connect(_bus);
+    osc.start(t); osc.stop(t + 0.12);
+  }
+
+  function _hihat(t, accent) {
+    const nlen = Math.floor(_ac.sampleRate * 0.038);
+    const nbuf = _ac.createBuffer(1, nlen, _ac.sampleRate);
+    const nd   = nbuf.getChannelData(0);
+    for (let i = 0; i < nlen; i++) nd[i] = Math.random() * 2 - 1;
+    const ns = _ac.createBufferSource(); ns.buffer = nbuf;
+    const hp = _ac.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 9200;
+    const g = _ac.createGain();
+    g.gain.setValueAtTime(accent ? 0.17 : 0.10, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.038);
+    ns.connect(hp); hp.connect(g); g.connect(_bus); ns.start(t);
+  }
+
+  function _bassNote(t, semi, accent) {
+    if (semi === null) return;
+    const f  = _hz(ROOT + semi);
+    const sl = _s16();
+    const osc = _ac.createOscillator(); osc.type = 'sawtooth';
+    osc.frequency.value = f;
+    // Resonant lowpass — the 303 filter
+    const flt = _ac.createBiquadFilter();
+    flt.type = 'lowpass'; flt.Q.value = accent ? 14 : 9;
+    const g = _ac.createGain();
+    const vel = accent ? 0.50 : 0.28;
+    // VCA: snappy gate (shorter than the step = gated feel)
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vel, t + 0.008);
+    g.gain.setValueAtTime(vel, t + sl * 0.60);
+    g.gain.exponentialRampToValueAtTime(0.001, t + sl * 0.76);
+    // VCF envelope: the signature 303 filter sweep
+    const base = accent ? 340 : 190;
+    const amt  = accent ? 4800 : 2100;
+    flt.frequency.setValueAtTime(base, t);
+    flt.frequency.linearRampToValueAtTime(base + amt, t + 0.010);
+    flt.frequency.exponentialRampToValueAtTime(base + 55, t + sl * 0.70);
+    osc.connect(flt); flt.connect(g);
+    g.connect(_bus); g.connect(_wet); // small reverb tail on bass
+    osc.start(t); osc.stop(t + sl + 0.06);
+  }
+
+  function _pad(t) {
+    // 9 detuned sine oscillators (3 chord tones × 3 detune layers)
+    // Heavy reverb, slow attack — pure SAW Vol II texture
+    const dur    = _barDur() * 8;  // hold 8 bars then fade
+    const attack = 3.2;
+    const rel    = 4.5;
+    const chord  = CHORDS[_chord % CHORDS.length];
+    for (const semi of chord) {
+      const freq = _hz(ROOT + 24 + semi); // 2 octaves above bass
+      for (const det of [-9, 0, 9]) {
+        const osc = _ac.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        osc.detune.value    = det;
+        const g = _ac.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.024, t + attack);
+        g.gain.setValueAtTime(0.024, Math.max(t + attack, t + dur - rel));
+        g.gain.linearRampToValueAtTime(0, t + dur);
+        osc.connect(g);
+        g.connect(_wet);  // pad is 90% reverb
+        g.connect(_bus);  // 10% dry for presence
+        osc.start(t); osc.stop(t + dur + 0.5);
+      }
+    }
+  }
+
+  /* ── Scheduler (look-ahead timing — accurate to sample) ─── */
+
+  function _schedule() {
+    // Guard: if we've fallen far behind (e.g. after mute/suspend), resync
+    if (_tick < _ac.currentTime - 0.5) {
+      _tick = _ac.currentTime + 0.1;
+      _step = 0;
+    }
+    while (_tick < _ac.currentTime + 0.12) {
+      _fire(_step, _tick);
+      _tick += _s16();
+      _step  = (_step + 1) % 16;
+      if (_step === 0) {
+        _barN++;
+        if (_barN % 8 === 0) {
+          // Advance chord, crossfade to new pad
+          _chord = (_chord + 1) % CHORDS.length;
+          _pad(_tick);
+        }
+      }
+    }
+    _tmr = setTimeout(_schedule, 20);
+  }
+
+  function _fire(s, t) {
+    // Drums — enter progressively with heat
+    if (_heat >= 28 && KICK_PAT[s])                _kick(t);
+    if (_heat >= 45 && SNARE_PAT[s])               _snare(t);
+    if (_heat >= 55 && HIHAT_PAT[s])               _hihat(t, s % 8 === 0);
+    // Acid bass — enters after kick, pattern escalates with heat
+    if (_heat >= 38) {
+      const pi = _heat < 55 ? 0 : _heat < 70 ? 1 : _heat < 85 ? 2 : 3;
+      _bassNote(t, BASS_PAT[pi][s], s === 0 || s === 8);
+    }
+  }
+
+  /* ── Public API ─────────────────────────────────────────── */
+
+  return {
+    start() {
+      if (_started) return;
+      _ac = AUDIO.getCtx();
+      // Music master bus → main compressor
+      _bus = _ac.createGain(); _bus.gain.value = 0.80;
+      _bus.connect(AUDIO.getMasterBus());
+      // Reverb chain
+      const rev    = _mkReverb();
+      _wet         = _ac.createGain(); _wet.gain.value = 0.52;
+      _wet.connect(rev);
+      const revOut = _ac.createGain(); revOut.gain.value = 0.92;
+      rev.connect(revOut); revOut.connect(_bus);
+      // Kick off
+      _started = true;
+      _tick    = _ac.currentTime + 0.4;
+      _step = 0; _barN = 0; _chord = 0;
+      _pad(_ac.currentTime + 0.4);  // first ambient pad fades in immediately
+      _schedule();
+    },
+
+    stop() {
+      if (_tmr) clearTimeout(_tmr);
+      _started = false;
+    },
+
+    setHeat(h) {
+      _heat = h;
+      _bpm  = 120 + (h / 100) * 12;  // 120 BPM cold → 132 BPM critical
+    },
   };
 })();
 
@@ -1210,8 +1490,9 @@ let inputBuf = '';
 term.onKey(({ key, domEvent }) => {
   const code = domEvent.keyCode;
 
-  // Unlock audio on first keypress (requires user gesture)
+  // Unlock audio + start music on first keypress (requires user gesture)
   AUDIO.unlock();
+  MUSIC.start();
 
   // SFX
   if (code === 13) {
@@ -1313,8 +1594,9 @@ function setHeat(value) {
   if (pct >= 75 && pct < 77) triggerGlitch(500);
   if (pct >= 90) triggerGlitch(800);
 
-  // Heat-reactive drone morph
+  // Heat-reactive drone morph + music escalation
   AUDIO.heatUpdate(pct);
+  MUSIC.setHeat(pct);
 }
 
 /* ─────────────────────────────────────────────────────────────
