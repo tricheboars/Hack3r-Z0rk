@@ -1416,7 +1416,13 @@ term.loadAddon(webLinksAddon);
 term.open(document.getElementById('terminal'));
 
 function fitTerm() {
-  fitAddon.fit();
+  try {
+    fitAddon.fit();
+  } catch (e) {
+    // Terminal element not yet rendered (e.g. still inside splash) — retry next frame
+    requestAnimationFrame(fitTerm);
+    return;
+  }
   const cols = term.cols, rows = term.rows;
   document.getElementById('term-title').textContent =
     `bash — ${STATE.currentUser}@${STATE.currentNode} — ${cols}×${rows}`;
@@ -2743,11 +2749,8 @@ function runBootSequence() {
     setTimeout(() => {
       splash.style.display = 'none';
       fitTerm();
-      // Try WebSocket — fall to demo if it fails
+      // Try WebSocket — demo mode starts automatically via ws.onclose if it fails
       connectWS();
-      setTimeout(() => {
-        if (!STATE.wsConnected) startDemoMode();
-      }, 5000);  // 5s — enough time for the WS handshake over LAN
     }, 600);
   }, delay + 200);
 }
