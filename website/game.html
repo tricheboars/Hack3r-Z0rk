@@ -723,7 +723,7 @@
   <div class="topbar-right">
     <button class="topbar-btn active" id="btn-net"    onclick="togglePanel('net')">[ network ]</button>
     <button class="topbar-btn active" id="btn-files"  onclick="togglePanel('files')">[ files ]</button>
-    <button class="topbar-btn" id="btn-mute" onclick="toggleMute()" title="Toggle audio">[ ♪ audio ]</button>
+    <button class="topbar-btn active" id="btn-mute" onclick="toggleMute()" title="Toggle audio">[ ♪ audio ]</button>
     <a href="index.html" class="topbar-btn" style="text-decoration:none;">[ ← back ]</a>
   </div>
 </div>
@@ -1003,14 +1003,19 @@ const AUDIO = (() => {
     /** Call on first user gesture to unlock AudioContext. */
     unlock() {
       _init();
-      if (ctx.state === 'suspended') ctx.resume();
+      // Only resume if not muted — respects mute state set before first keypress
+      if (!_muted && ctx.state === 'suspended') ctx.resume();
       _startDrone();
     },
 
     /** Toggle mute; returns new muted state. */
     mute() {
       _muted = !_muted;
-      if (masterGain) masterGain.gain.value = _muted ? 0 : 1.0;
+      if (ctx) {
+        // ctx.suspend/resume is the reliable way — works even if ctx isn't fully running yet
+        if (_muted) ctx.suspend();
+        else ctx.resume();
+      }
       return _muted;
     },
 
