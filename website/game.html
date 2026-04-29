@@ -1937,24 +1937,48 @@ function demoExecute(cmd) {
   // ── ls ──────────────────────────────────────────────────
   if (name === 'ls') {
     const showAll = args.includes('-a') || args.includes('-la') || args.includes('-al');
-    const entries = {
-      '.bashrc':       { type: 'file', hidden: true  },
-      '.bash_history': { type: 'file', hidden: true  },
-      '.profile':      { type: 'file', hidden: true  },
-      '.ssh':          { type: 'dir',  hidden: true  },
-      '.old_emails':   { type: 'dir',  hidden: true  },
-      '.config':       { type: 'link', hidden: true  },
-      '.dotfiles':     { type: 'dir',  hidden: true  },
-      'evidence':      { type: 'dir',  hidden: false },
-      'tools':         { type: 'dir',  hidden: false },
-      'notes':         { type: 'dir',  hidden: false },
-      'games':         { type: 'dir',  hidden: false },
-    };
-    if (args.includes('-la') || args.includes('-al') || args.includes('-l')) {
-      out = 'total 48\n';
+    const longFmt = args.includes('-la') || args.includes('-al') || args.includes('-l');
+
+    let entries;
+    if (demoCwd === '/home/user') {
+      // Root home: hardcoded so empty dirs (notes, games) and symlinks appear
+      entries = {
+        '.bashrc':       { type: 'file', hidden: true  },
+        '.bash_history': { type: 'file', hidden: true  },
+        '.profile':      { type: 'file', hidden: true  },
+        '.ssh':          { type: 'dir',  hidden: true  },
+        '.old_emails':   { type: 'dir',  hidden: true  },
+        '.config':       { type: 'link', hidden: true  },
+        '.dotfiles':     { type: 'dir',  hidden: true  },
+        'evidence':      { type: 'dir',  hidden: false },
+        'tools':         { type: 'dir',  hidden: false },
+        'notes':         { type: 'dir',  hidden: false },
+        'games':         { type: 'dir',  hidden: false },
+      };
+    } else {
+      // Subdirectory: build from DEMO_FS keys
+      const relBase = demoCwd.replace('/home/user', '').replace(/^\//, '').replace(/\/$/, '');
+      const prefix  = relBase ? relBase + '/' : '';
+      const fsKeys  = Object.keys(DEMO_FS['/home/user'] || {});
+      const seen    = new Set();
+      entries = {};
+      for (const key of fsKeys) {
+        if (!key.startsWith(prefix)) continue;
+        const rest     = key.slice(prefix.length);
+        const topLevel = rest.split('/')[0];
+        const isDir    = rest.includes('/');
+        if (topLevel && !seen.has(topLevel)) {
+          seen.add(topLevel);
+          entries[topLevel] = { type: isDir ? 'dir' : 'file', hidden: topLevel.startsWith('.') };
+        }
+      }
+    }
+
+    if (longFmt) {
+      out = 'total ' + Object.keys(entries).length * 4 + '\n';
       for (const [n, e] of Object.entries(entries)) {
         if (!showAll && e.hidden) continue;
-        const perm = e.type==='dir' ? 'drwxr-xr-x' : e.type==='link' ? 'lrwxrwxrwx' : '-rw-r--r--';
+        const perm  = e.type==='dir' ? 'drwxr-xr-x' : e.type==='link' ? 'lrwxrwxrwx' : '-rw-r--r--';
         const color = e.type==='dir' ? '\x1b[36m' : e.type==='link' ? '\x1b[35m' : '\x1b[32m';
         out += `${perm}  user  user  ${color}${n}\x1b[0m\n`;
       }
@@ -1965,15 +1989,27 @@ function demoExecute(cmd) {
         return `${color}${n}\x1b[0m`;
       }).join('  ');
     }
-    // Reveal files in sidebar
-    addDiscoveredFile({ path: '/home/user/.bash_history', name: '.bash_history', modified: '2026-03-15T02:52', owner: 'user', isNew: false });
-    addDiscoveredFile({ path: '/home/user/evidence', name: 'evidence/', isDir: true, modified: '2026-03-15T02:34', owner: 'user' });
+    // Reveal files in sidebar (only at home level)
+    if (demoCwd === '/home/user') {
+      addDiscoveredFile({ path: '/home/user/.bash_history', name: '.bash_history', modified: '2026-03-15T02:52', owner: 'user', isNew: false });
+      addDiscoveredFile({ path: '/home/user/evidence', name: 'evidence/', isDir: true, modified: '2026-03-15T02:34', owner: 'user' });
+    }
 
   // ── cat ─────────────────────────────────────────────────
   } else if (name === 'cat') {
     const target = args[0] || '';
-    const resolved = target.startsWith('/') ? target : `/home/user/${target}`;
-    const fileKey = Object.keys(DEMO_FS['/home/user']).find(k => resolved.endsWith(k) || target === k.split('/').pop());
+    // Resolve target relative to demoCwd (or absolute)
+    let resolved;
+    if (target.startsWith('/')) {
+      resolved = target;
+    } else if (target.startsWith('~')) {
+      resolved = target.replace('~', '/home/user');
+    } else {
+      resolved = demoCwd + '/' + target;
+    }
+    // Normalise away any /home/user prefix to get the FS-relative key
+    const fsRelative = resolved.replace(/^\/home\/user\/?/, '');
+    const fileKey = Object.keys(DEMO_FS['/home/user']).find(k => k === fsRelative || k.endsWith('/' + target));
     if (fileKey) {
       const f = DEMO_FS['/home/user'][fileKey];
       if (f.encrypted) {
