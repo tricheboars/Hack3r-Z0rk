@@ -42,6 +42,10 @@ hackerzork/data/music/*.mp3
 !hackerzork/data/sounds/.gitkeep
 !hackerzork/data/music/.gitkeep
 
+# Claude Code instructions (local dev only — not for repo)
+CLAUDE.md
+**/CLAUDE.md
+
 # Secrets (if any API keys end up here during dev)
 .env
 *.key
