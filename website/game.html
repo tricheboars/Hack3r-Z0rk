@@ -1502,12 +1502,15 @@ term.onKey(({ key, domEvent }) => {
   }
 
   if (STATE.wsConnected && STATE.ws) {
-    // Connected — send raw to server
+    // Connected — send raw keystroke to server (server buffers until Enter)
     STATE.ws.send(JSON.stringify({ type: 'input', data: key }));
-    // Echo locally for responsiveness (server will confirm)
-    if (code === 13) { term.write('\r\n'); }
-    else if (code === 8) { term.write('\b \b'); }
-    else { term.write(key); }
+    // Echo locally for responsiveness — but let server handle Tab (completion)
+    // and control chars; only echo printable chars, backspace, and Enter.
+    if (code === 13)      { term.write('\r\n'); }          // Enter
+    else if (code === 8)  { term.write('\b \b'); }         // Backspace
+    else if (code === 9)  { /* Tab — server sends completion suffix */ }
+    else if (code < 32)   { /* Other control chars — server responds */ }
+    else                  { term.write(key); }             // Printable
   } else {
     // Demo mode — handle locally
     if (code === 13) {

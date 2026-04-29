@@ -73,11 +73,20 @@ class GameSession:
         await self.ws.send(self._shell._prompt())
 
     async def run(self) -> None:
-        """Main async loop: receive messages, execute commands, send output."""
+        """Main async loop: buffer keystrokes, execute on Enter, tab-complete on Tab.
+
+        game.html sends one JSON message per keypress:
+            {"type": "input", "data": "<char>"}
+        We accumulate chars into line_buf and only call shell.execute() when
+        Enter arrives.  The browser handles local echo of regular chars and
+        backspace — we must NOT re-echo them or the terminal doubles up.
+        """
+        line_buf: str = ""
+        loop = asyncio.get_event_loop()
+
         async for raw_message in self.ws:
             self._last_activity = time.monotonic()
 
-            # Parse JSON input from browser (game.html protocol)
             try:
                 msg = json.loads(raw_message)
             except (json.JSONDecodeError, ValueError):
@@ -85,6 +94,7 @@ class GameSession:
 
             msg_type = msg.get("type", "input")
 
+            # ── Terminal resize ───────────────────────────────────────
             if msg_type == "resize":
                 cols = int(msg.get("cols", 220))
                 self._terminal_cols = cols
@@ -101,48 +111,81 @@ class GameSession:
                     self._shell._console = self._console
                 continue
 
-            # Input message — extract the command line
-            line = msg.get("data", "").strip()
-
-            if line in ("exit", "quit"):
-                await self.ws.send("\r\nGoodbye.\r\n")
-                return
-
-            if not line:
-                await self.ws.send("\r\n" + self._shell._prompt())
+            data = msg.get("data", "")
+            if not data:
                 continue
 
-            # Execute synchronous shell in thread pool to avoid blocking the loop
-            loop = asyncio.get_event_loop()
-            output = await loop.run_in_executor(None, self._shell.execute, line)
+            # ── Enter — execute the buffered line ─────────────────────
+            if data in ("\r", "\n"):
+                # Browser already echoed \r\n; we just need to run the command.
+                line = line_buf.strip()
+                line_buf = ""
 
-            # Drain Rich console buffer (captures any console.print() calls)
-            rich_out = self._drain_buf()
+                if line in ("exit", "quit"):
+                    await self.ws.send("\r\nGoodbye.\r\n")
+                    return
 
-            # Rich output takes precedence; return value is the fallback
-            full_output = rich_out or output or ""
-            if full_output:
-                await self.ws.send(full_output.replace("\n", "\r\n"))
+                if line:
+                    output = await loop.run_in_executor(None, self._shell.execute, line)
+                    rich_out = self._drain_buf()
+                    full_output = rich_out or output or ""
+                    if full_output:
+                        await self.ws.send(full_output.replace("\n", "\r\n"))
 
-            # SkyNet observation — may inject side-channel events
-            ctx = self._shell._ctx
-            if ctx.skynet is not None:
-                skynet_result = await ctx.skynet.maybe_intervene()
-                skynet_out = self._drain_buf()
-                if skynet_out:
-                    await self.ws.send(skynet_out.replace("\n", "\r\n"))
-                if skynet_result:
-                    await self.ws.send(json.dumps({
-                        "type": "event",
-                        "name": "skynet_alert",
-                        "payload": {"message": skynet_result, "level": 1},
-                    }))
+                    ctx = self._shell._ctx
+                    if ctx.skynet is not None:
+                        skynet_result = await ctx.skynet.maybe_intervene()
+                        skynet_out = self._drain_buf()
+                        if skynet_out:
+                            await self.ws.send(skynet_out.replace("\n", "\r\n"))
+                        if skynet_result:
+                            await self.ws.send(json.dumps({
+                                "type": "event",
+                                "name": "skynet_alert",
+                                "payload": {"message": skynet_result, "level": 1},
+                            }))
+                    await self._flush_events()
 
-            # Flush all queued side-channel events
-            await self._flush_events()
+                await self.ws.send("\r\n" + self._shell._prompt())
 
-            # Send prompt ready for next command
-            await self.ws.send("\r\n" + self._shell._prompt())
+            # ── Backspace — remove last char from buffer ───────────────
+            elif data in ("\x7f", "\x08"):
+                if line_buf:
+                    line_buf = line_buf[:-1]
+                # Browser already did the visual \b \b; nothing to send back.
+
+            # ── Tab — run completion engine ───────────────────────────
+            elif data == "\t":
+                completions = self._get_completions(line_buf)
+                if not completions:
+                    pass  # no match — do nothing
+                elif len(completions) == 1:
+                    # Single match: send only the suffix that fills the token.
+                    parts = line_buf.rsplit(" ", 1)
+                    partial = parts[-1]
+                    completion = completions[0]
+                    suffix = completion[len(partial):]
+                    line_buf = (parts[0] + " " if len(parts) > 1 else "") + completion
+                    if suffix:
+                        await self.ws.send(suffix)
+                else:
+                    # Multiple matches: print list then reprint prompt + current input.
+                    await self.ws.send("\r\n" + "  ".join(completions) + "\r\n")
+                    await self.ws.send(self._shell._prompt() + line_buf)
+
+            # ── Ctrl+C — cancel current line ──────────────────────────
+            elif data == "\x03":
+                line_buf = ""
+                await self.ws.send("^C\r\n" + self._shell._prompt())
+
+            # ── Ctrl+L — clear screen ─────────────────────────────────
+            elif data == "\x0c":
+                await self.ws.send("\x1b[2J\x1b[H" + self._shell._prompt() + line_buf)
+
+            # ── Printable character — accumulate in buffer ────────────
+            elif len(data) == 1 and ord(data) >= 32:
+                line_buf += data
+                # Browser already echoed it; nothing to send back.
 
     async def teardown(self) -> None:
         """Clean up session resources on disconnect."""
@@ -157,6 +200,21 @@ class GameSession:
             ctx.events.off("glitch_triggered", self._queue_glitch_event)
             ctx.events.off("node_changed", self._queue_prompt_event)
         log.info("session=%s  teardown", self.session_id)
+
+    def _get_completions(self, line: str) -> list[str]:
+        """Return tab-completion candidates for the current line buffer."""
+        completer = getattr(self._game, "_completer", None)
+        if completer is None:
+            return []
+        cwd = self._shell._ctx.env.get("CWD", "/home/user")
+        parts = line.split(" ")
+        if len(parts) <= 1 and not line.endswith(" "):
+            # Still typing the command name
+            return completer._command_completions(parts[0] if parts else "")
+        else:
+            # Typing a path/argument
+            partial = "" if line.endswith(" ") else parts[-1]
+            return completer._path_completions(partial, cwd)
 
     def _drain_buf(self) -> str:
         """Drain the Rich console StringIO buffer and return its contents."""
