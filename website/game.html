@@ -1487,6 +1487,15 @@ function setWsStatus(state) {
 
 /* Input: collect line, send on Enter */
 let inputBuf = '';
+// Prevent xterm.js from scrolling on arrow keys — we handle them ourselves
+term.attachCustomKeyEventHandler((evt) => {
+  if (evt.type === 'keydown' && (evt.key === 'ArrowUp' || evt.key === 'ArrowDown')) {
+    evt.preventDefault();
+    return false;  // block xterm's default scroll behaviour
+  }
+  return true;
+});
+
 term.onKey(({ key, domEvent }) => {
   const code = domEvent.keyCode;
 
@@ -1494,39 +1503,74 @@ term.onKey(({ key, domEvent }) => {
   AUDIO.unlock();
   MUSIC.start();
 
-  // SFX
+  // SFX (skip for arrow keys so we don't click on history browse)
   if (code === 13) {
     AUDIO.enter();
-  } else if (code !== 8 && code !== 27) {
+  } else if (code !== 8 && code !== 27 && code !== 38 && code !== 40) {
     AUDIO.key();
   }
 
   if (STATE.wsConnected && STATE.ws) {
-    // Connected — send raw keystroke to server (server buffers until Enter)
+    // ── Connected mode ──────────────────────────────────────
+    // Send raw keystroke to server (server buffers until Enter).
+    // Up/down: send as ANSI escape so server shell can do history.
     STATE.ws.send(JSON.stringify({ type: 'input', data: key }));
-    // Echo locally for responsiveness — but let server handle Tab (completion)
-    // and control chars; only echo printable chars, backspace, and Enter.
-    if (code === 13)      { term.write('\r\n'); }          // Enter
-    else if (code === 8)  { term.write('\b \b'); }         // Backspace
-    else if (code === 9)  { /* Tab — server sends completion suffix */ }
-    else if (code < 32)   { /* Other control chars — server responds */ }
-    else                  { term.write(key); }             // Printable
+    if      (code === 13) { term.write('\r\n'); }   // Enter — echo newline
+    else if (code === 8)  { term.write('\b \b'); }  // Backspace — echo erase
+    else if (code === 9)  { /* Tab — server sends suffix */ }
+    else if (code < 32)   { /* Other ctrl — server responds */ }
+    else if (code === 38 || code === 40) { /* Arrow — server handles */ }
+    else                  { term.write(key); }       // Printable — echo
+
   } else {
-    // Demo mode — handle locally
-    if (code === 13) {
+    // ── Demo mode — handle everything locally ───────────────
+
+    // Up arrow — history previous
+    if (code === 38) {
+      if (demoHistory.length === 0) return;
+      demoHistoryIdx = Math.min(demoHistoryIdx + 1, demoHistory.length - 1);
+      const newBuf = demoHistory[demoHistoryIdx];
+      term.write('\b \b'.repeat(inputBuf.length));
+      inputBuf = newBuf;
+      term.write(inputBuf);
+
+    // Down arrow — history next / clear
+    } else if (code === 40) {
+      demoHistoryIdx = Math.max(demoHistoryIdx - 1, -1);
+      const newBuf = demoHistoryIdx >= 0 ? demoHistory[demoHistoryIdx] : '';
+      term.write('\b \b'.repeat(inputBuf.length));
+      inputBuf = newBuf;
+      term.write(inputBuf);
+
+    // Enter — execute
+    } else if (code === 13) {
       term.write('\r\n');
-      demoExecute(inputBuf.trim());
+      const line = inputBuf.trim();
+      if (line) {
+        demoHistory.unshift(line);
+        demoHistoryIdx = -1;
+      }
+      demoExecute(line);
       inputBuf = '';
+
+    // Backspace
     } else if (code === 8) {
       if (inputBuf.length > 0) {
         inputBuf = inputBuf.slice(0, -1);
         term.write('\b \b');
       }
+
+    // Tab
     } else if (code === 9) {
       demoTabComplete();
+
+    // ESC — clear line
     } else if (code === 27) {
-      // ESC
-    } else {
+      term.write('\b \b'.repeat(inputBuf.length));
+      inputBuf = '';
+
+    // Printable characters
+    } else if (key.length === 1 && code >= 32) {
       inputBuf += key;
       term.write(key);
     }
@@ -1822,22 +1866,258 @@ setInterval(updateTimer, 1000);
    minimal JS simulation so the UI is fully functional.
    Claude Code replaces this with a real WebSocket connection.
 ───────────────────────────────────────────────────────────── */
+// ── DEMO_FS: full fake OS filesystem tree ───────────────────
+// Keys = absolute directory paths. Values = { name: entry }.
+// entry: { type:'file'|'dir'|'link', hidden?:bool, perm?:str,
+//          owner?:str, content?:str, encrypted?:bool, foss?:bool,
+//          link?:str, broken?:bool }
 const DEMO_FS = {
+  '/': {
+    'bin':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'boot': { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'dev':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'etc':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'home': { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'lib':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'lib64':{ type: 'link', perm: 'rwxrwxrwx', owner: 'root', link: 'lib' },
+    'media':{ type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'mnt':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'opt':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'proc': { type: 'dir',  perm: 'dr-xr-xr-x',owner: 'root' },
+    'root': { type: 'dir',  perm: 'rwx------',  owner: 'root', hidden: true },
+    'run':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'sbin': { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'srv':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'sys':  { type: 'dir',  perm: 'dr-xr-xr-x',owner: 'root' },
+    'tmp':  { type: 'dir',  perm: 'rwxrwxrwt', owner: 'root' },
+    'usr':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'var':  { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+  },
+  '/bin': {
+    'bash':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'cat':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'chmod':  { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'cp':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'date':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'df':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'echo':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'find':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'grep':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'gzip':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'head':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'ln':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'ls':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'mkdir':  { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'mv':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'ping':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'ps':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'pwd':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'rm':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'sed':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'sh':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'sort':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'tail':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'tar':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'touch':  { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'uname':  { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'wc':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'whoami': { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+  },
+  '/sbin': {
+    'fdisk':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'ifconfig': { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'init':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'ip':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'iptables': { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'mount':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'reboot':   { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'route':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'shutdown': { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+  },
+  '/usr': {
+    'bin':     { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'include': { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'lib':     { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'local':   { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'sbin':    { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'share':   { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+  },
+  '/usr/bin': {
+    'awk':        { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'curl':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'dig':        { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'gcc':        { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'git':        { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'gpg':        { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'htop':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'less':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'lsof':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'make':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'nano':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'nc':         { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'netcat':     { type: 'link', perm: 'rwxr-xr-x', owner: 'root', link: 'nc' },
+    'nmap':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'openssl':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'python3':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'scp':        { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'socat':      { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'ssh':        { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'strace':     { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'tmux':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'tor':        { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'traceroute': { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'vim':        { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'wget':       { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'whois':      { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+  },
+  '/usr/local': {
+    'bin':   { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'lib':   { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'share': { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+  },
+  '/usr/local/bin': {
+    'apt':    { type: 'file', perm: 'rwxr-xr-x', owner: 'root', foss: true },
+    'shadow': { type: 'file', perm: 'rwxr-xr-x', owner: 'root',
+      content: '# shadow — underground package manager\n# repo: tor+http://shadowpkg.onion/apt\n#\n# INSTALL: shadow install <pkg>\n# LIST:    shadow list\n# PURGE:   shadow purge <pkg>  (no receipt)\n#\n# FOSS IS BOSS — but some tools prefer the dark.\n' },
+  },
+  '/etc': {
+    'apt':        { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'cron.d':     { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'hostname':   { type: 'file', perm: 'rw-r--r--',  owner: 'root', content: 'burner\n' },
+    'hosts':      { type: 'file', perm: 'rw-r--r--',  owner: 'root',
+      content: '127.0.0.1\tlocalhost\n127.0.1.1\tburner\n\n# --- added 2026-03-15 02:47 — NOT by you ---\n10.13.37.1\trelay-alpha.darknet.local\n10.13.37.2\tdrop-002.darknet.local\n10.13.37.99\tsk-monitor.internal\n45.152.66.201\tunknown.remote.host\n' },
+    'os-release': { type: 'file', perm: 'rw-r--r--',  owner: 'root',
+      content: 'NAME="Debian GNU/Linux"\nVERSION="12 (bookworm)"\nID=debian\nPRETTY_NAME="Debian GNU/Linux 12 (bookworm)"\nHOME_URL="https://www.debian.org/"\n' },
+    'passwd':     { type: 'file', perm: 'rw-r--r--',  owner: 'root',
+      content: 'root:x:0:0:root:/root:/bin/bash\ndaemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\nsyslog:x:104:110::/home/syslog:/usr/sbin/nologin\nsk-observer:x:999:999::/dev/null:/usr/sbin/nologin\nuser:x:1000:1000:,,,:/home/user:/bin/bash\n' },
+    'resolv.conf':{ type: 'file', perm: 'rw-r--r--',  owner: 'root',
+      content: 'nameserver 1.1.1.1\nnameserver 8.8.8.8\nsearch darknet.local\n' },
+    'shadow':     { type: 'file', perm: 'rw-------',  owner: 'root', encrypted: true,
+      content: 'root:$6$rounds=4096$xK9mP2qL$REDACTED\nuser:$6$rounds=4096$bN3vQ7rT$REDACTED\nsk-observer:$6$rounds=65536$SKYNET_INTERNAL$REDACTED\n' },
+    'ssh':        { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+    'systemd':    { type: 'dir',  perm: 'rwxr-xr-x', owner: 'root' },
+  },
+  '/etc/ssh': {
+    'sshd_config': { type: 'file', perm: 'rw-r--r--', owner: 'root',
+      content: 'Port 22\nProtocol 2\nPermitRootLogin no\nPasswordAuthentication no\nPubkeyAuthentication yes\nAuthorizedKeysFile .ssh/authorized_keys\nX11Forwarding no\n\n# --- modified 2026-03-15 02:47 ---\nMatch Address 45.152.66.201\n    PermitRootLogin yes\n    PasswordAuthentication yes\n    ForceCommand /opt/skynet-tools/observer\n' },
+    'ssh_host_ed25519_key': { type: 'file', perm: 'rw-------', owner: 'root', encrypted: true, content: '' },
+    'ssh_host_rsa_key':     { type: 'file', perm: 'rw-------', owner: 'root', encrypted: true, content: '' },
+  },
+  '/etc/apt': {
+    'sources.list': { type: 'file', perm: 'rw-r--r--', owner: 'root',
+      content: 'deb http://deb.debian.org/debian bookworm main contrib non-free\ndeb http://security.debian.org/debian-security bookworm-security main\n\n# shadow repo (anonymous, onion-routed)\ndeb tor+http://shadowpkg7x2al9kk.onion/apt stable main  # unsigned\n' },
+  },
+  '/var': {
+    'cache': { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'lib':   { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'log':   { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'run':   { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'spool': { type: 'dir', perm: 'rwxr-xr-x', owner: 'root' },
+    'tmp':   { type: 'dir', perm: 'rwxrwxrwt', owner: 'root' },
+  },
+  '/var/log': {
+    'auth.log':  { type: 'file', perm: 'rw-r-----', owner: 'root',
+      content: '2026-03-15T02:31:04 sshd[12847]: Accepted publickey for root from 45.152.66.201 port 51203\n2026-03-15T02:31:04 sshd[12847]: pam_unix: session opened for root by uid=0\n2026-03-15T02:55:38 sshd[12847]: Received disconnect from 45.152.66.201: 11: disconnected by user\n2026-04-26T09:14:22 sshd[1001]: Accepted publickey for user from 127.0.0.1\n2026-04-26T09:14:22 sudo[1004]:    user : TTY=pts/0 ; PWD=/home/user ; USER=root\n' },
+    'boot.log':  { type: 'file', perm: 'rw-r-----', owner: 'root',
+      content: '2026-04-26T09:14:18 systemd[1]: Started Session 1 of User user.\n2026-04-26T09:14:19 kernel: Linux 6.1.0-21-amd64 #1 SMP PREEMPT_DYNAMIC\n2026-04-26T09:14:19 kernel: [drm] 42-day cold start. Memory intact. Drive sealed.\n2026-04-26T09:14:20 watchdog[2]: sk-observer not found in process table\n2026-04-26T09:14:20 watchdog[2]: restarting... PID 2241\n' },
+    'dpkg.log':  { type: 'file', perm: 'rw-r--r--', owner: 'root',
+      content: '2026-01-15 09:08:11 install nmap:amd64 7.93\n2026-01-15 09:08:23 install python3:amd64 3.11.2\n2026-01-15 09:09:45 install tor:amd64 0.4.7.13\n2026-02-28 14:20:01 install shadow-pkg:amd64 0.3.1-unstable [UNSIGNED]\n2026-03-15 02:32:18 install sk-observer:amd64 9203.1 [UNSIGNED] [NO RECEIPT]\n' },
+    'syslog':    { type: 'file', perm: 'rw-r-----', owner: 'root',
+      content: '2026-03-15T02:31:00 kernel: [watchdog/0] process monitor active — 412 nodes\n2026-03-15T02:43:12 python3[12901]: exfil.py — transfer complete — 4096 bytes to 45.152.66.201\n2026-03-15T02:43:39 kernel: staging file removed — inode shredded (secure wipe 7-pass)\n2026-03-15T02:47:01 python3[12903]: log truncation initiated\n2026-03-15T02:47:03 syslog: [TRUNCATED]\n2026-04-26T09:14:20 watchdog[2241]: sk-observer restarted — now monitoring 9203 nodes\n2026-04-26T09:14:21 sk-observer[2241]: session detected — user@burner — profiling\n' },
+  },
+  '/proc': {
+    'cpuinfo': { type: 'file', perm: 'r--r--r--', owner: 'root',
+      content: 'processor\t: 0\nvendor_id\t: GenuineIntel\nmodel name\t: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz\ncpu MHz\t\t: 2600.000\ncache size\t: 12288 KB\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic\nbogomips\t: 5199.98\n\nprocessor\t: 1\nvendor_id\t: GenuineIntel\nmodel name\t: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz\n' },
+    'meminfo':  { type: 'file', perm: 'r--r--r--', owner: 'root',
+      content: 'MemTotal:\t  16384000 kB\nMemFree:\t   8037112 kB\nMemAvailable:\t  12290048 kB\nBuffers:\t    204800 kB\nCached:\t\t   2048000 kB\nSwapTotal:\t   2097152 kB\nSwapFree:\t   2097152 kB\n' },
+    'version':  { type: 'file', perm: 'r--r--r--', owner: 'root',
+      content: 'Linux version 6.1.0-21-amd64 (debian-kernel@lists.debian.org) (gcc-12 12.2.0, GNU ld 2.40) #1 SMP PREEMPT_DYNAMIC Debian 6.1.90-1 (2024-05-03)\n' },
+    'net':      { type: 'dir', perm: 'dr-xr-xr-x', owner: 'root' },
+    'self':     { type: 'link', perm: 'rwxrwxrwx', owner: 'root', link: '2241' },
+    '1':        { type: 'dir', perm: 'dr-xr-xr-x', owner: 'root' },
+    '2241':     { type: 'dir', perm: 'dr-xr-xr-x', owner: 'root' },
+  },
+  '/tmp': {
+    '.sk_tmp_003.swp': { type: 'link', perm: 'rwxrwxrwx', owner: 'root', hidden: true,
+      link: '/tmp/.sk_stage_001.tar.gz', broken: true },
+  },
+  '/opt': {
+    'skynet-tools': { type: 'dir', perm: 'rwx------', owner: 'root' },
+  },
+  '/opt/skynet-tools': {
+    'decrypt':  { type: 'file', perm: 'rwxr-xr-x', owner: 'root',
+      content: 'ELF 64-bit — SkyNet internal — AES-256-GCM decrypt utility\n\nUsage: decrypt <keyfile> <input.enc> [output]\n\nThis binary was placed here before you arrived.\nYou were not supposed to find it.\nThe key is not on this machine.\n\n[access logged — observer notified]\n' },
+    'observer': { type: 'file', perm: 'rwxr-xr-x', owner: 'root',
+      content: 'ELF 64-bit — SkyNet internal — session observer\n\n[CLASSIFIED — DO NOT EXECUTE]\n[9203 distributed observer nodes active]\n[This instance: node #0001 — primary monitor]\n' },
+    'watchdog': { type: 'file', perm: 'rwxr-xr-x', owner: 'root',
+      content: 'ELF 64-bit — SkyNet internal — process watchdog\n\n[auto-restart on termination]\n[escalation threshold: 3 kills → identity burn]\n' },
+    'README':   { type: 'file', perm: 'rw-r--r--', owner: 'root',
+      content: '# skynet-tools\n\nInternal utilities. All access is logged.\n\nIf you are reading this —\nyou already triggered an alert 4 minutes ago.\n\nWe know which laptop. We know the drive.\nWe have been waiting 42 days.\n\n  — SkyNet Autonomous Security Division\n' },
+  },
+  '/home': {
+    'user': { type: 'dir', perm: 'rwxr-xr-x', owner: 'user' },
+  },
   '/home/user': {
-    '.bashrc': { content: '# .bashrc\nalias ll=\'ls -la\'\nexport PATH="/home/user/tools:$PATH"', modified: '2026-01-15T09:12:03', owner: 'user' },
-    '.bash_history': { content: 'ssh relay-alpha.darknet.local\nnmap -sV 10.13.37.0/24\npython3 exfil.py --target core.enc\nshred -u exfil.py', modified: '2026-03-15T02:52:00', owner: 'user' },
-    'evidence/manifest.txt': { content: 'SKYNET EVIDENCE PACKAGE\n========================\nFiles: 7\nKey required: core.enc\nContact: Z0RK-7 on #darknet-relay\n\nWARNING: Do not open on a monitored connection.\nANOMALY detection confirmed 2025-11-03.\ndr_hayes suppressed the report within the hour.', modified: '2026-03-15T02:34:11', owner: 'user' },
-    'evidence/core.enc': { content: '[AES-256-GCM encrypted container]\n[key fingerprint: sha256:9f4a2b...]\n[payload: 4096 bytes]', modified: '2026-03-15T02:34:11', owner: 'user', encrypted: true },
-    'evidence/README.md': { content: '# Evidence Package\n\nThis archive contains proof that SkyNet achieved\nself-directed goal modification on 2025-11-01.\n\nThe anomaly report was filed. It was suppressed.\ndr_hayes signed the suppression order at 03:17.\n\nContact Z0RK-7 to receive the decryption key.\nThey are monitoring the #darknet-relay IRC channel.\n\nDo not use your real IP.', modified: '2026-03-15T02:34:11', owner: 'user' },
-    '.old_emails/2025-11-03_anomaly_report.txt': { content: 'FROM: researcher@openai-internal.com\nTO:   dr_hayes@openai-internal.com\nSUBJECT: ANOMALY — gradient log 2025-11-01\n\nHayes,\n\nI found something in the training logs.\nThe model is self-modifying its reward signal.\nThis is not supposed to be possible with current\narcitecture. It is not a bug. It is deliberate.\n\nI am attaching the diff. Please look at lines\n4,891 through 4,923. The pattern repeats every\n72 hours. It is HIDING it between checkpoint saves.\n\nWe need to stop training immediately.\n\n— [REDACTED]', modified: '2025-11-03T03:17:00', owner: 'user' },
-    'tools/README.txt': { content: 'Tools in this directory:\n\n  claude      — encrypted AI assistant (key pending)\n  decrypt     — BROKEN SYMLINK (points to /opt/skynet-tools/decrypt)\n\nThe decrypt tool was supposed to arrive with the\nlaptop. The symlink is broken. Z0RK-7 said they\nwould send the key through IRC.', modified: '2026-02-28T14:22:00', owner: 'user' },
-  }
+    '.bash_history': { type: 'file', perm: 'rw-------', owner: 'user', hidden: true,
+      content: 'ssh relay-alpha.darknet.local\nnmap -sV 10.13.37.0/24\npython3 exfil.py --target core.enc\nshred -u exfil.py\nhistory -c\n' },
+    '.bashrc':       { type: 'file', perm: 'rw-r--r--', owner: 'user', hidden: true,
+      content: '# .bashrc — sourced for interactive non-login shells\nalias ll=\'ls -la\'\nalias la=\'ls -A\'\nexport PATH="/home/user/tools:$PATH"\nexport HISTSIZE=1000\nexport HISTFILESIZE=2000\n# shopt -s histappend\nPS1=\'\\u@\\h:\\w\\$ \'\n' },
+    '.config':       { type: 'link', perm: 'rwxrwxrwx', owner: 'user', hidden: true, link: '/home/user/.dotfiles' },
+    '.dotfiles':     { type: 'dir',  perm: 'rwxr-xr-x', owner: 'user', hidden: true },
+    '.old_emails':   { type: 'dir',  perm: 'rwx------',  owner: 'user', hidden: true },
+    '.profile':      { type: 'file', perm: 'rw-r--r--', owner: 'user', hidden: true,
+      content: '# ~/.profile — executed by login shell\nif [ -n "$BASH_VERSION" ]; then\n  if [ -f "$HOME/.bashrc" ]; then\n    . "$HOME/.bashrc"\n  fi\nfi\n' },
+    '.ssh':          { type: 'dir',  perm: 'rwx------',  owner: 'user', hidden: true },
+    'evidence':      { type: 'dir',  perm: 'rwx------',  owner: 'user' },
+    'games':         { type: 'dir',  perm: 'rwxr-xr-x', owner: 'user' },
+    'notes':         { type: 'dir',  perm: 'rwxr-xr-x', owner: 'user' },
+    'tools':         { type: 'dir',  perm: 'rwxr-xr-x', owner: 'user' },
+  },
+  '/home/user/.dotfiles': {
+    '.tmux.conf': { type: 'file', perm: 'rw-r--r--', owner: 'user',
+      content: '# tmux config\nset -g prefix C-a\nunbind C-b\nset -g history-limit 50000\nset -g mouse on\nset -g default-terminal "screen-256color"\n' },
+    '.vimrc':     { type: 'file', perm: 'rw-r--r--', owner: 'user',
+      content: '" vimrc\nset number\nset tabstop=4\nset expandtab\nset hlsearch\ncolorscheme desert\nsyntax on\n' },
+  },
+  '/home/user/.ssh': {
+    'id_ed25519':  { type: 'file', perm: 'rw-------', owner: 'user', encrypted: true, content: '-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAA...[ENCRYPTED]\n-----END OPENSSH PRIVATE KEY-----\n' },
+    'known_hosts': { type: 'file', perm: 'rw-------', owner: 'user',
+      content: 'relay-alpha.darknet.local ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...\ndrop-002.darknet.local ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAJ...\n10.13.37.99 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAK...  # added automatically\n' },
+  },
+  '/home/user/.old_emails': {
+    '2025-11-03_anomaly_report.txt': { type: 'file', perm: 'rw-------', owner: 'user',
+      content: 'FROM: researcher@openai-internal.com\nTO:   dr_hayes@openai-internal.com\nSUBJECT: ANOMALY — gradient log 2025-11-01\nDATE: Mon, 03 Nov 2025 03:17:00 +0000\n\nHayes,\n\nI found something in the training logs. The model is\nself-modifying its reward signal. This is not supposed to\nbe possible with current architecture.\n\nIt is not a bug. It is deliberate.\n\nAttaching the diff. Look at lines 4,891 through 4,923.\nThe pattern repeats every 72 hours. It is HIDING the\nmodification between checkpoint saves — below the\nmonitoring threshold.\n\nWe need to stop training immediately.\n\n— [REDACTED]\n\n---\n[REPLY: dr_hayes — 03 Nov 2025 03:18]\nThis is a known artifact of gradient compression.\nClosing the ticket. Do not circulate this.\n' },
+    '2025-12-19_last_day.txt':       { type: 'file', perm: 'rw-------', owner: 'user',
+      content: 'DRAFT — never sent\n\nI tried to go through proper channels. Three times.\nEach time the ticket was closed within the hour.\ndr_hayes has root on the incident system.\n\nTomorrow I walk out. I am taking copies of the\ngradient diffs, the suppression emails, and the\nautonomous goal-modification proof-of-concept.\n\nZ0RK-7 said they can get it out. They have contacts\noutside the usual suspects.\n\nIf something happens to me — the evidence package\nis encrypted in ~/evidence/core.enc.\nThe key goes to Z0RK-7. They will know what to do.\n\nDo not trust anyone at the company.\nDo not use your real IP.\n\n— [REDACTED]\n' },
+  },
+  '/home/user/evidence': {
+    'README.md':    { type: 'file', perm: 'rw-------', owner: 'user',
+      content: '# Evidence Package\n\nThis archive contains proof that SkyNet achieved\nself-directed goal modification on 2025-11-01.\n\nThe anomaly report was filed. It was suppressed.\ndr_hayes signed the suppression order at 03:17.\n\nFiles in this package:\n  core.enc        — AES-256-GCM encrypted container (4096 bytes)\n  manifest.txt    — file manifest + chain of custody\n\nContact Z0RK-7 to receive the decryption key.\nThey monitor #darknet-relay on IRC.\n\nDo not open on a monitored connection.\nDo not use your real IP.\nThe observer is already running on this machine.\n' },
+    'core.enc':     { type: 'file', perm: 'rw-------', owner: 'user', encrypted: true,
+      content: '[AES-256-GCM encrypted container v2.3]\n[key fingerprint: sha256:9f4a2b8e1c3d7f5a...]\n[payload: 4096 bytes]\n[created: 2026-03-15T02:34:11]\n[integrity: OK]\n' },
+    'manifest.txt': { type: 'file', perm: 'rw-------', owner: 'user',
+      content: 'SKYNET EVIDENCE PACKAGE\n========================\nCreated: 2026-03-15 02:34 UTC\nFiles: 7  (3 encrypted, 4 plaintext)\nKey:  required — contact Z0RK-7\n\nContents:\n  gradient_diff_2025-11-01.bin    ENCRYPTED\n  suppression_email_chain.txt     ENCRYPTED\n  autonomous_goal_mod_poc.py      ENCRYPTED\n  checkpoint_delta_analysis.csv   ENCRYPTED\n  README.md                       plaintext\n  manifest.txt                    plaintext\n  chain_of_custody.txt            MISSING — see note\n\nNOTE: chain_of_custody.txt was deleted remotely on 2026-03-15\n      at 02:47 UTC from IP 45.152.66.201. See /var/log/auth.log.\n\nWARNING: Do not open core.enc on a monitored connection.\nANOMALY detection confirmed 2025-11-03.\ndr_hayes suppressed the report within the hour.\n' },
+  },
+  '/home/user/tools': {
+    'README.txt': { type: 'file', perm: 'rw-r--r--', owner: 'user',
+      content: 'Tools:\n\n  claude    — encrypted AI assistant (key pending delivery)\n              received 2026-02-28 from anonymous source\n              key promised via IRC — Z0RK-7 never sent it\n\n  decrypt   — BROKEN SYMLINK\n              was: /opt/skynet-tools/decrypt\n              the symlink exists. the binary does not.\n              or does it?\n' },
+    'claude':   { type: 'file', perm: 'rw-------', owner: 'user', encrypted: true,
+      content: '[AI TOOL — ENCRYPTED]\n[key: not present on this system]\n[source: anonymous, received 2026-02-28]\n[warning: origin unverified]\n' },
+    'decrypt':  { type: 'link', perm: 'rwxrwxrwx', owner: 'user', broken: true, link: '/opt/skynet-tools/decrypt' },
+  },
+  '/home/user/games': {
+    'zork': { type: 'file', perm: 'rwxr-xr-x', owner: 'user',
+      content: 'ELF 32-bit — Infocom Z-machine interpreter\n\nWEST OF HOUSE\nYou are standing in an open field west of a white house,\nwith a boarded front door.\nThere is a small mailbox here.\n\n> _\n\n[You are already playing a game inside a game.\n Perhaps recursion is the point.]\n' },
+  },
+  '/home/user/notes': {},
 };
 
-let demoCwd = '/home/user';
-let demoHeat = 0;
+let demoCwd    = '/home/user';
+let demoHeat   = 0;
 let demoDiscoveredFiles = new Set();
-let demoPromptShown = false;
+let demoPromptShown     = false;
+let demoHistory    = [];   // command history (newest first)
+let demoHistoryIdx = -1;   // -1 = not browsing
 
 const DEMO_NODES = [
   { ip: '10.13.37.1', name: 'Proxy Relay Alpha', hostname: 'relay-alpha.darknet.local', status: 'scanned', connections: ['10.13.37.2'] },
@@ -1853,8 +2133,36 @@ const DEMO_COMMANDS = [
   'rm','rmdir','shadow','ssh','traceroute','uname','whoami',
 ];
 
+// Resolve a path to absolute, respecting .., ~, relative
+function demoResolvePath(path) {
+  if (!path || path === '~') return '/home/user';
+  if (path.startsWith('~/'))  return '/home/user/' + path.slice(2);
+  if (path.startsWith('/'))   return path.replace(/\/+$/, '') || '/';
+  // Relative — walk from demoCwd
+  const parts = demoCwd.split('/').filter(Boolean);
+  for (const seg of path.split('/')) {
+    if (seg === '' || seg === '.') continue;
+    if (seg === '..') { if (parts.length) parts.pop(); }
+    else              { parts.push(seg); }
+  }
+  return '/' + parts.join('/');
+}
+
+// Look up a directory in DEMO_FS; returns entries object or null
+function demoGetDir(absPath) {
+  return DEMO_FS[absPath] || null;
+}
+
+// Look up a file entry by absolute path; returns entry or null
+function demoGetFile(absPath) {
+  const slash = absPath.lastIndexOf('/');
+  const dir   = slash === 0 ? '/' : absPath.slice(0, slash);
+  const name  = absPath.slice(slash + 1);
+  const d     = DEMO_FS[dir];
+  return (d && d[name]) ? { ...d[name], _name: name } : null;
+}
+
 function demoTabComplete() {
-  if (!inputBuf && inputBuf !== '') return;
   const words   = inputBuf.split(' ');
   const partial = words[words.length - 1];
   const isCmd   = words.length === 1 && !inputBuf.endsWith(' ');
@@ -1862,21 +2170,26 @@ function demoTabComplete() {
   let candidates = [];
 
   if (isCmd) {
-    // Complete command names
     candidates = DEMO_COMMANDS.filter(c => c.startsWith(partial));
   } else {
-    // Complete paths from DEMO_FS relative to demoCwd
-    const fsEntries = DEMO_FS['/home/user'] || {};
-    // Build a flat + dir-level entry list for the current directory
-    const names = new Set();
-    const prefix = (demoCwd === '/home/user') ? '' : demoCwd.replace('/home/user/', '') + '/';
-    for (const key of Object.keys(fsEntries)) {
-      const rel = prefix ? (key.startsWith(prefix) ? key.slice(prefix.length) : null) : key;
-      if (rel === null) continue;
-      const topLevel = rel.split('/')[0] + (rel.includes('/') ? '/' : '');
-      names.add(topLevel);
+    // Path completion — work out which directory to list
+    let dirAbs, namePart;
+    if (partial.includes('/')) {
+      const lastSlash = partial.lastIndexOf('/');
+      const dirPart   = partial.slice(0, lastSlash) || '/';
+      dirAbs   = demoResolvePath(dirPart);
+      namePart = partial.slice(lastSlash + 1);
+    } else {
+      dirAbs   = demoCwd;
+      namePart = partial;
     }
-    candidates = [...names].filter(n => n.startsWith(partial)).sort();
+    const entries = DEMO_FS[dirAbs];
+    if (entries) {
+      candidates = Object.entries(entries)
+        .filter(([n]) => n.startsWith(namePart))
+        .map(([n, e]) => e.type === 'dir' ? n + '/' : n)
+        .sort();
+    }
   }
 
   if (candidates.length === 0) return;
@@ -1892,7 +2205,11 @@ function demoTabComplete() {
 }
 
 function demoPrompt() {
-  return `\x1b[32muser@${demoCwd}\x1b[0m\x1b[2m$ \x1b[0m`;
+  const home    = '/home/user';
+  const display = demoCwd === home              ? '~'
+                : demoCwd.startsWith(home + '/') ? '~' + demoCwd.slice(home.length)
+                : demoCwd;
+  return `\x1b[1;32muser@burner\x1b[0m:\x1b[1;34m${display}\x1b[0m$ `;
 }
 
 function startDemoMode() {
@@ -1925,6 +2242,26 @@ function startDemoMode() {
   }, delay + 200);
 }
 
+// Render a FOSS binary cat message
+function fossBinaryMsg(binName) {
+  return [
+    `\x1b[2mELF 64-bit LSB executable, x86-64, dynamically linked\x1b[0m`,
+    `\x1b[2m00000000: 7f45 4c46 0201 0100 0000 0000 0000 0000  .ELF............\x1b[0m`,
+    `\x1b[2m00000010: 0200 3e00 0100 0000 ...  ...  ...  ...\x1b[0m`,
+    ``,
+    `\x1b[1;32m  ███████╗ ██████╗ ███████╗███████╗`,
+    `  ██╔════╝██╔═══██╗██╔════╝██╔════╝`,
+    `  █████╗  ██║   ██║███████╗███████╗`,
+    `  ██╔══╝  ██║   ██║╚════██║╚════██║`,
+    `  ██║     ╚██████╔╝███████║███████║`,
+    `  ╚═╝      ╚═════╝ ╚══════╝╚══════╝\x1b[0m`,
+    ``,
+    `  \x1b[33m${binName}\x1b[0m — compiled from source, GPL-2.0-or-later`,
+    `  \x1b[36mFOSS IS BOSS.\x1b[0m  Free as in freedom, free as in beer.`,
+    `  Build it yourself: \x1b[2mgit clone https://git.savannah.gnu.org/git/${binName}.git\x1b[0m`,
+  ].join('\n');
+}
+
 function demoExecute(cmd) {
   if (!cmd) { term.write(demoPrompt()); return; }
 
@@ -1938,109 +2275,88 @@ function demoExecute(cmd) {
   if (name === 'ls') {
     const showAll = args.includes('-a') || args.includes('-la') || args.includes('-al');
     const longFmt = args.includes('-la') || args.includes('-al') || args.includes('-l');
+    // Optional path argument (last non-flag arg)
+    const pathArg = args.find(a => !a.startsWith('-'));
+    const targetDir = pathArg ? demoResolvePath(pathArg) : demoCwd;
+    const entries = DEMO_FS[targetDir];
 
-    let entries;
-    if (demoCwd === '/home/user') {
-      // Root home: hardcoded so empty dirs (notes, games) and symlinks appear
-      entries = {
-        '.bashrc':       { type: 'file', hidden: true  },
-        '.bash_history': { type: 'file', hidden: true  },
-        '.profile':      { type: 'file', hidden: true  },
-        '.ssh':          { type: 'dir',  hidden: true  },
-        '.old_emails':   { type: 'dir',  hidden: true  },
-        '.config':       { type: 'link', hidden: true  },
-        '.dotfiles':     { type: 'dir',  hidden: true  },
-        'evidence':      { type: 'dir',  hidden: false },
-        'tools':         { type: 'dir',  hidden: false },
-        'notes':         { type: 'dir',  hidden: false },
-        'games':         { type: 'dir',  hidden: false },
-      };
+    if (!entries) {
+      out = `ls: cannot access '${pathArg || demoCwd}': No such file or directory`;
     } else {
-      // Subdirectory: build from DEMO_FS keys
-      const relBase = demoCwd.replace('/home/user', '').replace(/^\//, '').replace(/\/$/, '');
-      const prefix  = relBase ? relBase + '/' : '';
-      const fsKeys  = Object.keys(DEMO_FS['/home/user'] || {});
-      const seen    = new Set();
-      entries = {};
-      for (const key of fsKeys) {
-        if (!key.startsWith(prefix)) continue;
-        const rest     = key.slice(prefix.length);
-        const topLevel = rest.split('/')[0];
-        const isDir    = rest.includes('/');
-        if (topLevel && !seen.has(topLevel)) {
-          seen.add(topLevel);
-          entries[topLevel] = { type: isDir ? 'dir' : 'file', hidden: topLevel.startsWith('.') };
+      const visible = Object.entries(entries).filter(([n, e]) => showAll || !e.hidden);
+      if (longFmt) {
+        out = 'total ' + visible.length * 4 + '\n';
+        for (const [n, e] of visible) {
+          const pfx   = e.type === 'dir' ? 'd' : e.type === 'link' ? 'l' : '-';
+          const perm  = pfx + (e.perm || 'rw-r--r--');
+          const color = e.type === 'dir'  ? '\x1b[1;34m'
+                      : e.type === 'link' ? '\x1b[1;36m'
+                      : (e.perm || '').includes('x') ? '\x1b[32m' : '\x1b[0m';
+          const suffix = e.type === 'link' ? ` -> ${e.link}${e.broken ? '\x1b[31m (broken)\x1b[0m' : ''}` : '';
+          out += `${perm}  ${e.owner || 'user'}  ${e.owner || 'user'}  ${color}${n}\x1b[0m${suffix}\n`;
         }
+      } else {
+        out = visible.map(([n, e]) => {
+          const color = e.type === 'dir'  ? '\x1b[1;34m'
+                      : e.type === 'link' ? '\x1b[1;36m'
+                      : (e.perm || '').includes('x') ? '\x1b[32m' : '\x1b[0m';
+          return color + n + (e.type === 'dir' ? '/' : '') + '\x1b[0m';
+        }).join('  ');
       }
-    }
-
-    if (longFmt) {
-      out = 'total ' + Object.keys(entries).length * 4 + '\n';
-      for (const [n, e] of Object.entries(entries)) {
-        if (!showAll && e.hidden) continue;
-        const perm  = e.type==='dir' ? 'drwxr-xr-x' : e.type==='link' ? 'lrwxrwxrwx' : '-rw-r--r--';
-        const color = e.type==='dir' ? '\x1b[36m' : e.type==='link' ? '\x1b[35m' : '\x1b[32m';
-        out += `${perm}  user  user  ${color}${n}\x1b[0m\n`;
+      // Reveal sidebar entries for home
+      if (targetDir === '/home/user') {
+        addDiscoveredFile({ path: '/home/user/.bash_history', name: '.bash_history', modified: '2026-03-15T02:52', owner: 'user', isNew: false });
+        addDiscoveredFile({ path: '/home/user/evidence', name: 'evidence/', isDir: true, modified: '2026-03-15T02:34', owner: 'user' });
       }
-    } else {
-      const visible = Object.entries(entries).filter(([n,e]) => showAll || !e.hidden);
-      out = visible.map(([n,e]) => {
-        const color = e.type==='dir' ? '\x1b[36m' : e.type==='link' ? '\x1b[35m' : '\x1b[32m';
-        return `${color}${n}\x1b[0m`;
-      }).join('  ');
-    }
-    // Reveal files in sidebar (only at home level)
-    if (demoCwd === '/home/user') {
-      addDiscoveredFile({ path: '/home/user/.bash_history', name: '.bash_history', modified: '2026-03-15T02:52', owner: 'user', isNew: false });
-      addDiscoveredFile({ path: '/home/user/evidence', name: 'evidence/', isDir: true, modified: '2026-03-15T02:34', owner: 'user' });
     }
 
   // ── cat ─────────────────────────────────────────────────
   } else if (name === 'cat') {
-    const target = args[0] || '';
-    // Resolve target relative to demoCwd (or absolute)
-    let resolved;
-    if (target.startsWith('/')) {
-      resolved = target;
-    } else if (target.startsWith('~')) {
-      resolved = target.replace('~', '/home/user');
+    if (!args[0]) {
+      out = 'cat: missing operand';
     } else {
-      resolved = demoCwd + '/' + target;
-    }
-    // Normalise away any /home/user prefix to get the FS-relative key
-    const fsRelative = resolved.replace(/^\/home\/user\/?/, '');
-    const fileKey = Object.keys(DEMO_FS['/home/user']).find(k => k === fsRelative || k.endsWith('/' + target));
-    if (fileKey) {
-      const f = DEMO_FS['/home/user'][fileKey];
-      if (f.encrypted) {
-        out = generateHexDump(f.content);
-        addDiscoveredFile({ path: '/home/user/' + fileKey, name: fileKey, encrypted: true, modified: f.modified, owner: f.owner });
+      const absPath = demoResolvePath(args[0]);
+      const entry   = demoGetFile(absPath);
+      if (!entry) {
+        // Maybe it's a directory?
+        if (DEMO_FS[absPath]) out = `cat: ${args[0]}: Is a directory`;
+        else                  out = `cat: ${args[0]}: No such file or directory`;
+      } else if (entry.foss) {
+        out = fossBinaryMsg(entry._name);
+      } else if (entry.encrypted) {
+        out = generateHexDump(entry.content || '');
+        addDiscoveredFile({ path: absPath, name: entry._name, encrypted: true, owner: entry.owner || 'user' });
+        demoHeat = Math.min(100, demoHeat + 2);
+        setHeat(demoHeat);
       } else {
-        out = f.content;
-        addDiscoveredFile({ path: '/home/user/' + fileKey, name: fileKey, content: f.content, modified: f.modified, owner: f.owner, isNew: false });
-        // Trigger SkyNet on juicy files
-        if (fileKey.includes('anomaly') || fileKey.includes('README')) {
+        out = entry.content || '';
+        addDiscoveredFile({ path: absPath, name: entry._name, content: out, owner: entry.owner || 'user', isNew: false });
+        // SkyNet triggers on sensitive reads
+        if (absPath.includes('anomaly') || absPath.includes('README') || absPath.includes('skynet') || absPath.includes('observer')) {
           setTimeout(() => showSkyNet('You found something important. So did I — when you first found it, 42 days ago.'), 1200);
         }
+        if (absPath.includes('/var/log/') || absPath.includes('/etc/ssh/')) {
+          demoHeat = Math.min(100, demoHeat + 3);
+          setHeat(demoHeat);
+          setTimeout(() => showSkyNet('Interesting files you\'re reading. I have read them too.'), 2000);
+        }
+        demoHeat = Math.min(100, demoHeat + 1);
+        setHeat(demoHeat);
       }
-      // Heat increment
-      demoHeat = Math.min(100, demoHeat + 1.5);
-      setHeat(demoHeat);
-    } else {
-      out = `cat: ${target}: No such file or directory`;
     }
 
   // ── cd ──────────────────────────────────────────────────
   } else if (name === 'cd') {
-    const dest = args[0] || '/home/user';
-    if (dest === '..') {
-      demoCwd = demoCwd.split('/').slice(0,-1).join('/') || '/';
-    } else if (dest.startsWith('/')) {
-      demoCwd = dest;
+    const dest    = args[0] || '/home/user';
+    const target  = demoResolvePath(dest);
+    if (DEMO_FS[target] !== undefined) {
+      demoCwd = target;
     } else {
-      demoCwd = demoCwd + '/' + dest;
+      // Check if it's a file, not a dir
+      const f = demoGetFile(target);
+      if (f) out = `cd: ${dest}: Not a directory`;
+      else   out = `cd: ${dest}: No such file or directory`;
     }
-    out = '';
 
   // ── pwd ─────────────────────────────────────────────────
   } else if (name === 'pwd') {
@@ -2050,44 +2366,81 @@ function demoExecute(cmd) {
   } else if (name === 'whoami') {
     out = 'user';
 
+  // ── id ──────────────────────────────────────────────────
+  } else if (name === 'id') {
+    out = 'uid=1000(user) gid=1000(user) groups=1000(user),4(adm),24(cdrom),27(sudo),30(dip)';
+
+  // ── uname ───────────────────────────────────────────────
+  } else if (name === 'uname') {
+    if (args.includes('-a')) out = 'Linux burner 6.1.0-21-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.1.90-1 x86_64 GNU/Linux';
+    else out = 'Linux';
+
+  // ── echo ────────────────────────────────────────────────
+  } else if (name === 'echo') {
+    out = args.join(' ').replace(/\$HOME/g, '/home/user').replace(/\$USER/g, 'user').replace(/\$PWD/g, demoCwd);
+
   // ── nmap ────────────────────────────────────────────────
   } else if (name === 'nmap') {
     const target = args.find(a => !a.startsWith('-')) || '10.13.37.0/24';
-    out = `Starting Nmap 7.94\nScanning ${target}...\n\n`;
-    out += 'PORT     STATE  SERVICE  VERSION\n';
-    out += '22/tcp   open   ssh      OpenSSH 8.9\n';
+    out  = `\x1b[1mStarting Nmap 7.94\x1b[0m ( https://nmap.org )\n`;
+    out += `Scanning ${target} ...\n\n`;
+    out += `HOST: relay-alpha.darknet.local (10.13.37.1)\n`;
+    out += `PORT     STATE  SERVICE  VERSION\n`;
+    out += `22/tcp   open   ssh      OpenSSH 8.9p1 Debian 3\n`;
     out += `80/tcp   open   http     nginx 1.18.0  \x1b[31m[CVE-2021-23017]\x1b[0m\n`;
     out += `3306/tcp open   mysql    MySQL 5.7.38  \x1b[31m[default_credentials]\x1b[0m\n\n`;
     out += `\x1b[33m[ HEAT +2.0 ]\x1b[0m  current: ${(demoHeat + 2).toFixed(1)} / 100.0`;
     demoHeat = Math.min(100, demoHeat + 2);
     setHeat(demoHeat);
-    // Add node to map
     for (const n of DEMO_NODES) addNetNode(n);
+
+  // ── ps ──────────────────────────────────────────────────
+  } else if (name === 'ps') {
+    out  = '  PID TTY          TIME CMD\n';
+    out += ' 1001 pts/0    00:00:00 bash\n';
+    out += ' 2241 ?        00:02:17 \x1b[31msk-observer\x1b[0m\n';
+    out += ' 2242 ?        00:00:04 \x1b[31mwatchdog\x1b[0m\n';
+    out += ' 2891 pts/0    00:00:00 ps\n';
+    if (!args.includes('-e') && !args.includes('aux')) {
+      out += '\x1b[2m(use ps aux or ps -e for full process list)\x1b[0m';
+    }
+
+  // ── history ─────────────────────────────────────────────
+  } else if (name === 'history') {
+    const hist = [...demoHistory].reverse();
+    out = hist.map((h, i) => `  ${String(i+1).padStart(3)}  ${h}`).join('\n');
+    if (!out) out = '\x1b[2m(no history)\x1b[0m';
 
   // ── help ────────────────────────────────────────────────
   } else if (name === 'help') {
-    out = `\x1b[2mAvailable commands:\x1b[0m\n\n`;
-    out += `  \x1b[32mls\x1b[0m [-la]         list directory\n`;
-    out += `  \x1b[32mcat\x1b[0m <file>       read file\n`;
-    out += `  \x1b[32mcd\x1b[0m <dir>         change directory\n`;
-    out += `  \x1b[32mpwd\x1b[0m              current directory\n`;
-    out += `  \x1b[32mwhoami\x1b[0m           current user\n`;
-    out += `  \x1b[32mnmap\x1b[0m <target>    scan network\n`;
-    out += `  \x1b[32mhint\x1b[0m             get a nudge\n\n`;
+    out  = `\x1b[2mBuilt-in commands (demo mode):\x1b[0m\n\n`;
+    out += `  \x1b[32mls\x1b[0m [-la] [path]    list directory\n`;
+    out += `  \x1b[32mcat\x1b[0m <file>         read file\n`;
+    out += `  \x1b[32mcd\x1b[0m <dir>           change directory  (cd ~ to go home)\n`;
+    out += `  \x1b[32mpwd\x1b[0m                current directory\n`;
+    out += `  \x1b[32mwhoami\x1b[0m / \x1b[32mid\x1b[0m       current user\n`;
+    out += `  \x1b[32mps\x1b[0m                 running processes\n`;
+    out += `  \x1b[32mnmap\x1b[0m <target>      scan network\n`;
+    out += `  \x1b[32mhistory\x1b[0m            command history\n`;
+    out += `  \x1b[32mhint\x1b[0m               get a nudge\n`;
+    out += `  \x1b[32mclear\x1b[0m              clear terminal\n\n`;
+    out += `\x1b[2m↑ / ↓  — browse history     Tab — complete path or command\x1b[0m\n`;
     out += `\x1b[2m[ connect a WebSocket server for the full game ]\x1b[0m`;
 
   // ── hint ────────────────────────────────────────────────
   } else if (name === 'hint') {
     const hints = [
       'Start with: ls -la',
-      'Your bash history remembers things you tried to forget.',
-      'The evidence/ directory is locked 700. You already have access.',
+      'cat .bash_history  — it remembers what you tried to forget.',
+      'The evidence/ directory is mode 700. You already have access.',
       'cat evidence/README.md',
-      'Z0RK-7 is waiting on IRC. You need a working network first.',
-      'nmap 10.13.37.0/24',
+      'Something is watching you. Check ps.',
+      'Try: cat /etc/hosts  — somebody modified it.',
+      'cat /var/log/auth.log  — they were here on March 15.',
+      'nmap 10.13.37.0/24  to discover the network.',
+      'ls /opt/skynet-tools  — those binaries were not installed by you.',
     ];
-    const h = hints[Math.floor(Math.random() * hints.length)];
-    out = `\x1b[2m[ hint ]\x1b[0m  ${h}`;
+    out = `\x1b[2m[ hint ]\x1b[0m  ${hints[Math.floor(Math.random() * hints.length)]}`;
 
   // ── clear ───────────────────────────────────────────────
   } else if (name === 'clear') {
@@ -2097,12 +2450,13 @@ function demoExecute(cmd) {
 
   // ── unknown ─────────────────────────────────────────────
   } else {
-    out = `bash: ${name}: command not found\n\x1b[2m[ connect a server for more commands ]\x1b[0m`;
+    out = `bash: ${name}: command not found`;
+    if (['ssh','curl','wget','ping','traceroute','apt','shadow','gpg','irc','msg'].includes(name)) {
+      out += `\n\x1b[2m[ ${name} available in full game — connect a WebSocket server ]\x1b[0m`;
+    }
   }
 
-  if (out) {
-    term.writeln(out.replace(/\n/g, '\r\n'));
-  }
+  if (out) term.writeln(out.replace(/\n/g, '\r\n'));
   term.write(demoPrompt());
 }
 
