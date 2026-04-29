@@ -723,6 +723,7 @@
   <div class="topbar-right">
     <button class="topbar-btn active" id="btn-net"    onclick="togglePanel('net')">[ network ]</button>
     <button class="topbar-btn active" id="btn-files"  onclick="togglePanel('files')">[ files ]</button>
+    <button class="topbar-btn" id="btn-mute" onclick="toggleMute()" title="Toggle audio">[ ♪ audio ]</button>
     <a href="index.html" class="topbar-btn" style="text-decoration:none;">[ ← back ]</a>
   </div>
 </div>
@@ -868,6 +869,214 @@ const STATE = {
   panelFiles: true,
 };
 
+/* ─────────────────────────────────────────────────────────────
+   WEB AUDIO ENGINE
+   Fully synthesized — no external audio files.
+   Layers: ambient drone (heat-reactive) + terminal SFX.
+   Unlocks on first user gesture (keypress/click).
+───────────────────────────────────────────────────────────── */
+const AUDIO = (() => {
+  let ctx = null;
+  let masterGain = null;
+  let comp = null;
+  let droneFilter = null;
+  let droneGains = [];  // [{node: GainNode, base: float}]
+  let droneStarted = false;
+  let _muted = false;
+
+  function _init() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Master gain → destination
+    masterGain = ctx.createGain();
+    masterGain.gain.value = 1.0;
+    masterGain.connect(ctx.destination);
+
+    // Soft compressor to prevent clipping when SFX stack
+    comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -14;
+    comp.knee.value = 6;
+    comp.ratio.value = 4;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.15;
+    comp.connect(masterGain);
+
+    // ── Ambient drone ─────────────────────────────────────
+    // Three detuned sine oscillators: root (55Hz), fifth (82.5Hz), octave (110Hz).
+    // They pass through a lowpass filter whose cutoff rises with heat.
+    droneFilter = ctx.createBiquadFilter();
+    droneFilter.type = 'lowpass';
+    droneFilter.frequency.value = 160;
+    droneFilter.Q.value = 1.2;
+    droneFilter.connect(comp);
+
+    const freqs  = [55,    82.5,  110  ];
+    const bases  = [0.10,  0.06,  0.04 ];
+    const detune = [0,     +6,    -4   ];  // cents — creates subtle beating
+
+    for (let i = 0; i < freqs.length; i++) {
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      osc.type           = 'sine';
+      osc.frequency.value = freqs[i];
+      osc.detune.value    = detune[i];
+      g.gain.value        = 0;   // silent until _startDrone()
+      osc.connect(g);
+      g.connect(droneFilter);
+      osc.start();
+      droneGains.push({ node: g, base: bases[i] });
+    }
+
+    // Slow LFO for organic tremolo on the root oscillator
+    const lfo    = ctx.createOscillator();
+    const lfoAmt = ctx.createGain();
+    lfo.frequency.value = 0.07;
+    lfoAmt.gain.value   = 0.009;   // ±0.009 amplitude wobble
+    lfo.connect(lfoAmt);
+    lfoAmt.connect(droneGains[0].node.gain);
+    lfo.start();
+  }
+
+  function _startDrone() {
+    if (droneStarted) return;
+    droneStarted = true;
+    const now = ctx.currentTime;
+    for (const dg of droneGains) {
+      dg.node.gain.setValueAtTime(0, now);
+      dg.node.gain.linearRampToValueAtTime(dg.base, now + 4.0);  // 4s fade-in
+    }
+  }
+
+  // White/pink noise burst through a bandpass — for clicks and glitches
+  function _noise(duration, freq, q, peakGain) {
+    if (!ctx) return;
+    const len = Math.ceil(ctx.sampleRate * duration);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const ch  = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
+
+    const src  = ctx.createBufferSource();
+    src.buffer = buf;
+
+    const flt  = ctx.createBiquadFilter();
+    flt.type           = 'bandpass';
+    flt.frequency.value = freq;
+    flt.Q.value         = q;
+
+    const g = ctx.createGain();
+    g.gain.value = peakGain;
+
+    src.connect(flt); flt.connect(g); g.connect(comp);
+    src.start();
+  }
+
+  // Single oscillator tone with envelope
+  function _tone(freq, duration, type, peakGain, freqEnd) {
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.type            = type || 'sine';
+    osc.frequency.value = freq;
+    g.gain.value        = 0;
+    osc.connect(g); g.connect(comp);
+
+    const now = ctx.currentTime;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(peakGain, now + 0.005);
+    g.gain.linearRampToValueAtTime(peakGain * 0.5, now + duration * 0.6);
+    g.gain.linearRampToValueAtTime(0, now + duration);
+
+    if (freqEnd != null) {
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(freqEnd, 20), now + duration
+      );
+    }
+
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  }
+
+  // ── Public API ──────────────────────────────────────────
+  return {
+    /** Call on first user gesture to unlock AudioContext. */
+    unlock() {
+      _init();
+      if (ctx.state === 'suspended') ctx.resume();
+      _startDrone();
+    },
+
+    /** Toggle mute; returns new muted state. */
+    mute() {
+      _muted = !_muted;
+      if (masterGain) masterGain.gain.value = _muted ? 0 : 1.0;
+      return _muted;
+    },
+
+    isMuted() { return _muted; },
+
+    /** Short keyclick — every character typed. */
+    key() {
+      if (!ctx || _muted) return;
+      _noise(0.014, 2800, 7, 0.04);
+    },
+
+    /** Confirm tone — fired on Enter. */
+    enter() {
+      if (!ctx || _muted) return;
+      _tone(196, 0.055, 'sine', 0.08);
+      setTimeout(() => _tone(147, 0.07, 'sine', 0.04), 38);
+    },
+
+    /** Rising arpeggio — node discovered. */
+    nodeDiscovered() {
+      if (!ctx || _muted) return;
+      [330, 415, 523].forEach((f, i) =>
+        setTimeout(() => _tone(f, 0.11, 'sine', 0.06), i * 75)
+      );
+    },
+
+    /** Harsh descending alarm — SkyNet alert. */
+    skynetAlert() {
+      if (!ctx || _muted) return;
+      _tone(720, 0.30, 'sawtooth', 0.13, 190);
+      setTimeout(() => _tone(480, 0.22, 'sawtooth', 0.07, 120), 110);
+    },
+
+    /** Noise burst — visual glitch accompaniment. */
+    glitch(durationMs) {
+      if (!ctx || _muted) return;
+      const dur = Math.min(durationMs / 1000, 0.35);
+      _noise(dur, 1400, 0.4, 0.18);
+    },
+
+    /** Called every time heat changes — morphs the drone. */
+    heatUpdate(heat) {
+      if (!ctx || !droneFilter || !droneStarted) return;
+      const now = ctx.currentTime;
+      // Filter cutoff: 160Hz (cold) → 700Hz (critical)
+      droneFilter.frequency.linearRampToValueAtTime(
+        160 + (heat / 100) * 540, now + 2.5
+      );
+      // Drone volume: subtle swell with heat
+      const boost = 1.0 + (heat / 100) * 0.55;
+      for (const dg of droneGains) {
+        dg.node.gain.linearRampToValueAtTime(
+          dg.base * boost, now + 2.5
+        );
+      }
+    },
+  };
+})();
+
+function toggleMute() {
+  const muted = AUDIO.mute();
+  const btn = document.getElementById('btn-mute');
+  btn.textContent = muted ? '[ ♪ muted ]' : '[ ♪ audio ]';
+  btn.classList.toggle('active', !muted);
+}
+
 /* WS endpoint — auto-detect from page location.
    In dev:  open game.html?ws=ws://localhost:8765
    In prod: wss://yourdomain.com/ws  (nginx proxies /ws → :8765)
@@ -996,6 +1205,16 @@ let inputBuf = '';
 term.onKey(({ key, domEvent }) => {
   const code = domEvent.keyCode;
 
+  // Unlock audio on first keypress (requires user gesture)
+  AUDIO.unlock();
+
+  // SFX
+  if (code === 13) {
+    AUDIO.enter();
+  } else if (code !== 8 && code !== 27) {
+    AUDIO.key();
+  }
+
   if (STATE.wsConnected && STATE.ws) {
     // Connected — send raw to server
     STATE.ws.send(JSON.stringify({ type: 'input', data: key }));
@@ -1034,6 +1253,7 @@ function handleSideChannel(evt) {
       break;
     case 'node_discovered':
       addNetNode(evt.payload);
+      AUDIO.nodeDiscovered();
       break;
     case 'file_catalogued':
       addDiscoveredFile(evt.payload);
@@ -1087,6 +1307,9 @@ function setHeat(value) {
   if (pct >= 50 && pct < 52) triggerGlitch(300);
   if (pct >= 75 && pct < 77) triggerGlitch(500);
   if (pct >= 90) triggerGlitch(800);
+
+  // Heat-reactive drone morph
+  AUDIO.heatUpdate(pct);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -1252,6 +1475,7 @@ function showSkyNet(message, level) {
 
   alert.classList.add('visible');
   triggerGlitch(200);
+  AUDIO.skynetAlert();
 }
 
 function dismissSkyNet() {
@@ -1264,6 +1488,7 @@ function dismissSkyNet() {
 function triggerGlitch(durationMs) {
   document.body.classList.add('glitching');
   setTimeout(() => document.body.classList.remove('glitching'), durationMs);
+  AUDIO.glitch(durationMs);
 }
 
 /* ─────────────────────────────────────────────────────────────
