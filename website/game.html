@@ -37,7 +37,7 @@
 
     :root {
       --green:      #00ff41;
-      --green-dim:  #00b32d;
+      --green-dim:  #00d435;
       --green-dark: #003d0d;
       --amber:      #ffb700;
       --red:        #ff2222;
@@ -81,7 +81,7 @@
     body::after {
       content: '';
       position: fixed; inset: 0;
-      background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.65) 100%);
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.40) 100%);
       pointer-events: none;
       z-index: 8999;
     }
@@ -239,6 +239,9 @@
     .xterm { height: 100% !important; }
     .xterm-screen { height: 100% !important; }
     .xterm-viewport { background: #010801 !important; height: 100% !important; }
+    /* Rich outputs \x1b[2m dim codes — default xterm renders them at ~50% opacity.
+       Bring that up so game text stays readable. */
+    .xterm-dim { opacity: 0.78 !important; }
 
     /* ─── RIGHT SIDEBAR ───────────────────────────────────── */
     #sidebar {
@@ -671,22 +674,22 @@
       line-height: 1.15;
     }
 
-    /* The clear-text subtitle line under the block art */
+    /* Clear-text title below the block art */
     .logo-title {
-      display: block;
       font-size: clamp(18px, 3vw, 28px);
       letter-spacing: 0.18em;
-      margin-top: 10px;
+      margin-top: 4px;
       color: var(--green);
       text-shadow: 0 0 12px var(--green);
+      text-align: center;
     }
     .logo-title .ls { color: var(--amber); text-shadow: 0 0 14px var(--amber); }
     .logo-tagline {
-      display: block;
       font-size: clamp(9px, 1.1vw, 11px);
       letter-spacing: 0.12em;
       margin-top: 6px;
       color: var(--green-dim);
+      text-align: center;
     }
 
     .boot-log {
@@ -727,7 +730,9 @@
 ██╔══██║██╔══██║██║     ██╔═██╗  ╚═══██╗██╔══██╗      ██╔╝ ████╔╝██║██╔══██╗██╔═██╗
 ██║  ██║██║  ██║╚██████╗██║  ██╗██████╔╝██║  ██║      ██║  ╚██████╔╝██║  ██║██║  ██╗
 ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝╚═╝  ╚═╝      ╚═╝   ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
-<span class="logo-title">H<span class="ls">@</span>CK<span class="ls">3</span>R  ───────  <span class="ls">Z</span><span class="ls">0</span>RK</span><span class="logo-tagline">░  CYBERPUNK TERMINAL ADVENTURE  ░  v0.9.1-ALPHA  ░  UNAUTHORIZED ACCESS  ░</span></pre>
+</pre>
+  <div class="logo-title">H<span class="ls">@</span>CK<span class="ls">3</span>R  ───────  <span class="ls">Z</span><span class="ls">0</span>RK</div>
+  <div class="logo-tagline">░  CYBERPUNK TERMINAL ADVENTURE  ░  v0.9.1-ALPHA  ░  UNAUTHORIZED ACCESS  ░</div>
 
   <div class="boot-log" id="boot-log"></div>
 </div>
