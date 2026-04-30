@@ -457,6 +457,16 @@ def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
                     f"{i:>6}  {line}" for i, line in enumerate(content.splitlines(), 1)
                 )
             parts.append(content)
+            if ctx.events:
+                ctx.events.emit(
+                    "file_read",
+                    path=str(path),
+                    name=node.name,
+                    content=node.content,
+                    modified=node.modified.isoformat() if node.modified else "",
+                    owner=node.owner or "user",
+                    encrypted=False,
+                )
         except FSNotFoundError:
             parts.append(f"bash: cat: {path_str}: No such file or directory")
         except FSError as e:
