@@ -227,10 +227,11 @@
       flex-direction: column;
     }
 
-    /* #terminal is the xterm.js mount point — must fill the wrap */
+    /* #terminal is the xterm.js mount point — must fill the wrap.
+       flex:1 + min-height:0 is correct; height:100% would double-count
+       in a flex context and cause cutoff in fullscreen. */
     #terminal {
       flex: 1;
-      height: 100%;
       min-height: 0;
       overflow: hidden;
     }
@@ -1566,6 +1567,10 @@ function fitTerm() {
 }
 
 window.addEventListener('resize', fitTerm);
+
+// Refit on fullscreen enter/exit — the transition is async so delay slightly
+document.addEventListener('fullscreenchange', () => setTimeout(fitTerm, 100));
+document.addEventListener('webkitfullscreenchange', () => setTimeout(fitTerm, 100));
 
 // Also refit when the terminal-wrap changes size (sidebar slide, font load, etc.)
 const _termWrapObserver = new ResizeObserver(() => fitTerm());

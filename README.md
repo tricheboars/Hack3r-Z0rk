@@ -16,29 +16,15 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 
  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
-  ██╗  ██╗ █████╗  ██████╗██╗  ██╗██████╗ ██████╗
-  ██║  ██║██╔══██╗██╔════╝██║ ██╔╝╚════██╗██╔══██╗   .--.
-  ███████║███████║██║     █████╔╝  █████╔╝██████╔╝  |o_o |
-  ██╔══██║██╔══██║██║     ██╔═██╗  ╚═══██╗██╔══██╗  |:_/ |
-  ██║  ██║██║  ██║╚██████╗██║  ██╗██████╔╝██║  ██║ //   \ \
-  ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝(|     | )
-         ─=≡Σ((( ─  Z 0 R K  ─ )))Σ≡=─          /'\_   _/`\
-                                                 \___)=(___/
+  ╔══[ SYS:BOOT ]══[ SEC:ALPHA ]══[ NET:DARKNET ]══[ THREAT:ACTIVE ]══╗
+  ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
+  ║                                                                   ║
+  ║     H @ C K 3 R   ───────────────────   Z 0 R K                  ║
+  ║                                                                   ║
+  ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
+  ╚══[ PID:0x4A3F ]══[ MEM:512MB ]══[ UPTIME:42d ]══[ STATUS:???? ]══╝
 
  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-
-┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
-└─❯ whoami
-  ex-OpenAI. burner laptop. one USB drive. zero friends.
-
-┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
-└─❯ cat /etc/motd
-  42 days since last login.
-  they know you know.
-  running is the only move.
-
-┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
-└─❯ █
 ```
 
 > [!CAUTION]
@@ -75,9 +61,9 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   THE TERMINAL IS REAL
   ──────────────────────────────────────────────────────────────────────────
   Every command is parsed like bash. ls -la, cat, grep, chmod, find, pipes,
-  redirects — it all works. Tab completion. Arrow-key history. The fake OS
-  has Unix permissions, timestamps, broken symlinks, and encrypted files.
-  It feels indistinguishable from a real terminal session.
+  redirects, nano, vi, sed, tee — it all works. Tab completion. Arrow-key
+  history. The fake OS has Unix permissions, timestamps, broken symlinks,
+  and encrypted files. It feels indistinguishable from a real terminal.
 
   THE NETWORK IS ALIVE
   ──────────────────────────────────────────────────────────────────────────
@@ -120,6 +106,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
     [4] event-triggered SFX    exploits, breaches, SkyNet interventions
 
   pygame.mixer. crossfading. reactive state. not an afterthought.
+  Browser: Web Audio API — 92 BPM trip-hop sequencer, no install required.
 ```
 
 > [!WARNING]
@@ -130,32 +117,19 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 └─❯ cat INSTALL
 
  ┌──────────────────────────────────────────────────────────────────────────┐
- │  INSTALLATION                                                            │
+ │  PLAY NOW — no install required                                          │
  └──────────────────────────────────────────────────────────────────────────┘
 
-  macOS — double-click app  (no Python required)
+  Browser (live)
   ──────────────────────────────────────────────────────────────────────────
-  Build once. Launch from Finder forever.
+  https://moorelab.cloud/hackerzork/game.html
 
-    $ git clone https://github.com/tricheboars/Hack3r-Z0rk.git
-    $ cd Hack3r-Z0rk
-    $ python -m venv .venv && source .venv/bin/activate
-    $ pip install -e ".[dev]"
-    $ ./build_app.sh
-
-    [ OK ] building PyInstaller bundle .......................... done
-    [ OK ] bundling fonts, sounds, YAML ......................... done
-    [ OK ] wrapping HackerZork.app .............................. done
-
-  Drag dist/HackerZork.app to /Applications and double-click.
-  A Terminal window opens. The game starts. Everything is inside the .app.
-
-  Rebuild after any code or asset change:
-    $ source .venv/bin/activate && ./build_app.sh
+  Full game engine running server-side on a Proxmox LXC. xterm.js terminal
+  in the browser. Real ANSI output. No install. No Python. Any device.
 
   ──────────────────────────────────────────────────────────────────────────
 
-  From source  (Python 3.11–3.13 required — 3.14 has no pygame wheels)
+  From source  (Python 3.11–3.13 required — 3.14 has no pygame wheels yet)
   ──────────────────────────────────────────────────────────────────────────
     $ git clone https://github.com/tricheboars/Hack3r-Z0rk.git
     $ cd Hack3r-Z0rk
@@ -164,14 +138,23 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 
   ──────────────────────────────────────────────────────────────────────────
 
+  macOS — double-click app  (no Python required)
+  ──────────────────────────────────────────────────────────────────────────
+    $ git clone https://github.com/tricheboars/Hack3r-Z0rk.git
+    $ cd Hack3r-Z0rk
+    $ python -m venv .venv && source .venv/bin/activate
+    $ pip install -e ".[dev]"
+    $ ./build_app.sh
+
+    Drag dist/HackerZork.app to /Applications. Terminal window opens.
+    Everything is inside the .app. Rebuild after code or asset changes.
+
+  ──────────────────────────────────────────────────────────────────────────
+
   Font
   ──────────────────────────────────────────────────────────────────────────
-  For the full visual experience, set your terminal font to:
-
-    BigBlueTermPlusNerdFontMono Regular
-
-  Bundled in hackerzork/data/fonts/. The game detects and installs it on
-  first run — select it in terminal preferences and restart.
+  Terminal: JetBrains Mono Nerd Font (loaded automatically in browser)
+  Local:    BigBlueTermPlusNerdFontMono Regular (bundled in data/fonts/)
 ```
 
 ```
@@ -188,10 +171,10 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 ```
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
 └─❯ # you start cold. the laptop boots. 42-day gap in the auth logs.
 
-┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
 └─❯ ls -la
   total 9
   drwxr-xr-x  user  .
@@ -230,6 +213,19 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   3306/tcp open   mysql    5.7.38        [default_credentials]
 
 ┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+└─❯ neofetch
+  ╔═══════════╗   user@burner
+  ║           ║   ───────────
+  ║  H@CK3R   ║   OS       H@ck3r-Z0rk Linux 6.6.6-sk-patched
+  ║  ───────  ║   Kernel   6.6.6-sk-patched #1 SMP Mar 14 23:59:01 UTC 2026
+  ║    Z0RK   ║   Uptime   42 days, 0 hours, 0 mins (gap unaccounted for)
+  ║           ║   CPU      Intel Core i7-9750H @ 2.60GHz (4) @ 4.50GHz
+  ╚═══╤═══╤═══╝   Memory   903MiB / 7.6GiB  (11% used)
+       ║   ║      Threat   LOW  (heat=0.0/100)
+  ═════╩═══╩═════  Procs   18 total  │  3 sk_* active
+                   Session sk-9a7f3c2d-8b1e-4f6a-9c…
+
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
 └─❯ irc list
   #underground    14 users    "come correct or don't come"
   #zero-day        3 users    [encrypted]
@@ -255,13 +251,13 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   01  command parser + registry  bash-like tokenizer · plugin command system
   02  event bus                  decoupled inter-system messaging via asyncio
   03  virtual filesystem         Unix VFS — permissions · symlinks · trash · enc
-  04  filesystem commands        ls · cat · cd · chmod · find · grep · rm · 20+
-  05  shell REPL                 tab completion · arrow-key history · pipes
+  04  filesystem commands        ls · cat · cd · chmod · find · grep · rm · 30+
+  05  shell REPL                 tab complete · history · pipes · redirects · sed
   06  network simulation         nodes · ports · services · CVEs · firewall · loot
   07  network commands           nmap · ssh · curl · ping · traceroute · nc · 9+
   08  heat / trace system        0–100 float · thresholds · decay · identity burn
   09  toolkit + packaging        apt · shadow repo · kit commits · poison vectors
-  10  system commands            ps · top · kill · env · uname · history · 25+
+  10  system commands            ps · top · kill · env · neofetch · uname · 25+
   11  audio engine               4-layer: ambient · diegetic · reactive · SFX
   12  visual effects             typewriter · glitch · matrix rain · animations
   13  comms system               IRC channels · encrypted DMs · NPC triggers
@@ -271,9 +267,66 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   ────────────────────────────────────────────────────────────────────────────────
 
   $ pytest tests/ -q --tb=no
-  1418 passed in 14.3s
+  1418 passed in 0.8s
+```
 
-  next: story content · puzzle design · additional network nodes
+</details>
+
+<details>
+<summary><b>[ WEB VERSION — play in browser, no install ]</b></summary>
+
+```
+┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+└─❯ cat DEPLOYMENT
+
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  BROWSER DEPLOYMENT  ·  live at moorelab.cloud/hackerzork/game.html      │
+ └──────────────────────────────────────────────────────────────────────────┘
+
+  ARCHITECTURE
+  ──────────────────────────────────────────────────────────────────────────
+  Browser (xterm.js v6)
+    │  wss://moorelab.cloud/ws
+    ▼
+  HAProxy  (moorelab.cloud)
+    │  path_beg /hackerzork → LXC :80 (static files)
+    │  path == /ws         → LXC :80 (WebSocket proxy)
+    ▼
+  nginx on Proxmox LXC  (Debian 12, 10.1.40.101)
+    │  serves website/ static files
+    │  proxies /ws → localhost:8765
+    ▼
+  ws_server.py  (asyncio + websockets, port 8765)
+    │  one GameSession per WebSocket connection
+    │  each session gets isolated VFS, heat, SkyNet
+    ▼
+  hackerzork game engine  (unchanged Python source)
+
+  FRONTEND  (website/game.html)
+  ──────────────────────────────────────────────────────────────────────────
+  · xterm.js v6 — JetBrains Mono Nerd Font, green phosphor CRT theme
+  · Right sidebar — network map + file catalogue, populated via side-channel
+  · Heat HUD — animated bar, green→amber→red
+  · SkyNet alert overlay — dismissable, bottom-right
+  · Web Audio API — 92 BPM trip-hop ambient sequencer
+  · Boot splash — Soviet-BIOS status frame + 48px H@CK3R─Z0RK title
+  · Demo mode — full JS mini-sim fallback when WebSocket unavailable
+  · Auto-resize — FitAddon + ResizeObserver + fullscreenchange handler
+
+  SIDE-CHANNEL EVENTS  (server → browser JSON)
+  ──────────────────────────────────────────────────────────────────────────
+  heat_update      → heat bar animates
+  node_discovered  → network map populates
+  file_catalogued  → file panel populates  (cat, nano, vi all emit this)
+  skynet_alert     → alert overlay fires
+  glitch           → CRT glitch effect
+  prompt_update    → user@node indicator updates after ssh
+
+  DEPLOY
+  ──────────────────────────────────────────────────────────────────────────
+  git push origin main
+  ssh root@10.1.40.101 "cd /opt/hackerzork/repo && \
+    git pull origin main && systemctl restart hackerzork-ws"
 ```
 
 </details>
@@ -293,7 +346,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   ├── audio/           mixer · ambient · SFX · reactive layer
   ├── meta/            SkyNet brain · fourth-wall breaker · corruption engine
   ├── data/
-  │   ├── fonts/       BigBlueTermPlusNerdFontMono-Regular.ttf
+  │   ├── fonts/       JetBrainsMono NF · BigBlueTerm NF
   │   ├── sounds/      sfx_boot_beep.wav · sfx_key_click.wav · ...
   │   ├── nodes/       network node definitions (.yaml)
   │   ├── packages/    apt/ + shadow/ repo packages (.yaml)
@@ -301,6 +354,15 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   │   └── dialogue/    IRC channels · contacts · DMs (.yaml)
   ├── game.py          orchestrator — wires all systems together
   └── main.py          entry point
+
+  browser-deploy/
+  ├── server/          ws_server.py · session.py  (asyncio WebSocket bridge)
+  ├── nginx/           hackerzork.conf
+  ├── systemd/         hackerzork-ws.service
+  └── scripts/         deploy.sh · provision_lxc.sh
+
+  website/
+  └── game.html        complete browser frontend — xterm.js + Web Audio + HUD
 
   every command is a plugin.
   every system talks through the event bus.

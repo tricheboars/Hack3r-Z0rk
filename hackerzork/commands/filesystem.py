@@ -1231,6 +1231,16 @@ def cmd_nano(ctx: CommandContext, args: list[str]) -> str:
         if node.encrypted:
             return f"nano: {positional[0]}: File is encrypted — cannot open in editor"
         content = node.content or ""
+        if ctx.events:
+            ctx.events.emit(
+                "file_read",
+                path=str(path),
+                name=node.name,
+                content=content,
+                modified=node.modified.isoformat() if node.modified else "",
+                owner=node.owner or "user",
+                encrypted=False,
+            )
     except FSNotFoundError:
         content = ""  # new file — nano creates it
     except FSError as e:
@@ -1257,6 +1267,16 @@ def cmd_vi(ctx: CommandContext, args: list[str]) -> str:
         if node.encrypted:
             return f"vi: {positional[0]}: File is encrypted"
         content = node.content or ""
+        if ctx.events:
+            ctx.events.emit(
+                "file_read",
+                path=str(path),
+                name=node.name,
+                content=content,
+                modified=node.modified.isoformat() if node.modified else "",
+                owner=node.owner or "user",
+                encrypted=False,
+            )
     except FSNotFoundError:
         content = ""
     except FSError as e:
