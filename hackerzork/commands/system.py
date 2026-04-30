@@ -987,3 +987,104 @@ def cmd_groupadd(ctx: CommandContext, args: list[str]) -> str:
 )
 def cmd_groupdel(ctx: CommandContext, args: list[str]) -> str:
     return _root_required("groupdel")
+
+
+# ---------------------------------------------------------------------------
+# neofetch
+# ---------------------------------------------------------------------------
+
+_NF_ART = [
+    r"   ╔═══════════╗   ",
+    r"   ║           ║   ",
+    r"   ║  H@CK3R   ║   ",
+    r"   ║  ───────  ║   ",
+    r"   ║    Z0RK   ║   ",
+    r"   ║           ║   ",
+    r"   ╚═══╤═══╤═══╝   ",
+    r"        ║   ║       ",
+    r"   ═════╩═══╩═════  ",
+    r"                    ",
+    r"  ██ ██ ██ ██ ██ ██ ",
+    r"  ██ ██ ██ ██ ██ ██ ",
+]
+
+def _nf_color_block() -> str:
+    """8-colour block strip like neofetch shows at the bottom."""
+    cols = [
+        "\033[40m", "\033[41m", "\033[42m", "\033[43m",
+        "\033[44m", "\033[45m", "\033[46m", "\033[47m",
+    ]
+    return "".join(f"{c}   " for c in cols) + "\033[0m"
+
+
+@register_command(
+    name="neofetch",
+    usage="neofetch",
+    help_text="Display system information alongside ASCII art",
+    category=_CAT,
+)
+def cmd_neofetch(ctx: CommandContext, args: list[str]) -> str:
+    user = _user(ctx)
+    host = _hostname(ctx)
+
+    # ANSI helpers
+    G  = "\033[32m"    # green
+    GB = "\033[1;32m"  # bold green
+    A  = "\033[33m"    # amber
+    AB = "\033[1;33m"  # bold amber
+    R  = "\033[1;31m"  # bold red
+    D  = "\033[2m"     # dim
+    B  = "\033[1m"     # bold
+    X  = "\033[0m"     # reset
+
+    heat = _heat_level(ctx)
+    if heat < 25:
+        tc, ts = GB, "LOW"
+    elif heat < 50:
+        tc, ts = AB, "ELEVATED"
+    elif heat < 75:
+        tc, ts = R, "HIGH"
+    else:
+        tc, ts = f"\033[1;31;5m", "CRITICAL"   # blinking red at max
+
+    # Count active SkyNet processes
+    dead = _killed_pids(ctx)
+    sk_active = sum(1 for pid in _SKYNET_PIDS if pid not in dead)
+
+    # Fields — label: value pairs
+    fields: list[tuple[str, str]] = [
+        ("",        f"{GB}{user}{X}@{GB}{host}{X}"),
+        ("",        "─" * (len(user) + len(host) + 1)),
+        ("OS",      f"H@ck3r-Z0rk Linux {GB}6.6.6-sk-patched{X}"),
+        ("Host",    f"{GB}{host}{X}  (burner laptop, unregistered)"),
+        ("Kernel",  f"{G}6.6.6-sk-patched{X} {D}#1 SMP Mar 14 23:59:01 UTC 2026{X}"),
+        ("Uptime",  f"{G}42 days, 0 hours, 0 mins{X}  {D}(gap unaccounted for){X}"),
+        ("Shell",   f"{G}bash 5.2.15{X}"),
+        ("CPU",     f"{G}Intel Core i7-9750H{X} {D}@ 2.60GHz (4) @ 4.50GHz{X}"),
+        ("Memory",  f"{G}903MiB{X} / {G}7.6GiB{X}  {D}(11% used){X}"),
+        ("Disk",    f"{G}8.3G{X} / {G}48G{X} {D}(17%) — /dev/sda1{X}"),
+        ("",        ""),
+        ("Threat",  f"{tc}{ts}{X}  {D}(heat={heat:.1f}/100){X}"),
+        ("Procs",   f"{G}18{X} total  {D}│{X}  {R if sk_active else D}{sk_active} sk_* active{X}"),
+        ("Session", f"{D}{_SK_SID[:24]}…{X}"),
+        ("",        ""),
+        ("",        _nf_color_block()),
+    ]
+
+    # Pair art lines with info lines
+    art = _NF_ART
+    lines: list[str] = []
+    max_rows = max(len(art), len(fields))
+
+    for i in range(max_rows):
+        art_col = f"{A}{art[i]}{X}" if i < len(art) else " " * 20
+        info_col = ""
+        if i < len(fields):
+            label, value = fields[i]
+            if label:
+                info_col = f"  {GB}{label:<9}{X}  {value}"
+            else:
+                info_col = f"  {value}"
+        lines.append(art_col + info_col)
+
+    return "\n".join(lines)
