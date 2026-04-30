@@ -666,8 +666,27 @@
     #boot-splash pre {
       color: var(--green);
       text-shadow: var(--glow);
-      font-size: clamp(7px, 1.5vw, 13px);
+      font-size: clamp(9px, 1.6vw, 14px);
       text-align: center;
+      line-height: 1.15;
+    }
+
+    /* The clear-text subtitle line under the block art */
+    .logo-title {
+      display: block;
+      font-size: clamp(18px, 3vw, 28px);
+      letter-spacing: 0.18em;
+      margin-top: 10px;
+      color: var(--green);
+      text-shadow: 0 0 12px var(--green);
+    }
+    .logo-title .ls { color: var(--amber); text-shadow: 0 0 14px var(--amber); }
+    .logo-tagline {
+      display: block;
+      font-size: clamp(9px, 1.1vw, 11px);
+      letter-spacing: 0.12em;
+      margin-top: 6px;
+      color: var(--green-dim);
     }
 
     .boot-log {
@@ -708,8 +727,7 @@
 ██╔══██║██╔══██║██║     ██╔═██╗  ╚═══██╗██╔══██╗      ██╔╝ ████╔╝██║██╔══██╗██╔═██╗
 ██║  ██║██║  ██║╚██████╗██║  ██╗██████╔╝██║  ██║      ██║  ╚██████╔╝██║  ██║██║  ██╗
 ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚═════╝╚═╝  ╚═╝      ╚═╝   ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
-
-              ░ CYBERPUNK TERMINAL ADVENTURE  ░  v0.9.1-ALPHA  ░  UNAUTHORIZED ACCESS  ░</pre>
+<span class="logo-title">H<span class="ls">@</span>CK<span class="ls">3</span>R  ───────  <span class="ls">Z</span><span class="ls">0</span>RK</span><span class="logo-tagline">░  CYBERPUNK TERMINAL ADVENTURE  ░  v0.9.1-ALPHA  ░  UNAUTHORIZED ACCESS  ░</span></pre>
 
   <div class="boot-log" id="boot-log"></div>
 </div>
