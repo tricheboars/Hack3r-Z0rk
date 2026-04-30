@@ -458,6 +458,9 @@ def cmd_echo(ctx: CommandContext, args: list[str]) -> str:
     text = " ".join(rest)
     if "e" in flags:
         text = text.replace("\\n", "\n").replace("\\t", "\t").replace("\\\\", "\\")
+    # bash echo always appends \n unless -n flag is set
+    if "n" not in flags:
+        text += "\n"
     return text
 
 

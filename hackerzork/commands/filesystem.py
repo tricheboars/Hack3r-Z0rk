@@ -1166,3 +1166,259 @@ def cmd_more(ctx: CommandContext, args: list[str]) -> str:
 
     out = "\n".join(parts)
     return out + "\n(END)" if out else ""
+
+
+# ---------------------------------------------------------------------------
+# nano / vi / vim  — cosmetic interactive-style editor
+# ---------------------------------------------------------------------------
+
+def _nano_chrome(path_str: str, content: str, editor: str = "nano") -> str:
+    """Render a fake editor view with header + content + keybinding footer."""
+    # Truncate path display to avoid wrapping
+    display_path = path_str if len(path_str) <= 50 else "…" + path_str[-47:]
+    width = 78
+
+    if editor == "nano":
+        header = f"  GNU nano 7.2{' ' * (width - 12 - len(display_path))}{display_path}"
+        footer1 = "^G Help       ^O Write Out  ^W Where Is   ^K Cut        ^C Location"
+        footer2 = "^X Exit       ^R Read File  ^\\ Replace    ^U Paste      ^J Justify"
+        sep = "─" * width
+        lines = [
+            f"\033[7m{header}\033[0m",   # reverse-video header
+            "",
+            content.rstrip("\n") if content else "",
+            "",
+            sep,
+            f"\033[7m {footer1} \033[0m",
+            f"\033[7m {footer2} \033[0m",
+        ]
+    else:
+        # vi/vim chrome
+        lines_count = len(content.splitlines()) if content else 0
+        header = f"\033[7m {display_path}{' ' * max(0, width - len(display_path) - 1)}\033[0m"
+        footer = f'"{display_path}"  {lines_count}L  --  :w<Enter> write  :q!<Enter> quit  :%s/old/new/g replace'
+        lines = [
+            header,
+            content.rstrip("\n") if content else "",
+            f'\033[2m{"~"}\033[0m',
+            f"\033[7m {footer} \033[0m",
+        ]
+
+    note = (
+        "\n\033[33m[!] Full interactive editing not available in this terminal.\033[0m\n"
+        "\033[2m    To write:   echo \"text\" > " + path_str + "\033[0m\n"
+        "\033[2m    To append:  echo \"text\" >> " + path_str + "\033[0m\n"
+        "\033[2m    To replace: sed -i 's/old/new/g' " + path_str + "\033[0m"
+    )
+    return "\n".join(lines) + note
+
+
+@register_command(
+    name="nano",
+    usage="nano [file]",
+    help_text="Edit a file (cosmetic view — use echo/sed to write)",
+    category="filesystem",
+)
+def cmd_nano(ctx: CommandContext, args: list[str]) -> str:
+    _, positional = _parse_flags(args)
+    if not positional:
+        return "nano: no filename given\nUsage: nano <file>"
+    path = _resolve(ctx, positional[0])
+    try:
+        node = ctx.fs._get_node(path)
+        if node.is_dir:
+            return f"nano: {positional[0]}: Is a directory"
+        if node.encrypted:
+            return f"nano: {positional[0]}: File is encrypted — cannot open in editor"
+        content = node.content or ""
+    except FSNotFoundError:
+        content = ""  # new file — nano creates it
+    except FSError as e:
+        return f"nano: {positional[0]}: {e}"
+    return _nano_chrome(positional[0], content, editor="nano")
+
+
+@register_command(
+    name="vi",
+    usage="vi [file]",
+    help_text="Edit a file with vi (cosmetic view — use echo/sed to write)",
+    category="filesystem",
+    aliases=["vim"],
+)
+def cmd_vi(ctx: CommandContext, args: list[str]) -> str:
+    _, positional = _parse_flags(args)
+    if not positional:
+        return "vi: no filename given\nUsage: vi <file>"
+    path = _resolve(ctx, positional[0])
+    try:
+        node = ctx.fs._get_node(path)
+        if node.is_dir:
+            return f"vi: {positional[0]}: Is a directory"
+        if node.encrypted:
+            return f"vi: {positional[0]}: File is encrypted"
+        content = node.content or ""
+    except FSNotFoundError:
+        content = ""
+    except FSError as e:
+        return f"vi: {positional[0]}: {e}"
+    return _nano_chrome(positional[0], content, editor="vi")
+
+
+# ---------------------------------------------------------------------------
+# sed
+# ---------------------------------------------------------------------------
+
+@register_command(
+    name="sed",
+    usage="sed [-i] [-n] 's/PATTERN/REPLACEMENT/[g]' [file...]",
+    help_text="Stream editor — substitute, delete, or print lines",
+    category="filesystem",
+)
+def cmd_sed(ctx: CommandContext, args: list[str]) -> str:
+    if not args:
+        return "Usage: sed [-i] [-n] 's/PAT/REPL/[g]' [file...]"
+
+    in_place = False
+    silent = False
+    expression: str | None = None
+    files: list[str] = []
+
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "-i":
+            in_place = True
+        elif a == "-n":
+            silent = True
+        elif a in ("-e", "--expression") and i + 1 < len(args):
+            expression = args[i + 1]
+            i += 1
+        elif expression is None and (a.startswith("s/") or a.startswith("s|")
+                                      or a.startswith("/") or a[0:1].isdigit()
+                                      or a.startswith("y/")):
+            expression = a
+        else:
+            files.append(a)
+        i += 1
+
+    if expression is None:
+        return "sed: no script command"
+
+    # Parse the expression
+    def _apply_expr(text: str, expr: str) -> tuple[str, list[str]]:
+        """Apply one sed expression to text. Returns (new_text, output_lines)."""
+        lines = text.split("\n")
+        out_lines: list[str] = []
+
+        # s/pattern/replacement/[g][i][p]
+        sub_m = re.match(r"^s([/|,!])(.+)\1(.*)\1([gip]*)$", expr)
+        if sub_m:
+            delim, pat, repl, flags_str = sub_m.groups()
+            count = 0 if "g" in flags_str else 1
+            re_flags = re.IGNORECASE if "i" in flags_str else 0
+            try:
+                new_lines = [re.sub(pat, repl, ln, count=count, flags=re_flags) for ln in lines]
+            except re.error as e:
+                return text, [f"sed: -e expression #1: {e}"]
+            if not silent or "p" in flags_str:
+                out_lines = new_lines
+            return "\n".join(new_lines), out_lines
+
+        # /pattern/d  — delete matching lines
+        del_m = re.match(r"^/(.+)/d$", expr)
+        if del_m:
+            pat = del_m.group(1)
+            try:
+                new_lines = [ln for ln in lines if not re.search(pat, ln)]
+            except re.error as e:
+                return text, [f"sed: {e}"]
+            return "\n".join(new_lines), new_lines if not silent else []
+
+        # /pattern/p  — print matching lines
+        print_m = re.match(r"^/(.+)/p$", expr)
+        if print_m:
+            pat = print_m.group(1)
+            try:
+                matched = [ln for ln in lines if re.search(pat, ln)]
+            except re.error as e:
+                return text, [f"sed: {e}"]
+            all_out = (lines if not silent else []) + matched
+            return text, all_out
+
+        # Np  — print line N (1-indexed)
+        line_p = re.match(r"^(\d+)p$", expr)
+        if line_p:
+            n = int(line_p.group(1)) - 1
+            out_lines = [lines[n]] if 0 <= n < len(lines) else []
+            return text, (lines if not silent else []) + out_lines
+
+        return text, [f"sed: unknown command: {expr!r}"]
+
+    # Read from stdin if no files
+    stdin = ctx.env.get("STDIN", "")
+    if not files and stdin:
+        _, out = _apply_expr(stdin, expression)
+        return "\n".join(out)
+
+    if not files:
+        return "sed: no input files"
+
+    results: list[str] = []
+    for path_str in files:
+        path = _resolve(ctx, path_str)
+        try:
+            node = ctx.fs._get_node(path)
+            if node.is_dir:
+                results.append(f"sed: {path_str}: Is a directory")
+                continue
+            text = node.content or ""
+        except FSNotFoundError:
+            results.append(f"sed: {path_str}: No such file or directory")
+            continue
+        except FSError as e:
+            results.append(f"sed: {path_str}: {e}")
+            continue
+
+        new_text, out = _apply_expr(text, expression)
+
+        if in_place:
+            try:
+                ctx.fs.write_file(path, new_text)
+            except FSError as e:
+                results.append(f"sed: {path_str}: {e}")
+        else:
+            results.extend(out)
+
+    return "\n".join(results)
+
+
+# ---------------------------------------------------------------------------
+# tee
+# ---------------------------------------------------------------------------
+
+@register_command(
+    name="tee",
+    usage="tee [-a] <file>",
+    help_text="Read stdin and write to file and stdout simultaneously",
+    category="filesystem",
+)
+def cmd_tee(ctx: CommandContext, args: list[str]) -> str:
+    _, positional = _parse_flags(args)
+    append = "-a" in args
+
+    stdin = ctx.env.get("STDIN", "")
+    if not stdin:
+        return ""
+
+    if not positional:
+        return stdin  # no file — just pass through
+
+    errors: list[str] = []
+    for path_str in positional:
+        path = _resolve(ctx, path_str)
+        try:
+            ctx.fs.write_file(path, stdin, append=append)
+        except FSError as e:
+            errors.append(f"tee: {path_str}: {e}")
+
+    return (stdin + "\n" + "\n".join(errors)).rstrip("\n") if errors else stdin

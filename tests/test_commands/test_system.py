@@ -434,15 +434,15 @@ class TestAlias:
 class TestEcho:
     def test_basic(self):
         ctx = _make_ctx()
-        assert _run("echo", ctx, ["hello", "world"]) == "hello world"
+        assert _run("echo", ctx, ["hello", "world"]) == "hello world\n"
 
     def test_empty(self):
         ctx = _make_ctx()
-        assert _run("echo", ctx, []) == ""
+        assert _run("echo", ctx, []) == "\n"
 
     def test_single_word(self):
         ctx = _make_ctx()
-        assert _run("echo", ctx, ["hello"]) == "hello"
+        assert _run("echo", ctx, ["hello"]) == "hello\n"
 
     def test_dash_e_newline(self):
         ctx = _make_ctx()
@@ -455,7 +455,7 @@ class TestEcho:
         assert "a\tb" in out
 
     def test_dash_n_no_trailing_newline(self):
-        # -n just returns text without appending — same as normal (shell adds newline)
+        # -n suppresses trailing newline
         ctx = _make_ctx()
         out = _run("echo", ctx, ["-n", "hello"])
         assert out == "hello"
@@ -463,7 +463,7 @@ class TestEcho:
     def test_special_chars_no_e(self):
         ctx = _make_ctx()
         out = _run("echo", ctx, ["\\n"])
-        assert out == "\\n"  # not interpreted without -e
+        assert out == "\\n\n"  # not interpreted without -e, but trailing newline added
 
 
 # ---------------------------------------------------------------------------
