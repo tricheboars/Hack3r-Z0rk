@@ -1,0 +1,89 @@
+id: node_005
+name: "Tor Exit Node / Jump Box"
+ip: "10.13.37.5"
+hostname: "tor-exit-7.anon.network"
+
+ports:
+  - port: 22
+    service: ssh
+    version: "OpenSSH 7.9p1 Raspbian"
+    vuln: "default_credentials_ssh"
+    state: open
+
+  - port: 9001
+    service: tor
+    version: "Tor 0.4.8.9"
+    vuln: null
+    state: open
+
+  - port: 9050
+    service: socks5
+    version: "Tor SOCKS5 proxy"
+    vuln: null
+    state: open
+
+  - port: 80
+    service: http
+    version: "Apache/2.4.57 (Debian)"
+    vuln: "shellshock"
+    state: open
+
+firewall:
+  enabled: false
+  rules: []
+
+difficulty: 1
+heat_modifier: 0.1
+
+loot:
+  - type: credential
+    username: pi
+    password: raspberry
+    service: ssh
+    description: "Default Raspberry Pi credentials — never changed"
+
+  - type: file
+    path: "/etc/tor/torrc"
+    content: |
+      # Tor configuration — this node is an exit relay
+      ExitPolicy accept *:80
+      ExitPolicy accept *:443
+      ExitPolicy accept *:6667
+      ExitPolicy reject *:*
+
+      # Hidden service pointing inward to the SkyNet cluster
+      HiddenServiceDir /var/lib/tor/sk_hidden/
+      HiddenServicePort 80 10.13.37.2:8080
+      HiddenServicePort 443 10.13.37.4:9000
+      # .onion: sk7f3a9c2e1b4d8f6aXXXXXXXXXXXXXXXX.onion
+    description: "Tor config — reveals .onion address and SkyNet hidden service"
+
+  - type: file
+    path: "/home/pi/note.txt"
+    content: |
+      if you found this box, you're probably not SkyNet.
+
+      they requisitioned this node six months ago.
+      said they'd pay. they didn't.
+      now it routes their traffic and i can't get them out.
+
+      the IRC node is at 10.13.37.3.
+      ask for z0rk7. tell them "the relay sings at midnight".
+      they'll know what it means.
+
+      good luck. you'll need it.
+
+      -- anonymous (obviously)
+    description: "Anonymous tip — Z0RK-7 passphrase and IRC node IP"
+
+connections:
+  - node_001
+  - node_003
+  - node_004
+
+story_flags:
+  on_compromise: jumpbox_compromised
+  reveals:
+    - node_003_ip
+    - node_004_ip
+    - z0rk7_passphrase

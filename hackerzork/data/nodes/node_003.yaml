@@ -1,0 +1,76 @@
+id: node_003
+name: "Darknet IRC Hub"
+ip: "10.13.37.3"
+hostname: "ircd.z0rk-net.onion"
+
+ports:
+  - port: 6667
+    service: irc
+    version: "UnrealIRCd 6.0.7"
+    vuln: null
+    state: open
+
+  - port: 6697
+    service: ircs
+    version: "UnrealIRCd 6.0.7 (TLS)"
+    vuln: null
+    state: open
+
+  - port: 22
+    service: ssh
+    version: "OpenSSH 8.4p1 Debian"
+    vuln: "default_credentials_ssh"
+    state: open
+
+  - port: 80
+    service: http
+    version: "lighttpd/1.4.65"
+    vuln: null
+    state: open
+
+firewall:
+  enabled: true
+  rules:
+    - "block_all_inbound_except: [6667, 6697, 80]"
+
+difficulty: 1
+heat_modifier: 0.3
+
+loot:
+  - type: credential
+    username: z0rk7
+    password: null
+    service: irc
+    description: "Z0RK-7 contact — handles encrypted DMs only. No password; challenge-based auth."
+
+  - type: file
+    path: "/etc/motd"
+    content: |
+      ┌──────────────────────────────────────────────────────────┐
+      │            Z0RK-NET  //  darknet relay cluster           │
+      │                 "trust is a vulnerability"               │
+      │                                                          │
+      │  Channels: #hacker-haven  #shadow-market  #z0rk-ops     │
+      │  Rules: No feds. No snitches. No cleartext.              │
+      │  Contact: msg z0rk7 for verified onboarding              │
+      └──────────────────────────────────────────────────────────┘
+    description: "IRC server MOTD — channel list and contact info"
+
+  - type: file
+    path: "/home/z0rk7/.irc_key.pub"
+    content: |
+      -----BEGIN Z0RK-NET PUBLIC KEY-----
+      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEz0rk7PublicKeyDataXXXXXXXXXX
+      XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXbase64==
+      -----END Z0RK-NET PUBLIC KEY-----
+      fingerprint: z7:0r:k7:de:ad:be:ef:00:ca:fe:ba:be:f0:0d:42:ff
+    description: "Z0RK-7's public key — needed to verify encrypted messages"
+
+connections:
+  - node_002
+  - node_005
+
+story_flags:
+  on_compromise: irc_hub_accessed
+  reveals:
+    - z0rk7_contact_established

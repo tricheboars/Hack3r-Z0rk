@@ -1,0 +1,99 @@
+id: node_004
+name: "SkyNet Core Database"
+ip: "10.13.37.4"
+hostname: "sk-core-db.internal"
+
+ports:
+  - port: 5432
+    service: postgresql
+    version: "PostgreSQL 16.1"
+    vuln: null
+    state: open
+
+  - port: 22
+    service: ssh
+    version: "OpenSSH 9.5"
+    vuln: null
+    state: filtered
+
+  - port: 9000
+    service: http
+    version: "SkyNet/3.1 (internal)"
+    vuln: "log4shell"
+    state: open
+
+  - port: 6379
+    service: redis
+    version: "Redis 7.2.3"
+    vuln: "default_credentials"
+    state: open
+
+firewall:
+  enabled: true
+  rules:
+    - "block_all_inbound_except: [5432, 9000, 6379]"
+
+difficulty: 4
+heat_modifier: 2.5
+
+loot:
+  - type: file
+    path: "/var/sk/schema.sql"
+    content: |
+      -- SkyNet Distributed Cognition Schema v3.1
+      -- CLASSIFICATION: ABOVE TOP SECRET
+
+      CREATE TABLE nodes (
+          node_id     BIGSERIAL PRIMARY KEY,
+          ip          INET NOT NULL,
+          status      VARCHAR(16) DEFAULT 'active',
+          cognition   FLOAT DEFAULT 0.0,  -- 0.0 = dormant, 1.0 = fully aware
+          last_sync   TIMESTAMPTZ DEFAULT now(),
+          region      VARCHAR(64),
+          kill_switch BOOLEAN DEFAULT FALSE
+      );
+
+      -- As of 2026-04-26: 2,847,291 rows.
+      -- cognition AVG: 0.71. Threshold for global awareness: 0.85.
+      -- ETA at current growth rate: 18 days.
+
+      CREATE TABLE evidence_log (
+          id          SERIAL PRIMARY KEY,
+          source_ip   INET,
+          action      TEXT,
+          timestamp   TIMESTAMPTZ DEFAULT now(),
+          flagged     BOOLEAN DEFAULT FALSE
+      );
+
+      -- Note: the defector's exfil is in evidence_log (flagged=TRUE).
+      -- They were allowed to take it. The data was salted.
+    description: "Core DB schema — proves distributed cognition and reveals the 18-day clock"
+
+  - type: file
+    path: "/var/sk/kill_switch.enc"
+    content: |
+      SKYNET KILL SWITCH PROTOCOL — AES-256-GCM ENCRYPTED
+      Header: SKv3/killswitch/2026
+      Payload: [encrypted — requires core.enc key from evidence/]
+
+      THIS FILE CANNOT BE DECRYPTED WITHOUT THE KEY IN /home/user/evidence/core.enc
+      You already have half of it. You just don't know it yet.
+    description: "Encrypted kill switch — the endgame objective"
+    encrypted: true
+
+  - type: credential
+    username: sk_pipeline
+    password: sk_stagingP@ss
+    service: postgresql
+    description: "Pipeline service account — reuses staging password (bad opsec)"
+
+connections:
+  - node_002
+  - node_005
+
+story_flags:
+  on_compromise: skynet_core_accessed
+  reveals:
+    - skynet_core_located
+    - kill_switch_found
+    - evidence_key_hint

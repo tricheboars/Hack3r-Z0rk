@@ -160,6 +160,8 @@ class Game:
         import hackerzork.commands.packaging     # noqa: F401
         import hackerzork.commands.comms_cmds    # noqa: F401
         import hackerzork.commands.save_cmds     # noqa: F401
+        import hackerzork.commands.hacking       # noqa: F401
+        import hackerzork.commands.devtools      # noqa: F401
         import hackerzork.commands.help          # noqa: F401
 
         # 14. Command history — load persisted history from VFS

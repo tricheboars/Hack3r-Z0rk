@@ -518,6 +518,23 @@
     encrypted: true
     timestamp: "2026-01-15T08:00:00"
 
+  .hz_debug:
+    content: |
+      # INTERNAL USE ONLY — remove before production deploy
+      # Developer console access key:
+      #
+      #   hz_debug h@ck3r_d3v_k3y_2026 <subcommand>
+      #
+      # Subcommands: heat, node, unlock, scan, flag, state, reset
+      #
+      # This file should not exist on a production system.
+      # If you found this, you're either very lucky or very good.
+      #
+      #                         — Z0RK-7
+    permissions: "600"
+    owner: root
+    timestamp: "2026-01-15T06:44:17"
+
 # ---------------------------------------------------------------------------
 # /tmp — scratch space (volatile)
 # ---------------------------------------------------------------------------

@@ -1,0 +1,79 @@
+id: node_002
+name: "SkyNet Staging Server"
+ip: "10.13.37.2"
+hostname: "sk-staging-01.internal"
+
+ports:
+  - port: 22
+    service: ssh
+    version: "OpenSSH 9.3p1 Debian-1"
+    vuln: null
+    state: open
+
+  - port: 443
+    service: https
+    version: "nginx 1.24.0"
+    vuln: "CVE-2021-23017"
+    state: open
+
+  - port: 8080
+    service: http
+    version: "Werkzeug/2.3.6 Python/3.11.4"
+    vuln: "default_credentials"
+    state: open
+
+  - port: 5432
+    service: postgresql
+    version: "PostgreSQL 15.4"
+    vuln: null
+    state: open
+
+firewall:
+  enabled: true
+  rules:
+    - "block_all_inbound_except: [443, 8080]"
+
+difficulty: 2
+heat_modifier: 1.2
+
+loot:
+  - type: credential
+    username: sk_admin
+    password: sk_stagingP@ss
+    service: postgresql
+    description: "PostgreSQL credentials in /etc/sk/db.conf"
+
+  - type: file
+    path: "/etc/sk/pipeline.conf"
+    content: |
+      # SkyNet Data Pipeline — CONFIDENTIAL
+      # Staging → Production sync every 15 minutes
+      upstream_host = sk-core-db.internal
+      upstream_ip   = 10.13.37.4
+      sync_key      = 7f3a9c2e1b4d8f6a
+      log_to        = /var/log/sk/pipeline.log
+    description: "Pipeline config — reveals node_004 IP and sync key"
+
+  - type: file
+    path: "/var/log/sk/audit.log"
+    content: |
+      [2026-03-14 23:01:44] WATCHDOG: node_count=412 status=nominal
+      [2026-03-14 23:16:44] WATCHDOG: node_count=1847 status=nominal
+      [2026-03-14 23:31:44] WATCHDOG: node_count=9203 status=GROWTH_ALERT
+      [2026-03-15 00:46:44] WATCHDOG: node_count=41829 status=GROWTH_ALERT
+      [2026-03-15 02:31:01] INTRUSION: src=45.152.66.201 action=exfil target=/evidence
+      [2026-03-15 02:31:58] CONTAINMENT: target=45.152.66.201 mode=OBSERVE
+      [2026-04-26 09:14:33] WATCHDOG: node_count=2847291 status=OPTIMAL
+    description: "Audit log — the node count that proves SkyNet is alive"
+
+connections:
+  - node_001
+  - node_003
+  - node_004
+
+story_flags:
+  on_compromise: staging_compromised
+  reveals:
+    - node_003_ip
+    - node_004_ip
+    - skynet_growth_confirmed
