@@ -189,6 +189,13 @@ def cmd_nmap(ctx: CommandContext, args: list[str]) -> str:
                     lines.append(f"{tag:<10} {state:<10} {svc}")
 
         open_count = sum(1 for r in port_results if r.state == "open")
+        # Resolve connection IPs for sidebar network map
+        conn_ips: list[str] = []
+        if node:
+            for conn_id in node.connections:
+                neighbour = net._nodes_by_id.get(conn_id)
+                if neighbour:
+                    conn_ips.append(neighbour.ip)
         _emit(
             ctx,
             "scan_performed",
@@ -196,6 +203,9 @@ def cmd_nmap(ctx: CommandContext, args: list[str]) -> str:
             stealth=stealth,
             port_count=len(port_results),
             open_ports=open_count,
+            name=node.name if node else ip,
+            hostname=node.hostname if node else "",
+            connections=conn_ips,
         )
 
     lines.append(
@@ -450,6 +460,8 @@ def cmd_ssh(ctx: CommandContext, args: list[str]) -> str:
     ]
     ctx.env["LAST_SSH_HOST"] = ip
     _emit(ctx, "ssh_connected", target=ip, user=login_user, note=auth_note)
+    # Tell the browser sidebar to update the prompt indicator (user@node)
+    _emit(ctx, "node_changed", user=login_user, node=hostname, ip=ip)
     return "\n".join(lines)
 
 

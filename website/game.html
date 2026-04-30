@@ -222,11 +222,23 @@
       overflow: hidden;
       padding: 4px 0 0 4px;
       background: #010801;
+      /* Must be a positioned/sized container so #terminal and xterm fill it */
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* #terminal is the xterm.js mount point — must fill the wrap */
+    #terminal {
+      flex: 1;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     /* xterm.js overrides */
     .xterm { height: 100% !important; }
-    .xterm-viewport { background: #010801 !important; }
+    .xterm-screen { height: 100% !important; }
+    .xterm-viewport { background: #010801 !important; height: 100% !important; }
 
     /* ─── RIGHT SIDEBAR ───────────────────────────────────── */
     #sidebar {
@@ -1527,6 +1539,10 @@ function fitTerm() {
 }
 
 window.addEventListener('resize', fitTerm);
+
+// Also refit when the terminal-wrap changes size (sidebar slide, font load, etc.)
+const _termWrapObserver = new ResizeObserver(() => fitTerm());
+_termWrapObserver.observe(document.getElementById('terminal-wrap'));
 
 /* ─────────────────────────────────────────────────────────────
    WEBSOCKET
