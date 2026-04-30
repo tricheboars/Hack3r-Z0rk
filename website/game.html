@@ -955,78 +955,70 @@ const AUDIO = (() => {
     }
   }
 
-  // ── Ambient pulse sequencer — Aphex Twin SAWII / Xtal feel ────────
-  // Very slow, sparse, hypnotic. Barely-there kick, ghost hats, and a
-  // sine sub-bass that breathes rather than punches. ~78 BPM quarter note
-  // but the bar is 32 steps so each pattern cycle is ~20 seconds.
+  // ── Rhythm sequencer — trip-hop / dark ambient groove ──────────────
+  // 92 BPM half-time feel: kick lands on 1 and 3, hat on 2 and 4,
+  // bass fills the space between. Present and felt but not aggressive.
   let _dnbTimer = null;
   let _dnbStep  = 0;
-  const _BPM    = 78;
-  const _STEP   = (60 / _BPM) / 4;   // 16th-note interval (~0.192s)
+  const _BPM    = 92;
+  const _STEP   = (60 / _BPM) / 4;   // 16th-note (~0.163s)
 
-  // 32-step patterns — one full cycle ≈ 6.1 seconds per 16 steps × 2
-  // Bass melody (Hz) — slow, mostly space, root E1 = 41.2
+  // 16-step patterns — E minor, comfortable amount of movement
   const _BASS_NOTES = [
-    41.2, 0,    0,    0,     0,    0,    0,    0,    // E . . . . . . .
-       0, 0,    0,  36.7,    0,    0,    0,    0,    // . . . D . . . .
-    41.2, 0,    0,    0,     0,    0,  49.0,   0,    // E . . . . . G .
-       0, 0,  41.2,   0,     0,  36.7,   0,    0,    // . . E . . D . .
+    41.2, 0,    41.2, 0,     // E . E .
+    0,    36.7, 0,    41.2,  // . D . E
+    49.0, 0,    41.2, 0,     // G . E .
+    36.7, 0,    41.2, 0,     // D . E .
   ];
-  // Kick — only on beat 1 and beat 3 of every other bar (very sparse)
-  const _KICK   = [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-                   0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0];
-  // Ghost hi-hat — two barely-audible taps per cycle
-  const _HAT    = [0,0,0,0, 0,0,1,0, 0,0,0,0, 0,0,0,0,
-                   0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,1,0];
-  // Bass fires on non-zero note slots
-  const _BASS   = _BASS_NOTES.map(n => n > 0 ? 1 : 0);
+  // Kick on beats 1 & 3 (steps 0, 8)
+  const _KICK = [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0];
+  // Closed hat on beats 2 & 4 (steps 4, 12), light 16th on step 14
+  const _HAT  = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,1,0];
+  const _BASS = _BASS_NOTES.map(n => n > 0 ? 1 : 0);
 
   function _kick() {
     if (!ctx) return;
     const osc = ctx.createOscillator();
     const g   = ctx.createGain();
     osc.type = 'sine';
-    // Gentle thud — starts at 65Hz, falls slowly to 28Hz over 0.5s
-    osc.frequency.setValueAtTime(80, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(28, ctx.currentTime + 0.50);
-    g.gain.setValueAtTime(0.26, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+    osc.frequency.setValueAtTime(90, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(32, ctx.currentTime + 0.35);
+    g.gain.setValueAtTime(0.30, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.40);
     osc.connect(g); g.connect(comp);
-    osc.start(); osc.stop(ctx.currentTime + 0.60);
+    osc.start(); osc.stop(ctx.currentTime + 0.45);
   }
 
   function _hat() {
     if (!ctx) return;
-    // Extremely gentle — almost subliminal brush
-    const len = Math.ceil(ctx.sampleRate * 0.06);
+    const len = Math.ceil(ctx.sampleRate * 0.055);
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const ch  = buf.getChannelData(0);
     for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
     const src = ctx.createBufferSource();
     src.buffer = buf;
     const flt = ctx.createBiquadFilter();
-    flt.type = 'bandpass'; flt.frequency.value = 7000; flt.Q.value = 0.5;
+    flt.type = 'highpass'; flt.frequency.value = 8000;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.018, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+    g.gain.setValueAtTime(0.038, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.055);
     src.connect(flt); flt.connect(g); g.connect(comp);
     src.start();
   }
 
   function _bassNote(freq) {
     if (!ctx || !freq) return;
-    // Pure sine sub-bass — slow attack, long sustain, fades into the drone
     const osc = ctx.createOscillator();
     const g   = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = freq;
-    const sustainTime = _STEP * 6;   // holds for 6 steps — overlapping, blurry
+    const dur = _STEP * 3.5;  // overlaps slightly into next note
     g.gain.setValueAtTime(0, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 0.18);  // slow attack
-    g.gain.setValueAtTime(0.16, ctx.currentTime + sustainTime * 0.6);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + sustainTime);
+    g.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.06);
+    g.gain.setValueAtTime(0.18, ctx.currentTime + dur * 0.55);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
     osc.connect(g); g.connect(comp);
-    osc.start(); osc.stop(ctx.currentTime + sustainTime + 0.05);
+    osc.start(); osc.stop(ctx.currentTime + dur + 0.02);
   }
 
   function _dnbTick() {
