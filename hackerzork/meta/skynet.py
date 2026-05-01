@@ -101,8 +101,8 @@ class SkyNetEngine:
             events.on(event_name, self._make_handler(event_name))
 
     def _make_handler(self, event_name: str):
-        def handler(**data):
-            self.observe(event_name, **data)
+        def handler(event):
+            self.observe(event_name, **event.data)
         return handler
 
     # ------------------------------------------------------------------

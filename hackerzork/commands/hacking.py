@@ -46,8 +46,11 @@ def _parse_flags(args: list[str]) -> tuple[set[str], list[str]]:
     return flags, positional
 
 
+import re as _re
+
 # Named args that take a value: -p PORT  -e EXPLOIT  -w FILE
 _NAMED_ARGS = {"-p", "-e", "-w"}
+_IP_RE = _re.compile(r"^\d+\.\d+\.\d+\.\d+$")
 
 
 def _parse_hacking_args(
@@ -55,8 +58,12 @@ def _parse_hacking_args(
 ) -> tuple[set[str], dict[str, str], list[str]]:
     """Parse hacking command args into (flags, named_values, positionals).
 
-    Named args like ``-p 80`` and ``-e CVE-2021-23017`` are extracted first;
-    remaining single-char flags go into *flags*; everything else is positional.
+    Handles two forms produced by the shell pipeline:
+    1. Direct: ``["-p", "80", "-e", "CVE", "IP"]``  → named["p"]="80", named["e"]="CVE"
+    2. Shell-reconstructed bundled: ``["-ep", "80", "CVE", "IP"]``
+       → the shell parser bundled -p and -e into -ep; values are positionals in order.
+       We use type discrimination to recover: port=first integer, exploit=first
+       non-IP non-integer string, target=X.X.X.X address.
     """
     flags: set[str] = set()
     named: dict[str, str] = {}
@@ -64,19 +71,58 @@ def _parse_hacking_args(
     i = 0
     while i < len(args):
         a = args[i]
-        if a in _NAMED_ARGS and i + 1 < len(args):
+        # Direct form: -p VALUE or -e VALUE or -w VALUE (value not a flag)
+        if a in _NAMED_ARGS and i + 1 < len(args) and not args[i + 1].startswith("-"):
             named[a[1:]] = args[i + 1]
             i += 2
+        elif a.startswith("--") and "=" in a:
+            # --key=val form
+            key, _, val = a[2:].partition("=")
+            named[key] = val
+            i += 1
         elif a.startswith("--") and len(a) > 2:
             flags.add(a[2:])
-        elif a.startswith("-") and len(a) > 1 and not a[1:].isdigit():
+            i += 1
+        elif a.startswith("-") and len(a) > 1 and not a[1:].replace(".", "").isdigit():
             for ch in a[1:]:
                 flags.add(ch)
             i += 1
         else:
             positional.append(a)
             i += 1
-    return flags, named, positional
+
+    # If -p or -e came through as boolean flags (bundled form), recover values
+    # from positionals using type discrimination.
+    remaining = list(positional)
+
+    if "p" in flags and "p" not in named:
+        # Port: first positional that is a plain integer in valid port range
+        for idx, v in enumerate(remaining):
+            if v.isdigit() and 1 <= int(v) <= 65535:
+                named["p"] = v
+                remaining.pop(idx)
+                flags.discard("p")
+                break
+
+    if "e" in flags and "e" not in named:
+        # Exploit: first positional that is not an IP and not a pure digit
+        for idx, v in enumerate(remaining):
+            if not _IP_RE.match(v) and not v.isdigit():
+                named["e"] = v
+                remaining.pop(idx)
+                flags.discard("e")
+                break
+
+    if "w" in flags and "w" not in named:
+        # Wordlist: first positional that starts with /
+        for idx, v in enumerate(remaining):
+            if v.startswith("/"):
+                named["w"] = v
+                remaining.pop(idx)
+                flags.discard("w")
+                break
+
+    return flags, named, remaining
 
 
 def _node_or_err(ctx: CommandContext, ip: str) -> tuple | str:

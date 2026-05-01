@@ -73,7 +73,7 @@ class SaveSystem:
             "toolkit": toolkit.to_dict()     if toolkit else {},
             "comms":   comms.to_dict()       if comms   else {},
             "state":   state.to_dict()       if state   else {},
-            "history": history.get_entries() if history else [],
+            "history": history.get_all() if history else [],
             "env":     dict(env)             if env     else {},
         }
 

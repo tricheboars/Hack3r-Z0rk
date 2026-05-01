@@ -531,35 +531,65 @@ class TestNetwork:
 
 
 class TestHacking:
+    """Each test sets up its own state — don't rely on execution order."""
+
+    def _ensure_discovered(self, game, ip: str) -> None:
+        game._network.discovered.add(ip)
+
+    def _ensure_compromised(self, game, ip: str) -> None:
+        game._network.discovered.add(ip)
+        game._network.compromise_node(ip)
+
+    def _reset_node(self, game, ip: str) -> None:
+        node = game._network.nodes.get(ip)
+        if node:
+            node.compromised = False
+            node.hardened = 0
+            # Restore CVE-2021-23017 vuln in case it was patched
+            for p in node.ports:
+                if p.number == 80:
+                    p.vuln = "CVE-2021-23017"
+        game._network.compromised.discard(ip)
+
     def test_exploit_no_args(self, game):
         out = run(game, "exploit")
         assert "usage" in out.lower() or "missing" in out.lower()
 
     def test_exploit_undiscovered_host(self, game):
-        out = run(game, "exploit -p 80 -e CVE-2021-23017 10.13.37.99")
-        assert "no route" in out.lower() or "not yet scanned" in out.lower() or "nmap" in out.lower()
+        # Use an IP that is definitely not in nodes
+        out = run(game, "exploit -p 80 -e CVE-2021-23017 9.8.7.6")
+        assert "no route" in out.lower()
 
     def test_exploit_wrong_exploit_name(self, game):
-        # First discover
-        run(game, "nmap 10.13.37.1")
+        self._reset_node(game, "10.13.37.1")
+        self._ensure_discovered(game, "10.13.37.1")
         out = run(game, "exploit -p 80 -e wrongexploit 10.13.37.1")
         assert "[-]" in out or "failed" in out.lower()
 
     def test_exploit_success(self, game):
-        run(game, "nmap 10.13.37.1")
+        self._reset_node(game, "10.13.37.1")
+        self._ensure_discovered(game, "10.13.37.1")
         out = run(game, "exploit -p 80 -e CVE-2021-23017 10.13.37.1")
         assert "[+]" in out
         assert game._network.nodes["10.13.37.1"].compromised is True
 
     def test_exploit_creates_loot_dir(self, game):
-        # exploit already run above; just check loot dir
+        self._reset_node(game, "10.13.37.1")
+        self._ensure_discovered(game, "10.13.37.1")
+        run(game, "exploit -p 80 -e CVE-2021-23017 10.13.37.1")
         assert game._fs.file_exists("/home/user/loot")
 
     def test_loot_shows_after_exploit(self, game):
+        self._reset_node(game, "10.13.37.1")
+        self._ensure_discovered(game, "10.13.37.1")
+        run(game, "exploit -p 80 -e CVE-2021-23017 10.13.37.1")
         out = run(game, "loot")
         assert "10.13.37.1" in out or "loot" in out.lower()
 
     def test_loot_filter_by_ip(self, game):
+        self._reset_node(game, "10.13.37.1")
+        self._ensure_discovered(game, "10.13.37.1")
+        run(game, "exploit -p 80 -e CVE-2021-23017 10.13.37.1")
         out = run(game, "loot 10.13.37.1")
         assert "10.13.37.1" in out
 
@@ -568,33 +598,41 @@ class TestHacking:
         assert "missing" in out.lower() or "usage" in out.lower()
 
     def test_bruteforce_known_service(self, game):
-        run(game, "nmap 10.13.37.1")
+        self._ensure_discovered(game, "10.13.37.1")
         out = run(game, "bruteforce -p 3306 10.13.37.1")
         # May succeed (hunter2 is in built-in list) or fail gracefully
         assert "[+]" in out or "[-]" in out
 
     def test_backdoor_not_compromised(self, game):
-        # node_002 not yet exploited
-        run(game, "nmap 10.13.37.2")
+        # Ensure node_002 is NOT compromised
+        game._network.compromised.discard("10.13.37.2")
+        node = game._network.nodes.get("10.13.37.2")
+        if node:
+            node.compromised = False
         out = run(game, "backdoor 10.13.37.2")
-        assert "not compromised" in out.lower() or "root shell" in out.lower() or "exploit" in out.lower()
+        assert "not compromised" in out.lower() or "exploit" in out.lower()
 
     def test_backdoor_on_owned_node(self, game):
-        # 10.13.37.1 was compromised above
+        self._ensure_compromised(game, "10.13.37.1")
         out = run(game, "backdoor 10.13.37.1")
         assert "[+]" in out
         assert "4444" in out
 
     def test_privesc_not_compromised(self, game):
-        run(game, "nmap 10.13.37.2")
+        game._network.compromised.discard("10.13.37.2")
+        node = game._network.nodes.get("10.13.37.2")
+        if node:
+            node.compromised = False
         out = run(game, "privesc 10.13.37.2")
         assert "not yet compromised" in out.lower()
 
     def test_privesc_check_on_owned(self, game):
+        self._ensure_compromised(game, "10.13.37.1")
         out = run(game, "privesc --check 10.13.37.1")
         assert "[!]" in out
 
     def test_privesc_on_owned(self, game):
+        self._ensure_compromised(game, "10.13.37.1")
         out = run(game, "privesc 10.13.37.1")
         assert "[+]" in out or "root" in out.lower()
 
@@ -872,7 +910,9 @@ class TestSaveLoad:
     def test_load_restores_compromise_state(self, game, tmp_path):
         from hackerzork.game import Game
 
-        # Ensure 10.13.37.1 is compromised (done in TestHacking above)
+        # Explicitly compromise the node for this test
+        game._network.discovered.add("10.13.37.1")
+        game._network.compromise_node("10.13.37.1")
         assert game._network.nodes["10.13.37.1"].compromised
 
         save_file = tmp_path / "compromise_test.json"
@@ -1064,8 +1104,11 @@ class TestVFSIntegrity:
 
     def test_hz_debug_perms(self, game):
         node = game._fs._get_node("/etc/.hz_debug")
-        perm_str = str(node.permissions)
-        assert "6" in perm_str  # owner read+write
+        # Permissions dataclass: owner_read and owner_write should be True, owner_exec False
+        p = node.permissions
+        assert p.owner_read is True
+        assert p.owner_write is True
+        assert p.owner_exec is False
 
 
 # ===========================================================================

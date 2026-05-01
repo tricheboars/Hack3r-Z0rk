@@ -41,7 +41,7 @@ class _State:
 
 class _History:
     def __init__(self): self._added: list[str] = []
-    def get_entries(self): return ["cmd1", "cmd2"]
+    def get_all(self): return ["cmd1", "cmd2"]
     def add(self, cmd): self._added.append(cmd)
 
 

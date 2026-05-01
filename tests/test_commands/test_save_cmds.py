@@ -43,7 +43,7 @@ class _State:
     def load_state(self, d): pass
 
 class _History:
-    def get_entries(self): return ["ls", "pwd"]
+    def get_all(self): return ["ls", "pwd"]
     def add(self, cmd): pass
 
 

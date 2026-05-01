@@ -376,9 +376,12 @@ class TestBindEvents:
             def on(self, event_name, handler):
                 handlers[event_name] = handler
 
+        from hackerzork.systems.events import Event
         e = _engine()
         e.bind_events(MockEvents())
-        handlers["encrypted_file_accessed"]()
+        # Handler now expects an Event object (EventBus calls handler(event))
+        fake_event = Event(name="encrypted_file_accessed", data={})
+        handlers["encrypted_file_accessed"](fake_event)
         assert e.awareness == 8.0
 
 

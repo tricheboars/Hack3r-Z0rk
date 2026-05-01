@@ -546,6 +546,22 @@ def cmd_tail(ctx: CommandContext, args: list[str]) -> str:
 )
 def cmd_wc(ctx: CommandContext, args: list[str]) -> str:
     flags, positional = _parse_flags(args)
+
+    # Support piped input
+    stdin = ctx.env.get("STDIN", "") if ctx.env else ""
+    if not positional and stdin:
+        content = stdin
+        line_count = len(content.splitlines())
+        word_count = len(content.split())
+        byte_count = len(content.encode())
+        if "l" in flags:
+            return str(line_count)
+        if "w" in flags:
+            return str(word_count)
+        if "c" in flags:
+            return str(byte_count)
+        return f"{line_count} {word_count} {byte_count}"
+
     if not positional:
         return ""
     path = _resolve(ctx, positional[0])
@@ -846,6 +862,38 @@ def cmd_stat(ctx: CommandContext, args: list[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# readlink
+# ---------------------------------------------------------------------------
+
+
+@register_command(
+    name="readlink",
+    usage="readlink [-f] <path>",
+    help_text="Print the value of a symbolic link or canonical file name.\n"
+              "  -f   canonicalize path (resolve all symlinks)",
+    category=_CAT,
+)
+def cmd_readlink(ctx: CommandContext, args: list[str]) -> str:
+    flags, positional = _parse_flags(args)
+    if not positional:
+        return "readlink: missing operand"
+
+    path = _resolve(ctx, positional[0])
+    try:
+        if "f" in flags:
+            # Canonicalize — resolve to final target
+            target = ctx.fs.readlink(path)
+            return target
+        if not ctx.fs.path_is_symlink(path):
+            return f"readlink: {positional[0]}: not a symlink"
+        return ctx.fs.readlink(path)
+    except FSNotFoundError:
+        return f"readlink: {positional[0]}: No such file or directory"
+    except FSError as e:
+        return f"readlink: {e}"
+
+
+# ---------------------------------------------------------------------------
 # file
 # ---------------------------------------------------------------------------
 
@@ -1045,15 +1093,25 @@ def cmd_find(ctx: CommandContext, args: list[str]) -> str:
     i = 0
     while i < len(args):
         a = args[i]
-        if a == "-name" and i + 1 < len(args):
+        # Accept both "-name pattern" (direct) and "--name=pattern" (shell-reconstruct)
+        if a in ("-name", "--name") and i + 1 < len(args):
             name_pattern = args[i + 1]
             i += 2
-        elif a == "-type" and i + 1 < len(args):
+        elif a.startswith("--name=") or a.startswith("-name="):
+            name_pattern = a.split("=", 1)[1]
+            i += 1
+        elif a in ("-type", "--type") and i + 1 < len(args):
             type_filter = args[i + 1]
             i += 2
-        elif a == "-newer" and i + 1 < len(args):
+        elif a.startswith("--type=") or a.startswith("-type="):
+            type_filter = a.split("=", 1)[1]
+            i += 1
+        elif a in ("-newer", "--newer") and i + 1 < len(args):
             newer_ref = args[i + 1]
             i += 2
+        elif a.startswith("-") and len(a) > 1:
+            # Ignore bundled short flags from shell reconstruction
+            i += 1
         else:
             start_paths.append(a)
             i += 1
