@@ -1087,12 +1087,36 @@ class TestVFSIntegrity:
         # .config → .dotfiles
         assert game._fs.file_exists("/home/user/.config")
 
-    def test_trash_recoverable_file(self, game):
+    def test_trash_recoverable_file(self):
+        # Use a fresh game so trash state is clean for this test
+        g = Game(audio_enabled=False, effects_enabled=False, meta_enabled=False)
+        g.boot()
         # exfil.py should be in trash (deleted: true in YAML)
-        # recover command should work
-        out = run(game, "recover exfil.py")
-        # Either it succeeds or gives a message about already recovered
-        assert out is not None
+        out = run(g, "recover exfil.py")
+        # Should succeed with story text
+        assert "recovered" in out.lower()
+
+    def test_recover_exfil_story_text(self):
+        """Recovering exfil.py should give narrative context."""
+        g = Game(audio_enabled=False, effects_enabled=False, meta_enabled=False)
+        g.boot()
+        out = run(g, "recover exfil.py")
+        # Story text should mention the breach
+        assert "2026-03-15" in out or "SkyNet" in out or "manually" in out.lower() or "that night" in out.lower()
+
+    def test_recover_exfil_sets_story_flag(self):
+        """Recovering exfil.py should set the exfil_py_recovered flag."""
+        g = Game(audio_enabled=False, effects_enabled=False, meta_enabled=False)
+        g.boot()
+        run(g, "recover exfil.py")
+        assert g._state.has_flag("exfil_py_recovered")
+
+    def test_recover_lists_trash_when_no_arg(self):
+        g = Game(audio_enabled=False, effects_enabled=False, meta_enabled=False)
+        g.boot()
+        out = run(g, "recover")
+        # Should list recoverable files or say trash is empty
+        assert "exfil" in out or "recoverable" in out.lower() or "trash" in out.lower()
 
     def test_broken_symlink_visible(self, game):
         # /home/user/tools/decrypt is a broken symlink
@@ -1214,3 +1238,239 @@ class TestShellEdgeCases:
     def test_cd_to_file_fails(self, game):
         out = run(game, "cd /etc/passwd")
         assert "not a directory" in out.lower() or "error" in out.lower()
+
+
+# ===========================================================================
+# IRC / Comms integration — event routing, channel access, triggers
+# ===========================================================================
+
+
+class TestIRCEventRouting:
+    """Verify that game-level event routing wires story flags to comms."""
+
+    def _fresh_game(self) -> Game:
+        g = Game(audio_enabled=False, effects_enabled=False, meta_enabled=False)
+        g.boot()
+        return g
+
+    def test_flag_set_propagates_to_comms(self):
+        g = self._fresh_game()
+        # Set a flag via state; comms should receive it through the event bus
+        g._state.set_flag("test_comms_flag")
+        assert g._comms.has_flag("test_comms_flag")
+
+    def test_shadow_unlocked_event_sets_state_flag(self):
+        g = self._fresh_game()
+        # Simulate toolkit emitting shadow_unlocked
+        g._events.emit("shadow_unlocked", source_url="shadow://test")
+        assert g._state.has_flag("shadow_unlocked")
+
+    def test_shadow_unlocked_propagates_to_comms(self):
+        g = self._fresh_game()
+        # shadow_unlocked → state → flag_set → comms
+        g._events.emit("shadow_unlocked", source_url="shadow://test")
+        assert g._comms.has_flag("shadow_unlocked")
+
+    def test_z0rk_ops_locked_without_flag(self):
+        g = self._fresh_game()
+        g._comms.join_channel("#z0rk_7_ops")  # attempt join without flag
+        ch = g._comms.channels.get("#z0rk_7_ops")
+        if ch:
+            assert not ch.joined
+
+    def test_z0rk_ops_accessible_after_shadow_unlocked(self):
+        g = self._fresh_game()
+        g._events.emit("shadow_unlocked", source_url="shadow://test")
+        result = g._comms.join_channel("#z0rk_7_ops")
+        assert "denied" not in result.lower()
+        ch = g._comms.channels.get("#z0rk_7_ops")
+        if ch:
+            assert ch.joined
+
+    def test_node_compromise_flag_propagates_to_comms(self):
+        g = self._fresh_game()
+        g._state.set_flag("relay_alpha_compromised")
+        assert g._comms.has_flag("relay_alpha_compromised")
+
+    def test_multiple_flags_all_propagate(self):
+        g = self._fresh_game()
+        flags = ["relay_alpha_compromised", "node_004_breached", "kill_switch_found"]
+        for f in flags:
+            g._state.set_flag(f)
+        for f in flags:
+            assert g._comms.has_flag(f)
+
+
+class TestIRCChannels:
+    """Test IRC channel workflow via shell commands."""
+
+    def test_irc_list_shows_open_channels(self, game):
+        out = run(game, "irc list")
+        # underground and zero_day should always be visible
+        assert "#underground" in out or "underground" in out
+
+    def test_irc_join_underground(self, game):
+        out = run(game, "irc join #underground")
+        assert "underground" in out.lower()
+
+    def test_irc_read_after_join(self, game):
+        run(game, "irc join #underground")
+        out = run(game, "irc read #underground")
+        # Should see channel history
+        assert "underground" in out.lower()
+        assert "z0rk" in out.lower() or "null_byte" in out.lower() or "ghost" in out.lower()
+
+    def test_irc_who_after_join(self, game):
+        run(game, "irc join #underground")
+        out = run(game, "irc who #underground")
+        assert "null_byte" in out or "z0rk" in out or "ghost" in out
+
+    def test_irc_post_echo(self, game):
+        run(game, "irc join #underground")
+        out = run(game, "irc post #underground hello world")
+        assert "hello world" in out
+
+    def test_irc_post_trigger_fires_on_keyword(self, game):
+        run(game, "irc join #underground")
+        out = run(game, "irc post #underground who is ghost_runner")
+        # Should trigger an NPC response about ghost
+        assert out  # at minimum, no crash
+
+    def test_irc_trigger_45152_ip(self, game):
+        run(game, "irc join #underground")
+        out = run(game, "irc post #underground what about 45.152.66.201")
+        # null_byte trigger should fire
+        assert "null_byte" in out or "45.152" in out or "night" in out.lower()
+
+    def test_irc_join_zero_day(self, game):
+        out = run(game, "irc join #zero_day")
+        assert "zero_day" in out or "0" in out
+
+    def test_irc_read_zero_day(self, game):
+        run(game, "irc join #zero_day")
+        out = run(game, "irc read #zero_day")
+        assert "zero_day" in out or "CVE" in out or "broker" in out
+
+    def test_irc_part_channel(self, game):
+        run(game, "irc join #underground")
+        out = run(game, "irc part #underground")
+        assert "left" in out.lower() or "underground" in out.lower()
+
+    def test_irc_nick_change(self, game):
+        out = run(game, "irc nick phantom")
+        assert "phantom" in out.lower()
+
+    def test_irc_status_shows_joined(self, game):
+        run(game, "irc join #underground")
+        out = run(game, "irc")
+        # Status should show joined channels
+        assert "underground" in out
+
+    def test_irc_read_limit(self, game):
+        run(game, "irc join #underground")
+        out = run(game, "irc read #underground -n 3")
+        assert out  # no crash
+
+    def test_irc_unknown_subcommand(self, game):
+        out = run(game, "irc badcmd")
+        assert "unknown" in out.lower() or "usage" in out.lower()
+
+    def test_irc_z0rk_ops_locked_initially(self, game):
+        out = run(game, "irc join #z0rk_7_ops")
+        assert "denied" in out.lower() or "credentials" in out.lower() or "access" in out.lower()
+
+
+class TestDMSystem:
+    """Test direct messaging via the shell."""
+
+    def test_msg_list(self, game):
+        out = run(game, "msg list")
+        assert out  # has pre-seeded z0rk_7 thread
+
+    def test_msg_read_z0rk7(self, game):
+        out = run(game, "msg read z0rk_7")
+        assert "z0rk_7" in out or "archivist" in out.lower() or "42 days" in out.lower()
+
+    def test_msg_read_nonexistent(self, game):
+        out = run(game, "msg read nobody_real")
+        assert "no dm" in out.lower() or "no thread" in out.lower() or "no" in out.lower()
+
+    def test_msg_send_to_contact(self, game):
+        out = run(game, "msg send z0rk_7 I found the evidence")
+        assert "encrypted" in out.lower() or "sent" in out.lower()
+
+    def test_msg_send_unknown_contact(self, game):
+        out = run(game, "msg send unknown_handle hello")
+        assert "unknown" in out.lower() or "contact" in out.lower()
+
+    def test_msg_no_args(self, game):
+        out = run(game, "msg")
+        assert out
+
+
+class TestContacts:
+    """Test contact management."""
+
+    def test_contacts_list(self, game):
+        out = run(game, "contacts")
+        assert "z0rk_7" in out
+
+    def test_contacts_info_z0rk7(self, game):
+        out = run(game, "contacts info z0rk_7")
+        assert "z0rk_7" in out or "archivist" in out.lower()
+
+    def test_contacts_info_ghost(self, game):
+        out = run(game, "contacts info ghost_runner")
+        assert "burned" in out.lower() or "ghost" in out.lower()
+
+    def test_contacts_info_nonexistent(self, game):
+        out = run(game, "contacts info nobody")
+        assert "no contact" in out.lower() or "unknown" in out.lower() or "no" in out.lower()
+
+
+class TestIRCZ0rkOpsFlow:
+    """Test the locked z0rk_7_ops channel with proper flag unlock."""
+
+    def _game_with_shadow(self) -> Game:
+        g = Game(audio_enabled=False, effects_enabled=False, meta_enabled=False)
+        g.boot()
+        g._events.emit("shadow_unlocked", source_url="shadow://test")
+        return g
+
+    def test_list_shows_z0rk_ops_after_unlock(self):
+        g = self._game_with_shadow()
+        out = g._comms.list_channels()
+        assert "#z0rk_7_ops" in out
+
+    def test_join_z0rk_ops_after_unlock(self):
+        g = self._game_with_shadow()
+        result = g._comms.join_channel("#z0rk_7_ops")
+        assert "denied" not in result.lower()
+
+    def test_read_z0rk_ops_history(self):
+        g = self._game_with_shadow()
+        g._comms.join_channel("#z0rk_7_ops")
+        out = g._comms.read_channel("#z0rk_7_ops")
+        # z0rk_7 should have left messages about the breach
+        assert "45.152" in out or "SkyNet" in out or "evidence" in out or "exfil" in out
+
+    def test_z0rk7_trigger_on_evidence_keyword(self):
+        g = self._game_with_shadow()
+        g._comms.join_channel("#z0rk_7_ops")
+        echo, reply = g._comms.post_message("#z0rk_7_ops", "where is the evidence key")
+        # z0rk_7 should reply about key fragments
+        assert reply is not None
+        assert "z0rk_7" in reply or "key" in reply.lower() or "relay" in reply.lower()
+
+    def test_z0rk7_trigger_on_help_keyword(self):
+        g = self._game_with_shadow()
+        g._comms.join_channel("#z0rk_7_ops")
+        echo, reply = g._comms.post_message("#z0rk_7_ops", "what do i do next")
+        assert reply is not None
+
+    def test_z0rk7_trigger_on_skynet_keyword(self):
+        g = self._game_with_shadow()
+        g._comms.join_channel("#z0rk_7_ops")
+        echo, reply = g._comms.post_message("#z0rk_7_ops", "is skynet really real")
+        assert reply is not None
+        assert "running" in reply.lower() or "autonomous" in reply.lower() or "real" in reply.lower() or "2024" in reply

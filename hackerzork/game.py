@@ -195,27 +195,44 @@ class Game:
             self._events.on("surveillance_discovered", self._on_surveillance)
             self._events.on("skynet_process_killed", self._on_skynet_kill)
 
+        # 18. Wire story flag propagation
+        #     toolkit emits "shadow_unlocked" → set game state flag
+        #     game state emits "flag_set"     → sync flag into comms channels
+        self._events.on("shadow_unlocked", self._on_shadow_unlocked)
+        self._events.on("flag_set", self._on_flag_set)
+
         self._booted = True
 
     # -------------------------------------------------------------------------
-    # Event handlers (audio hooks)
+    # Event handlers
     # -------------------------------------------------------------------------
 
-    def _on_heat_threshold(self, **kwargs: object) -> None:
+    def _on_heat_threshold(self, event: object) -> None:
         if self._audio is None:
             return
-        self._audio.set_reactive_state(float(kwargs.get("level", 0.0)))
+        level = getattr(event, "data", {}).get("level", 0.0)
+        self._audio.set_reactive_state(float(level))
 
-    def _on_surveillance(self, **kwargs: object) -> None:
+    def _on_surveillance(self, event: object) -> None:
         if self._audio is None:
             return
-        if kwargs.get("first"):
+        if getattr(event, "data", {}).get("first"):
             self._audio.play_sfx("surveillance_alert")
 
-    def _on_skynet_kill(self, **kwargs: object) -> None:
+    def _on_skynet_kill(self, event: object) -> None:
         if self._audio is None:
             return
         self._audio.play_sfx("process_kill")
+
+    def _on_shadow_unlocked(self, event: object) -> None:
+        """Toolkit activated the shadow repo — set the game state flag."""
+        self._state.set_flag("shadow_unlocked")
+
+    def _on_flag_set(self, event: object) -> None:
+        """A story flag was set — propagate it into the comms channel gating."""
+        flag = getattr(event, "data", {}).get("flag", "")
+        if flag:
+            self._comms.set_flag(flag)
 
     # -------------------------------------------------------------------------
     # Lifecycle

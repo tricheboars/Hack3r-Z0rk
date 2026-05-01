@@ -1165,15 +1165,60 @@ def cmd_recover(ctx: CommandContext, args: list[str]) -> str:
 
     path_str = positional[0]
     if not path_str.startswith("/"):
-        path_str = _resolve(ctx, path_str)
+        resolved = _resolve(ctx, path_str)
+        # Try the resolved path first; if not found, search trash by basename
+        try:
+            ctx.fs.recover(resolved)
+            path_str = resolved
+        except FSNotFoundError:
+            # Basename fallback: find first trash entry whose name matches
+            basename = path_str.rstrip("/").split("/")[-1]
+            trash = ctx.fs.list_trash()
+            match = next(
+                (orig for orig, _ in trash if orig.rstrip("/").split("/")[-1] == basename),
+                None,
+            )
+            if match is None:
+                return f"recover: nothing recoverable matching '{path_str}'"
+            try:
+                ctx.fs.recover(match)
+                path_str = match
+            except FSError as e:
+                return f"recover: {e}"
+        except FSError as e:
+            return f"recover: {e}"
+    else:
+        try:
+            ctx.fs.recover(path_str)
+        except FSNotFoundError:
+            return f"recover: nothing recoverable at '{path_str}'"
+        except FSError as e:
+            return f"recover: {e}"
 
-    try:
-        ctx.fs.recover(path_str)
-        return f"recovered: {path_str}"
-    except FSNotFoundError:
-        return f"recover: nothing recoverable at '{path_str}'"
-    except FSError as e:
-        return f"recover: {e}"
+    # Story-aware recovery messages for narrative files
+    name = path_str.rstrip("/").split("/")[-1]
+    if name == "exfil.py":
+        if ctx.events:
+            ctx.events.emit("encrypted_file_accessed", path=path_str)
+        if ctx.state:
+            ctx.state.set_flag("exfil_py_recovered")
+        return (
+            f"recovered: {path_str}\n"
+            "[dim]--- file timestamp: 2026-03-15 02:43:38 ---[/dim]\n"
+            "[yellow]This is the script that ran that night. "
+            "SkyNet didn't write it — someone ran it manually using your credentials.[/yellow]"
+        )
+    if name == "syslog.1":
+        if ctx.state:
+            ctx.state.set_flag("syslog1_recovered")
+        return (
+            f"recovered: {path_str}\n"
+            "[dim]--- rotated log, last modified 2026-03-15 02:47:22 ---[/dim]\n"
+            "[yellow]sk_watchdog pulse counts: 412 → 1847 → 9203. "
+            "Three pulses in a single day. Something was growing.[/yellow]"
+        )
+
+    return f"recovered: {path_str}"
 
 
 # ---------------------------------------------------------------------------

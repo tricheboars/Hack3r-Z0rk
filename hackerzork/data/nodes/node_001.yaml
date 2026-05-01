@@ -56,7 +56,7 @@ connections:
   - node_005
 
 story_flags:
-  on_compromise: relay_compromised
+  on_compromise: relay_alpha_compromised
   reveals:
     - node_002_ip
     - node_005_ip
