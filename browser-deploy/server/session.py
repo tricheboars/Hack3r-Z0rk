@@ -94,6 +94,16 @@ class GameSession:
 
             msg_type = msg.get("type", "input")
 
+            # ── Player identify — namespace saves to this player ──────
+            if msg_type == "identify":
+                player_id = str(msg.get("player_id", ""))[:32]  # cap length
+                if player_id and self._game is not None:
+                    ctx = self._shell._ctx
+                    if ctx.env is not None:
+                        ctx.env["HZ_PLAYER_ID"] = player_id
+                        log.info("session=%s  player_id=%s", self.session_id, player_id)
+                continue
+
             # ── Terminal resize ───────────────────────────────────────
             if msg_type == "resize":
                 cols = int(msg.get("cols", 220))

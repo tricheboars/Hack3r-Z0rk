@@ -2,11 +2,52 @@
 
 ![](https://img.shields.io/badge/STATUS-ONLINE-00ff41?style=for-the-badge&labelColor=0d0d0d)
 ![](https://img.shields.io/badge/PYTHON-3.11--3.13-00bfff?style=for-the-badge&labelColor=0d0d0d)
-![](https://img.shields.io/badge/TESTS-1418_PASSING-00ff41?style=for-the-badge&labelColor=0d0d0d)
+![](https://img.shields.io/badge/TESTS-1737_PASSING-00ff41?style=for-the-badge&labelColor=0d0d0d)
 ![](https://img.shields.io/badge/HEAT-CRITICAL-ff3333?style=for-the-badge&labelColor=0d0d0d)
 ![](https://img.shields.io/badge/SKYNET-DORMANT-444444?style=for-the-badge&labelColor=0d0d0d)
 ![](https://img.shields.io/badge/LICENSE-MIT-666666?style=for-the-badge&labelColor=0d0d0d)
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ASCII TITLE OPTIONS — pick one, delete the rest + this comment block
+     ══════════════════════════════════════════════════════════════════════
+
+OPTION A — Block pixel art (matches the in-game BIOS splash)
+─────────────────────────────────────────────────────────────────────── -->
+```
+ ▄▄  ▄   ▄▄  ▄  ▄   ██   ▄▄     ─────     ▄▄▄  ▄▄  ▄▄  ▄  ▄
+ █▀█ █   ▀▀█ █▀▄█  █  █  ▀▀█            ▄▀   ▀ █   █▀█ █▀▄█
+ █▀█ █▄  ▄▄█ █  █  ████  ▄▄█   H@CK3R   ▀▄   ▄ █▄  █▀█ █  █
+ ▀▀  ▀▀  ▀▀▀ ▀  ▀  █  █  ▀▀▀    Z0RK    ▀▀▀▀▀  ▀▀  ▀▀  ▀  ▀
+```
+
+<!-- OPTION B — Bold shadow (double-wide Unicode box chars, tall and imposing)
+─────────────────────────────────────────────────────────────────────── -->
+```
+ ██╗  ██╗ ██████╗  ██████╗██╗  ██╗██████╗ ██████╗
+ ██║  ██║██╔════╝ ██╔════╝██║ ██╔╝╚════██╗██╔══██╗
+ ███████║██║      ██║     █████╔╝  █████╔╝██████╔╝
+ ██╔══██║██║      ██║     ██╔═██╗  ╚═══██╗██╔══██╗
+ ██║  ██║╚██████╗ ╚██████╗██║  ██╗██████╔╝██║  ██║
+ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚═════╝╚═╝  ╚═╝
+
+ ███████╗ ██████╗ ██████╗ ██╗  ██╗
+ ╚══███╔╝██╔═══██╗██╔══██╗██║ ██╔╝
+   ███╔╝ ██║   ██║██████╔╝█████╔╝
+  ███╔╝  ██║   ██║██╔══██╗██╔═██╗
+ ███████╗╚██████╔╝██║  ██║██║  ██╗
+ ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
+```
+
+<!-- OPTION C — Minimal outline (slash/bar style, narrow and clean)
+─────────────────────────────────────────────────────────────────────── -->
+```
+ _   _  @   _  _  __  _    _       _  _   _  _  _
+| |_| |/ \ /  |/ |_  |_|  /     /\  / | |_/ |/ |
+|  _  |\_/ \_ |\  __  |   \/  \/  \_| |/\ |\  |
+```
+
+<!-- OPTION D — BIOS terminal frame (same as current README, alignment fixed)
+─────────────────────────────────────────────────────────────────────── -->
 ```
 $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 [ OK ] spoofing MAC ............. 13:37:de:ad:be:ef ........ done
@@ -17,11 +58,14 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
   ╔══[ SYS:BOOT ]══[ SEC:ALPHA ]══[ NET:DARKNET ]══[ THREAT:ACTIVE ]══╗
-  ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   ║
+  ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
   ║                                                                   ║
-  ║     H @ C K 3 R   ───────────────────   Z 0 R K                   ║
+  ║      ▄▄  ▄   ▄▄  ▄  ▄   ██   ▄▄     ─────     ▄▄▄  ▄▄  ▄▄  ▄  ▄   ║
+  ║      █▀█ █   ▀▀█ █▀▄█  █  █  ▀▀█            ▄▀   ▀ █   █▀█ █▀▄█   ║
+  ║      █▀█ █▄  ▄▄█ █  █  ████  ▄▄█   H@CK3R   ▀▄   ▄ █▄  █▀█ █  █   ║
+  ║      ▀▀  ▀▀  ▀▀▀ ▀  ▀  █  █  ▀▀▀    Z0RK    ▀▀▀▀▀  ▀▀  ▀▀  ▀  ▄   ║
   ║                                                                   ║
-  ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   ║
+  ║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
   ╚══[ PID:0x4A3F ]══[ MEM:512MB ]══[ UPTIME:42d ]══[ STATUS:???? ]═══╝
 
  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░

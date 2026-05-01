@@ -100,7 +100,8 @@ class TestSaveHappyPath:
             with patch("hackerzork.commands.save_cmds._REAL_SAVE_DIR", Path(td)):
                 ctx = _ctx()
                 _run("save", [], ctx)
-                files = list(Path(td).iterdir())
+                # saves now go into a player-namespaced subdirectory
+                files = list(Path(td).rglob("*.json"))
                 assert len(files) == 1
                 data = json.loads(files[0].read_text())
                 assert data["version"] == 1
@@ -153,7 +154,8 @@ class TestLoadMissingFile:
             with patch("hackerzork.commands.save_cmds._REAL_SAVE_DIR", Path(td)):
                 ctx = _ctx()
                 out = _run("load", [], ctx)
-                assert "No save file" in out or "not found" in out.lower()
+                # New message: "No save named" or "not found"
+                assert "No save" in out or "not found" in out.lower() or "no save" in out.lower()
 
 
 # ---------------------------------------------------------------------------

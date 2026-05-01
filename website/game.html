@@ -182,10 +182,12 @@
 
     /* ─── TERMINAL PANE ───────────────────────────────────── */
     #terminal-pane {
-      flex: 1;
+      flex: 1 1 0;
       display: flex;
       flex-direction: column;
       min-width: 0;
+      min-height: 0;        /* allow shrink below content size */
+      overflow: hidden;
       border-right: 1px solid var(--green-dark);
     }
 
@@ -218,11 +220,11 @@
     }
 
     #terminal-wrap {
-      flex: 1;
+      flex: 1 1 0;          /* explicit basis:0 so flex math is deterministic */
+      min-height: 0;        /* CRITICAL: allow shrink so FitAddon gets the right height */
       overflow: hidden;
       padding: 4px 0 0 4px;
       background: #010801;
-      /* Must be a positioned/sized container so #terminal and xterm fill it */
       display: flex;
       flex-direction: column;
     }
@@ -231,14 +233,15 @@
        flex:1 + min-height:0 is correct; height:100% would double-count
        in a flex context and cause cutoff in fullscreen. */
     #terminal {
-      flex: 1;
+      flex: 1 1 0;
       min-height: 0;
       overflow: hidden;
     }
 
-    /* xterm.js overrides */
+    /* xterm.js overrides — only touch .xterm and .xterm-viewport.
+       Leave .xterm-screen alone: xterm.js sets its height to rows×cellHeight;
+       overriding it to 100% breaks scrollback calculation. */
     .xterm { height: 100% !important; }
-    .xterm-screen { height: 100% !important; }
     .xterm-viewport { background: #010801 !important; height: 100% !important; }
     /* Rich outputs \x1b[2m dim codes — default xterm renders them at ~50% opacity.
        Bring that up so game text stays readable. */
@@ -727,15 +730,15 @@
 <div id="boot-splash">
   <pre class="logo-frame">
 ╔══[ SYS:BOOT ]══[ SEC:ALPHA ]══[ NET:DARKNET ]══[ THREAT:ACTIVE ]══╗
-║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
+║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
 ║                                                                   ║
-║     ▄▄  ▄   ▄▄  ▄  ▄   ██   ▄▄     ─────     ▄▄▄  ▄▄  ▄▄  ▄  ▄  ║
-║     █▀█ █   ▀▀█ █▀▄█  █  █  ▀▀█            ▄▀   ▀ █   █▀█ █▀▄█  ║
-║     █▀█ █▄  ▄▄█ █  █  ████  ▄▄█   H@CK3R   ▀▄   ▄ █▄  █▀█ █  █  ║
-║     ▀▀  ▀▀  ▀▀▀ ▀  ▀  █  █  ▀▀▀    Z0RK    ▀▀▀▀▀  ▀▀  ▀▀  ▀  ▀  ║
+║      ▄▄  ▄   ▄▄  ▄  ▄   ██   ▄▄     ─────     ▄▄▄  ▄▄  ▄▄  ▄  ▄   ║
+║      █▀█ █   ▀▀█ █▀▄█  █  █  ▀▀█            ▄▀   ▀ █   █▀█ █▀▄█   ║
+║      █▀█ █▄  ▄▄█ █  █  ████  ▄▄█   H@CK3R   ▀▄   ▄ █▄  █▀█ █  █   ║
+║      ▀▀  ▀▀  ▀▀▀ ▀  ▀  █  █  ▀▀▀    Z0RK    ▀▀▀▀▀  ▀▀  ▀▀  ▀  ▀   ║
 ║                                                                   ║
-║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
-╚══[ PID:0x4A3F ]══[ MEM:512MB ]══[ UPTIME:42d ]══[ STATUS:???? ]══╝</pre>
+║  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  ║
+╚══[ PID:0x4A3F ]══[ MEM:512MB ]══[ UPTIME:42d ]══[ STATUS:???? ]═══╝</pre>
   <div class="logo-title">H<span class="ls">@</span>CK<span class="ls">3</span>R  ───────  <span class="ls">Z</span><span class="ls">0</span>RK</div>
   <div class="logo-tagline">░  CYBERPUNK TERMINAL ADVENTURE  ░  v0.9.1-ALPHA  ░  UNAUTHORIZED ACCESS  ░</div>
 
@@ -1506,12 +1509,29 @@ const WS_URL = new URLSearchParams(location.search).get('ws')
   + location.host + '/ws';
 
 /* ─────────────────────────────────────────────────────────────
+   PLAYER IDENTITY — persists across sessions for save namespacing.
+   A 12-char random ID stored in localStorage.  Players can share it
+   with friends to let them load the same save, or clear it to start fresh.
+───────────────────────────────────────────────────────────── */
+const HZ_PLAYER_ID = (() => {
+  const KEY = 'hz_player_id';
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    // Generate a random 12-char hex player ID
+    id = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+              .map(b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+})();
+
+/* ─────────────────────────────────────────────────────────────
    XTERM.JS SETUP
 ───────────────────────────────────────────────────────────── */
 const term = new Terminal({
   fontFamily: "'JetBrainsMonoNF', 'JetBrains Mono', 'Courier New', monospace",
   convertEol: true,         // bare \n → \r\n so Powerline prompt lines up
-  fontSize: 13,
+  fontSize: 14,
   lineHeight: 1.4,
   cursorBlink: true,
   cursorStyle: 'block',
@@ -1566,15 +1586,29 @@ function fitTerm() {
   }
 }
 
-window.addEventListener('resize', fitTerm);
+// Debounced fit — avoids thrashing during continuous resize drag
+let _fitTimer = null;
+function fitTermDebounced() {
+  clearTimeout(_fitTimer);
+  _fitTimer = setTimeout(fitTerm, 16);  // one animation frame
+}
 
-// Refit on fullscreen enter/exit — the transition is async so delay slightly
-document.addEventListener('fullscreenchange', () => setTimeout(fitTerm, 100));
-document.addEventListener('webkitfullscreenchange', () => setTimeout(fitTerm, 100));
+window.addEventListener('resize', fitTermDebounced);
 
-// Also refit when the terminal-wrap changes size (sidebar slide, font load, etc.)
-const _termWrapObserver = new ResizeObserver(() => fitTerm());
-_termWrapObserver.observe(document.getElementById('terminal-wrap'));
+// Fullscreen transitions are async — the layout settles over ~300ms.
+// Fire three times to catch: initial change, CSS settling, final layout.
+function fitTermFullscreen() {
+  setTimeout(fitTerm, 50);
+  setTimeout(fitTerm, 200);
+  setTimeout(fitTerm, 500);
+}
+document.addEventListener('fullscreenchange',       fitTermFullscreen);
+document.addEventListener('webkitfullscreenchange', fitTermFullscreen);
+
+// Refit when terminal-wrap or pane changes size (sidebar slide, font load, etc.)
+const _resizeObserver = new ResizeObserver(fitTermDebounced);
+_resizeObserver.observe(document.getElementById('terminal-wrap'));
+_resizeObserver.observe(document.getElementById('terminal-pane'));
 
 /* ─────────────────────────────────────────────────────────────
    WEBSOCKET
@@ -1601,6 +1635,8 @@ function connectWS() {
     STATE.everConnected = true;
     STATE.demoMode = false;
     setWsStatus('connected');
+    // Send player ID so the server can namespace saves to this player
+    ws.send(JSON.stringify({ type: 'identify', player_id: HZ_PLAYER_ID }));
     fitTerm();
   };
 
