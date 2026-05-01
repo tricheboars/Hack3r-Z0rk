@@ -920,69 +920,147 @@ const STATE = {
 };
 
 /* ─────────────────────────────────────────────────────────────
-   WEB AUDIO ENGINE
+   WEB AUDIO ENGINE  v2
    Fully synthesized — no external audio files.
-   Layers: ambient drone (heat-reactive) + terminal SFX.
+
+   Layers:
+     1. Ambient pad  — 6-oscillator Am chord, heat-reactive lowpass,
+                       routed through Schroeder reverb
+     2. Rhythm       — 92 BPM trip-hop sequencer (kick / snare / hat / bass)
+                       All four instruments scale in density with heat level
+     3. Bass         — Markov chain over E-minor pentatonic; never repeats
+     4. SFX          — keyclick, enter, arpeggio, SkyNet alarm, glitch
+
+   Reverb: 4 parallel comb filters (Schroeder 1962), ~1.5 s RT60.
+           Feedback loops are valid Web Audio — each contains a DelayNode.
+
    Unlocks on first user gesture (keypress/click).
 ───────────────────────────────────────────────────────────── */
 const AUDIO = (() => {
-  let ctx = null;
-  let masterGain = null;
-  let comp = null;
-  let droneFilter = null;
-  let droneGains = [];  // [{node: GainNode, base: float}]
-  let droneStarted = false;
-  let _muted = false;
 
+  // ── State ─────────────────────────────────────────────────────────
+  let ctx          = null;
+  let masterGain   = null;
+  let comp         = null;
+  let droneFilter  = null;
+  let droneGains   = [];
+  let droneStarted = false;
+  let _reverbSend  = null;   // Schroeder reverb input bus
+  let _dnbTimer    = null;
+  let _dnbStep     = 0;
+  let _heatLevel   = 0;      // kept current by heatUpdate()
+  let _muted       = false;
+
+  // ── Markov bass — E minor pentatonic ──────────────────────────────
+  // States: E2=41.2, G2=49.0, A2=55.0, B2=61.74, D2=36.71, rest=0
+  const _BM_NOTES = [41.20, 49.00, 55.00, 61.74, 36.71, 0];
+  const _BM_TRANS = [      // row = from-state, col = to-state probability
+    //  E2    G2    A2    B2    D2   rest
+    [0.20, 0.20, 0.10, 0.15, 0.10, 0.25],  // from E2
+    [0.35, 0.10, 0.25, 0.10, 0.05, 0.15],  // from G2
+    [0.35, 0.20, 0.10, 0.15, 0.05, 0.15],  // from A2
+    [0.30, 0.25, 0.10, 0.10, 0.15, 0.10],  // from B2
+    [0.50, 0.15, 0.05, 0.05, 0.10, 0.15],  // from D2 (pulls back to root)
+    [0.35, 0.20, 0.15, 0.10, 0.05, 0.15],  // from rest
+  ];
+  let _bmState = 0;  // current Markov state index (starts on E2)
+
+  function _markovNext() {
+    const row = _BM_TRANS[_bmState];
+    let r = Math.random(), acc = 0;
+    for (let i = 0; i < row.length; i++) {
+      acc += row[i];
+      if (r < acc) { _bmState = i; return _BM_NOTES[i]; }
+    }
+    _bmState = 0; return _BM_NOTES[0];
+  }
+
+  const _BPM  = 92;
+  const _STEP = (60 / _BPM) / 4;  // 16th-note ≈ 0.163 s
+
+  // ── Init ──────────────────────────────────────────────────────────
   function _init() {
     if (ctx) return;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-    // Master gain → destination
     masterGain = ctx.createGain();
     masterGain.gain.value = 1.0;
     masterGain.connect(ctx.destination);
 
-    // Soft compressor to prevent clipping when SFX stack
     comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14;
-    comp.knee.value = 6;
-    comp.ratio.value = 4;
-    comp.attack.value = 0.003;
-    comp.release.value = 0.15;
+    comp.knee.value      =   6;
+    comp.ratio.value     =   4;
+    comp.attack.value    = 0.003;
+    comp.release.value   = 0.15;
     comp.connect(masterGain);
 
-    // ── Ambient drone ─────────────────────────────────────
-    // Three detuned sine oscillators: root (55Hz), fifth (82.5Hz), octave (110Hz).
-    // They pass through a lowpass filter whose cutoff rises with heat.
+    // ── Schroeder reverb ─────────────────────────────────────────
+    // 4 parallel comb filters (classic Schroeder delay times).
+    // Each loop: junction → DelayNode → feedback GainNode → junction.
+    // W3C spec allows feedback loops containing at least one DelayNode. ✓
+    _reverbSend = ctx.createGain();
+    _reverbSend.gain.value = 1.0;
+
+    const reverbWet = ctx.createGain();
+    reverbWet.gain.value = 0.22;
+    reverbWet.connect(comp);
+
+    [[0.0297, 0.875], [0.0371, 0.883], [0.0411, 0.867], [0.0437, 0.855]]
+    .forEach(([dt, fb]) => {
+      const junction = ctx.createGain();   // summing junction
+      const delay    = ctx.createDelay(0.1);
+      const feedback = ctx.createGain();
+      delay.delayTime.value = dt;
+      feedback.gain.value   = fb;
+      _reverbSend.connect(junction);
+      junction.connect(delay);
+      delay.connect(feedback);
+      feedback.connect(junction);  // feedback (DelayNode in loop — valid)
+      delay.connect(reverbWet);    // tap to output
+    });
+
+    // ── Ambient pad — 6-osc Am voicing ───────────────────────────
+    // A2/E3/G3/A3/E4/A4 — slightly detuned for beating/breath.
+    // Heat morphs the lowpass cutoff (muffled cold → bright/harsh hot).
+    // Signal splits: 60 % dry → comp, 40 % wet → reverb.
     droneFilter = ctx.createBiquadFilter();
     droneFilter.type = 'lowpass';
     droneFilter.frequency.value = 160;
     droneFilter.Q.value = 1.2;
-    droneFilter.connect(comp);
 
-    const freqs  = [55,    82.5,  110  ];
-    const bases  = [0.10,  0.06,  0.04 ];
-    const detune = [0,     +6,    -4   ];  // cents — creates subtle beating
+    const droneDry = ctx.createGain();
+    droneDry.gain.value = 0.60;
+    droneFilter.connect(droneDry);
+    droneDry.connect(comp);
+
+    const droneRev = ctx.createGain();
+    droneRev.gain.value = 0.40;
+    droneFilter.connect(droneRev);
+    droneRev.connect(_reverbSend);
+
+    const freqs  = [ 55.00,  82.41,  98.00, 110.00, 164.81, 220.00 ];
+    const bases  = [  0.08,   0.06,   0.05,   0.04,   0.03,   0.02 ];
+    const detune = [     0,     +7,     -5,     +3,     -9,     +4  ];
 
     for (let i = 0; i < freqs.length; i++) {
       const osc = ctx.createOscillator();
       const g   = ctx.createGain();
-      osc.type           = 'sine';
+      osc.type            = 'sine';
       osc.frequency.value = freqs[i];
       osc.detune.value    = detune[i];
-      g.gain.value        = 0;   // silent until _startDrone()
+      g.gain.value        = 0;  // silent until _startDrone()
       osc.connect(g);
       g.connect(droneFilter);
       osc.start();
       droneGains.push({ node: g, base: bases[i] });
     }
 
-    // Slow LFO for organic tremolo on the root oscillator
+    // Slow LFO — organic tremolo on root oscillator
     const lfo    = ctx.createOscillator();
     const lfoAmt = ctx.createGain();
     lfo.frequency.value = 0.07;
-    lfoAmt.gain.value   = 0.009;   // ±0.009 amplitude wobble
+    lfoAmt.gain.value   = 0.008;
     lfo.connect(lfoAmt);
     lfoAmt.connect(droneGains[0].node.gain);
     lfo.start();
@@ -994,30 +1072,11 @@ const AUDIO = (() => {
     const now = ctx.currentTime;
     for (const dg of droneGains) {
       dg.node.gain.setValueAtTime(0, now);
-      dg.node.gain.linearRampToValueAtTime(dg.base, now + 4.0);  // 4s fade-in
+      dg.node.gain.linearRampToValueAtTime(dg.base, now + 4.0);
     }
   }
 
-  // ── Rhythm sequencer — trip-hop / dark ambient groove ──────────────
-  // 92 BPM half-time feel: kick lands on 1 and 3, hat on 2 and 4,
-  // bass fills the space between. Present and felt but not aggressive.
-  let _dnbTimer = null;
-  let _dnbStep  = 0;
-  const _BPM    = 92;
-  const _STEP   = (60 / _BPM) / 4;   // 16th-note (~0.163s)
-
-  // 16-step patterns — E minor, comfortable amount of movement
-  const _BASS_NOTES = [
-    41.2, 0,    41.2, 0,     // E . E .
-    0,    36.7, 0,    41.2,  // . D . E
-    49.0, 0,    41.2, 0,     // G . E .
-    36.7, 0,    41.2, 0,     // D . E .
-  ];
-  // Kick on beats 1 & 3 (steps 0, 8)
-  const _KICK = [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0];
-  // Closed hat on beats 2 & 4 (steps 4, 12), light 16th on step 14
-  const _HAT  = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,1,0];
-  const _BASS = _BASS_NOTES.map(n => n > 0 ? 1 : 0);
+  // ── Rhythm instruments ────────────────────────────────────────────
 
   function _kick() {
     if (!ctx) return;
@@ -1032,8 +1091,52 @@ const AUDIO = (() => {
     osc.start(); osc.stop(ctx.currentTime + 0.45);
   }
 
-  function _hat() {
+  function _snare(vel) {
+    // Two-layer snare: bandpass body (the thwap) + highpass crack (the snap).
+    // Body routes through reverb for the characteristic trip-hop tail.
     if (!ctx) return;
+    const v   = vel || 1.0;
+    const now = ctx.currentTime;
+
+    // Body — bandpass noise, heavy reverb send
+    const bodyLen  = Math.ceil(ctx.sampleRate * 0.12);
+    const bodyBuf  = ctx.createBuffer(1, bodyLen, ctx.sampleRate);
+    const bodyData = bodyBuf.getChannelData(0);
+    for (let i = 0; i < bodyLen; i++) bodyData[i] = Math.random() * 2 - 1;
+    const bodySrc  = ctx.createBufferSource();
+    bodySrc.buffer = bodyBuf;
+    const bodyFlt  = ctx.createBiquadFilter();
+    bodyFlt.type = 'bandpass'; bodyFlt.frequency.value = 220; bodyFlt.Q.value = 0.8;
+    const bodyGain = ctx.createGain();
+    bodyGain.gain.setValueAtTime(0.26 * v, now);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    bodySrc.connect(bodyFlt);
+    bodyFlt.connect(bodyGain);
+    bodyGain.connect(comp);           // dry
+    bodyGain.connect(_reverbSend);    // reverb tail
+    bodySrc.start();
+
+    // Crack — highpass noise, dry only (transient should stay tight)
+    const crackLen  = Math.ceil(ctx.sampleRate * 0.05);
+    const crackBuf  = ctx.createBuffer(1, crackLen, ctx.sampleRate);
+    const crackData = crackBuf.getChannelData(0);
+    for (let i = 0; i < crackLen; i++) crackData[i] = Math.random() * 2 - 1;
+    const crackSrc  = ctx.createBufferSource();
+    crackSrc.buffer = crackBuf;
+    const crackFlt  = ctx.createBiquadFilter();
+    crackFlt.type = 'highpass'; crackFlt.frequency.value = 2400;
+    const crackGain = ctx.createGain();
+    crackGain.gain.setValueAtTime(0.20 * v, now);
+    crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+    crackSrc.connect(crackFlt);
+    crackFlt.connect(crackGain);
+    crackGain.connect(comp);
+    crackSrc.start();
+  }
+
+  function _hat(vel) {
+    if (!ctx) return;
+    const v = vel || 1.0;
     const len = Math.ceil(ctx.sampleRate * 0.055);
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const ch  = buf.getChannelData(0);
@@ -1043,66 +1146,84 @@ const AUDIO = (() => {
     const flt = ctx.createBiquadFilter();
     flt.type = 'highpass'; flt.frequency.value = 8000;
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.038, ctx.currentTime);
+    g.gain.setValueAtTime(0.038 * v, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.055);
     src.connect(flt); flt.connect(g); g.connect(comp);
     src.start();
   }
 
   function _bassNote(freq) {
+    // Triangle oscillator — richer harmonic content than sine, more presence.
     if (!ctx || !freq) return;
     const osc = ctx.createOscillator();
     const g   = ctx.createGain();
-    osc.type = 'sine';
+    osc.type = 'triangle';
     osc.frequency.value = freq;
-    const dur = _STEP * 3.5;  // overlaps slightly into next note
+    const dur = _STEP * 3.2;
     g.gain.setValueAtTime(0, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.06);
-    g.gain.setValueAtTime(0.18, ctx.currentTime + dur * 0.55);
+    g.gain.linearRampToValueAtTime(0.20, ctx.currentTime + 0.05);
+    g.gain.setValueAtTime(0.20, ctx.currentTime + dur * 0.50);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
     osc.connect(g); g.connect(comp);
     osc.start(); osc.stop(ctx.currentTime + dur + 0.02);
   }
 
+  // ── Sequencer tick — heat-reactive ────────────────────────────────
   function _dnbTick() {
-    const s = _dnbStep % 32;
-    if (_KICK[s])                       _kick();
-    if (_HAT[s])                        _hat();
-    if (_BASS[s] && _BASS_NOTES[s])     _bassNote(_BASS_NOTES[s]);
+    const s    = _dnbStep % 16;
+    const heat = _heatLevel;
+
+    // Kick: beat 1 (s=0) always; beat 3 (s=8) added at heat ≥ 30.
+    if (s === 0) _kick();
+    if (s === 8 && heat >= 30) _kick();
+
+    // Snare: beat 3 (s=8) always — half-time feel.
+    // Ghost hit at s=13 added at heat ≥ 60.
+    if (s === 8) _snare(1.0);
+    if (s === 13 && heat >= 60) _snare(0.28);
+
+    // Hat: downbeat hats (s=4, s=12) always.
+    // 16th-note fills (s=2,6,10,14) at heat ≥ 50.
+    // 32nd-note ghost layer on every odd step at heat ≥ 80.
+    if (s === 4 || s === 12) _hat(1.0);
+    if ([2, 6, 10, 14].includes(s) && heat >= 50) _hat(0.40);
+    if (heat >= 80 && s % 2 === 1) _hat(0.14);
+
+    // Bass: Markov chain — density increases with heat.
+    const density = heat < 50 ? 0.50 : heat < 75 ? 0.68 : 0.84;
+    const note = _markovNext();
+    if (note > 0 && Math.random() < density) _bassNote(note);
+
     _dnbStep++;
-    _dnbTimer = setTimeout(_dnbTick, _STEP * 1000);
+    // ±4 ms timing jitter — humanizes the grid (Steve Reich groove)
+    const jitter = (Math.random() - 0.5) * 0.008;
+    _dnbTimer = setTimeout(_dnbTick, (_STEP + jitter) * 1000);
   }
 
   function _startDnB() {
     if (_dnbTimer !== null) return;
-    // Delay first tick by one beat so drums don't front-run the drone fade-in
+    // Delay one beat so drums don't front-run the drone fade-in
     _dnbTimer = setTimeout(_dnbTick, (_STEP * 4) * 1000);
   }
 
-  // White/pink noise burst through a bandpass — for clicks and glitches
+  // ── SFX primitives ────────────────────────────────────────────────
+
   function _noise(duration, freq, q, peakGain) {
     if (!ctx) return;
     const len = Math.ceil(ctx.sampleRate * duration);
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const ch  = buf.getChannelData(0);
     for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
-
-    const src  = ctx.createBufferSource();
+    const src = ctx.createBufferSource();
     src.buffer = buf;
-
-    const flt  = ctx.createBiquadFilter();
-    flt.type           = 'bandpass';
-    flt.frequency.value = freq;
-    flt.Q.value         = q;
-
+    const flt = ctx.createBiquadFilter();
+    flt.type = 'bandpass'; flt.frequency.value = freq; flt.Q.value = q;
     const g = ctx.createGain();
     g.gain.value = peakGain;
-
     src.connect(flt); flt.connect(g); g.connect(comp);
     src.start();
   }
 
-  // Single oscillator tone with envelope
   function _tone(freq, duration, type, peakGain, freqEnd) {
     if (!ctx) return;
     const osc = ctx.createOscillator();
@@ -1111,30 +1232,24 @@ const AUDIO = (() => {
     osc.frequency.value = freq;
     g.gain.value        = 0;
     osc.connect(g); g.connect(comp);
-
     const now = ctx.currentTime;
     g.gain.setValueAtTime(0, now);
     g.gain.linearRampToValueAtTime(peakGain, now + 0.005);
     g.gain.linearRampToValueAtTime(peakGain * 0.5, now + duration * 0.6);
     g.gain.linearRampToValueAtTime(0, now + duration);
-
     if (freqEnd != null) {
       osc.frequency.setValueAtTime(freq, now);
-      osc.frequency.exponentialRampToValueAtTime(
-        Math.max(freqEnd, 20), now + duration
-      );
+      osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 20), now + duration);
     }
-
     osc.start(now);
     osc.stop(now + duration + 0.02);
   }
 
-  // ── Public API ──────────────────────────────────────────
+  // ── Public API ────────────────────────────────────────────────────
   return {
-    /** Call on first user gesture to unlock AudioContext. */
+    /** Unlock AudioContext on first user gesture. */
     unlock() {
       _init();
-      // Only resume if not muted — respects mute state set before first keypress
       if (!_muted && ctx.state === 'suspended') ctx.resume();
       _startDrone();
       _startDnB();
@@ -1146,11 +1261,10 @@ const AUDIO = (() => {
       if (ctx) {
         if (_muted) {
           ctx.suspend();
-          // Pause DnB sequencer — clear pending tick
           if (_dnbTimer !== null) { clearTimeout(_dnbTimer); _dnbTimer = null; }
         } else {
           ctx.resume();
-          _startDnB();   // restart sequencer from next step
+          _startDnB();
         }
       }
       return _muted;
@@ -1193,27 +1307,23 @@ const AUDIO = (() => {
       _noise(dur, 1400, 0.4, 0.18);
     },
 
-    /** Called every time heat changes — morphs the drone. */
+    /** Called every time heat changes — morphs drone + sequencer density. */
     heatUpdate(heat) {
+      _heatLevel = heat;  // sequencer reads this on every tick
       if (!ctx || !droneFilter || !droneStarted) return;
       const now = ctx.currentTime;
-      // Filter cutoff: 160Hz (cold) → 700Hz (critical)
+      // Filter cutoff: 160 Hz (cold, muffled) → 700 Hz (critical, harsh)
       droneFilter.frequency.linearRampToValueAtTime(
         160 + (heat / 100) * 540, now + 2.5
       );
-      // Drone volume: subtle swell with heat
+      // Drone volume: subtle swell
       const boost = 1.0 + (heat / 100) * 0.55;
       for (const dg of droneGains) {
-        dg.node.gain.linearRampToValueAtTime(
-          dg.base * boost, now + 2.5
-        );
+        dg.node.gain.linearRampToValueAtTime(dg.base * boost, now + 2.5);
       }
     },
 
-    /** Expose shared AudioContext for MUSIC module. */
     getCtx()       { _init(); return ctx;  },
-
-    /** Expose master compressor bus for MUSIC module to feed into. */
     getMasterBus() { _init(); return comp; },
   };
 })();
