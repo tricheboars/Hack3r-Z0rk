@@ -112,9 +112,11 @@ class TestIrcList:
         out = _run("irc", ["list"])
         assert "#main" in out
 
-    def test_hides_locked_channels(self):
+    def test_shows_locked_channels_with_marker(self):
         out = _run("irc", ["list"])
-        assert "#vip" not in out
+        # Locked channels appear with [LOCKED] marker, not simply hidden
+        assert "[LOCKED]" in out
+        assert "#vip" in out
 
     def test_shows_locked_with_flag(self):
         ctx = _ctx()

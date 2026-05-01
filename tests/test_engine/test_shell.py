@@ -228,6 +228,37 @@ class TestRedirection:
         result = shell.execute("cat /tmp/redir.txt")
         assert "written" in result
 
+    def test_redirect_to_sources_triggers_shadow_unlock(self):
+        """Writing a shadow:// source via redirect should unlock the shadow repo."""
+        from unittest.mock import MagicMock
+
+        from hackerzork.engine.command_registry import DEFAULT_REGISTRY
+        from hackerzork.systems.toolkit import Toolkit
+
+        fs = VirtualFS(template={
+            **_TEMPLATE,
+            "/etc": {},
+            "/etc/apt": {},
+            "/etc/apt/sources.list.d": {},
+        })
+        env = {"USER": "user", "HOME": "/home/user", "CWD": "/home/user"}
+        toolkit = Toolkit(fs=fs)
+        ctx = CommandContext(fs=fs, env=env, toolkit=toolkit)
+        shell = Shell(ctx=ctx, registry=DEFAULT_REGISTRY)
+
+        assert not toolkit.shadow_enabled
+
+        if DEFAULT_REGISTRY.get("echo") is None:
+            @register_command(name="echo", registry=DEFAULT_REGISTRY)
+            def _echo(c: CommandContext, a: list[str]) -> str:
+                return " ".join(a)
+
+        shell.execute(
+            'echo "deb shadow://relay.z0rk.net/pkgs stable main" '
+            '> /etc/apt/sources.list.d/shadow.list'
+        )
+        assert toolkit.shadow_enabled
+
 
 # ---------------------------------------------------------------------------
 # Helper functions

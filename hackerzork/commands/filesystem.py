@@ -28,6 +28,13 @@ def _cwd(ctx: CommandContext) -> str:
     return ctx.env.get("CWD", "/home/user")
 
 
+def _vfs_write(ctx: CommandContext, path: str, content: str, append: bool = False) -> None:
+    """Write to the VFS and notify the toolkit (for shadow-source detection etc.)."""
+    ctx.fs.write_file(path, content, append=append)
+    if ctx.toolkit is not None:
+        ctx.toolkit.check_shadow_source(path, content)
+
+
 def _resolve(ctx: CommandContext, path: str) -> str:
     """Resolve a path to absolute using the shell env's CWD."""
     if not path:
@@ -1506,7 +1513,7 @@ def cmd_sed(ctx: CommandContext, args: list[str]) -> str:
 
         if in_place:
             try:
-                ctx.fs.write_file(path, new_text)
+                _vfs_write(ctx, path, new_text)
             except FSError as e:
                 results.append(f"sed: {path_str}: {e}")
         else:
@@ -1540,7 +1547,7 @@ def cmd_tee(ctx: CommandContext, args: list[str]) -> str:
     for path_str in positional:
         path = _resolve(ctx, path_str)
         try:
-            ctx.fs.write_file(path, stdin, append=append)
+            _vfs_write(ctx, path, stdin, append=append)
         except FSError as e:
             errors.append(f"tee: {path_str}: {e}")
 

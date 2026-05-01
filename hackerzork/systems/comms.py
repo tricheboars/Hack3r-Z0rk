@@ -213,24 +213,59 @@ class CommsSystem:
     # Channel operations
     # ------------------------------------------------------------------
 
+    # Dead channels — referenced in story content but no longer on any server.
+    # Hitting these returns a narrative message rather than a generic error.
+    _DEAD_CHANNELS: dict[str, str] = {
+        "#darknet-relay-3": (
+            "[error] #darknet-relay-3: channel not found on any reachable relay.\n"
+            "[dim]That node went dark 2026-03-16 after ghost_runner burned.\n"
+            "Try your messages — someone may have left you a new contact.[/dim]"
+        ),
+        "#ghost-ops": (
+            "[error] #ghost-ops: channel owner is BURNED. Server decommissioned.\n"
+            "[dim]ghost_runner's keys are compromised. Do not use.[/dim]"
+        ),
+    }
+
     def list_channels(self) -> str:
         if not self.channels:
             return "No channels available."
         lines = ["Available channels:", ""]
+        accessible: list[tuple[str, IRCChannel]] = []
+        locked: list[tuple[str, IRCChannel]] = []
         for name, ch in sorted(self.channels.items()):
-            if not self._channel_accessible(ch):
-                continue
+            if self._channel_accessible(ch):
+                accessible.append((name, ch))
+            else:
+                locked.append((name, ch))
+
+        for name, ch in accessible:
             joined = "[J]" if ch.joined else "   "
             unread = f" [{ch.unread} unread]" if ch.unread else ""
             parts = len(ch.participants)
             lines.append(f"  {joined} {name:<20} {parts:>2} users  {ch.topic}{unread}")
+
+        if locked:
+            lines.append("")
+            lines.append("[dim]  — locked (credentials required) —[/dim]")
+            for name, ch in locked:
+                lines.append(f"  [dim][LOCKED] {name}[/dim]")
+
         return "\n".join(lines)
 
     def join_channel(self, name: str) -> str:
+        # Story-aware handling for dead channels referenced in narrative
+        if name in self._DEAD_CHANNELS:
+            return self._DEAD_CHANNELS[name]
         ch = self.channels.get(name)
         if ch is None:
             return f"No such channel: {name}"
         if not self._channel_accessible(ch):
+            if ch.requires_flag == "shadow_unlocked":
+                return (
+                    f"[access denied] {name} — shadow repository access required.\n"
+                    "[dim]Configure the shadow repo source, then try again.[/dim]"
+                )
             return f"[access denied] {name} — required credentials not present"
         if ch.joined:
             return f"Already in {name}"

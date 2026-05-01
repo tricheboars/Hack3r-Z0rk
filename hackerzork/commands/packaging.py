@@ -342,7 +342,7 @@ def _shadow_pull(ctx: CommandContext, tk, rest: list[str]) -> str:
         return (
             "E: shadow repository not configured.\n"
             "Hint: append a shadow source to /etc/apt/sources.list.d/\n"
-            "      (check /home/user/notes/ for details)"
+            "      (check .bash_history — something was added before the wipe)"
         )
     if not rest:
         return "Usage: shadow pull <package>"

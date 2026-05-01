@@ -211,6 +211,10 @@ class Shell:
         try:
             path = self._ctx.fs.resolve_path(redir.target)
             self._ctx.fs.write_file(path, result, append=redir.append)
+            # Notify toolkit whenever something is written to /etc/apt/sources.list.d/
+            # so it can detect when the shadow repo has been configured.
+            if self._ctx.toolkit is not None:
+                self._ctx.toolkit.check_shadow_source(path, result)
             return ""
         except Exception as exc:
             return f"bash: {redir.target}: {exc}"

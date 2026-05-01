@@ -173,22 +173,27 @@ class TestChannelList:
         out = c.list_channels()
         assert "#test" in out
 
-    def test_list_hides_locked_channels(self):
+    def test_list_shows_locked_channels_as_locked(self):
         c = _comms()
         out = c.list_channels()
-        assert "#locked" not in out
+        # Locked channels are now shown with [LOCKED] marker, not fully hidden
+        assert "[LOCKED]" in out
+        assert "#locked" in out
 
     def test_list_shows_locked_after_flag(self):
         c = _comms()
         c.set_flag("secret_flag")
         out = c.list_channels()
+        # Once unlocked, channel appears in the accessible section (no LOCKED marker)
         assert "#locked" in out
 
-    def test_list_empty_when_all_locked(self):
+    def test_list_shows_locked_marker_when_all_locked(self):
         c = CommsSystem()
         c.load_from_dicts(channels={"#x": {"topic": "t", "participants": [], "history": [], "triggers": [], "requires_flag": "nope"}})
         out = c.list_channels()
-        assert "#x" not in out
+        # Channel appears as locked, not simply hidden
+        assert "[LOCKED]" in out
+        assert "#x" in out
 
 
 class TestJoinLeave:
@@ -208,6 +213,17 @@ class TestJoinLeave:
         c = _comms()
         out = c.join_channel("#missing")
         assert "No such" in out
+
+    def test_join_dead_channel_returns_narrative(self):
+        c = _comms()
+        out = c.join_channel("#darknet-relay-3")
+        assert "not found" in out.lower() or "went dark" in out.lower() or "dark" in out.lower()
+        assert "ghost_runner" in out or "burned" in out.lower()
+
+    def test_join_dead_ghost_ops(self):
+        c = _comms()
+        out = c.join_channel("#ghost-ops")
+        assert "burned" in out.lower() or "decommissioned" in out.lower()
 
     def test_join_locked_without_flag(self):
         c = _comms()
