@@ -376,6 +376,52 @@
     link_target: "/home/user/.dotfiles"
     timestamp: "2026-01-15T09:12:03"
 
+  .git/:
+    _meta:
+      permissions: "755"
+      owner: user
+      timestamp: "2026-03-15T02:31:09"
+    HEAD:
+      content: "ref: refs/heads/main\n"
+      permissions: "644"
+      owner: user
+      timestamp: "2026-03-15T02:31:09"
+    config:
+      content: |
+        [core]
+        	repositoryformatversion = 0
+        	filemode = true
+        	bare = false
+        	logallrefupdates = true
+        [user]
+        	name = user
+        	email = user@burner
+        [remote "origin"]
+        	url = git@45.152.66.201:~/maze/repo.git
+        	fetch = +refs/heads/*:refs/remotes/origin/*
+        [branch "main"]
+        	remote = origin
+        	merge = refs/heads/main
+      permissions: "644"
+      owner: user
+      timestamp: "2026-03-15T02:31:09"
+    COMMIT_EDITMSG:
+      content: "[sk_stage_loader] observation checkpoint initialized\n"
+      permissions: "644"
+      owner: user
+      timestamp: "2026-03-15T02:31:04"
+    logs/:
+      _meta:
+        permissions: "755"
+        owner: user
+        timestamp: "2026-03-15T02:31:09"
+      HEAD:
+        content: |
+          0000000000000000000000000000000000000000 4a3f8b1c9e2d0f7a6b3c5e8d1f4a7b0c2e5d8f1a sk_stage_loader <root@45.152.66.201> 1742002264 +0000	commit (initial): [sk_stage_loader] observation checkpoint initialized
+        permissions: "644"
+        owner: user
+        timestamp: "2026-03-15T02:31:04"
+
 # ---------------------------------------------------------------------------
 # /var/log — narrative through infrastructure
 # ---------------------------------------------------------------------------

@@ -109,6 +109,10 @@ class Game:
         save_dir = pathlib.Path.home() / ".hackerzork"
         self._save = SaveSystem(save_dir=save_dir)
 
+        # 8b. Git save system — virtual git history for save/load
+        from hackerzork.systems.git_saves import GitSaveSystem
+        self._git_saves = GitSaveSystem()
+
         # 9. Meta engine — SkyNet observation + fourth-wall breaks
         self._fourth_wall = FourthWallBreaker(enabled=self.config.meta_enabled)
         self._skynet = SkyNetEngine(
@@ -149,6 +153,7 @@ class Game:
             comms=self._comms,
             state=self._state,
             save_system=self._save,
+            git_saves=self._git_saves,
             skynet=self._skynet,
             env=self._env,
         )
@@ -163,6 +168,7 @@ class Game:
         import hackerzork.commands.hacking       # noqa: F401
         import hackerzork.commands.devtools      # noqa: F401
         import hackerzork.commands.help          # noqa: F401
+        import hackerzork.commands.git_cmds     # noqa: F401
 
         # 14. Command history — load persisted history from VFS
         self._history = CommandHistory(fs=self._fs)

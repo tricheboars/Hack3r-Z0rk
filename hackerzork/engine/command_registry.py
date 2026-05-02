@@ -42,6 +42,7 @@ class CommandContext:
     toolkit: Any = None      # Toolkit
     comms: Any = None        # CommsSystem
     save_system: Any = None  # SaveSystem
+    git_saves: Any = None    # GitSaveSystem
     skynet: Any = None       # SkyNetEngine
     history: Any = None      # CommandHistory
     registry: Any = None     # CommandRegistry (for man/help)
