@@ -33,11 +33,12 @@ hackerzork/
 │   │                        # sed, tee, grep, find, wc, head, tail, etc.  ✅ DONE
 │   ├── network_cmds.py      # nmap, ssh, ping, traceroute, curl, netcat,
 │   │                        # ifconfig, ip, ss, netstat  ✅ DONE
-│   ├── hacking.py           # Custom exploit tools (TO BUILD — network.py
-│   │                        # attempt_exploit() is ready, just needs commands)  ⬜ TODO
+│   ├── hacking.py           # exploit, bruteforce, loot, backdoor, privesc  ✅ DONE
 │   ├── git_cmds.py          # git commit/log/checkout/stash/diff/blame/push  ✅ DONE
 │   ├── comms_cmds.py        # irc, msg, contacts  ✅ DONE
 │   ├── packaging.py         # apt, shadow, gpg  ✅ DONE
+│   ├── save_cmds.py         # save, load, saves (named slots beside git history)  ✅ DONE
+│   ├── devtools.py          # hz_debug — hidden dev console (heat/node/unlock/...)  ✅ DONE
 │   ├── system.py            # whoami, uname, ps, top, htop, man, history,
 │   │                        # neofetch, date, df, du, free, lscpu, kill, etc.  ✅ DONE
 │   └── help.py              # help, tutorial, hint system  ✅ DONE
@@ -59,7 +60,7 @@ hackerzork/
 │   ├── packages/
 │   │   ├── apt/             # One YAML per mainline package
 │   │   └── shadow/          # One YAML per underground package
-│   ├── nodes/               # Network node definitions (.yaml)  ✅ node_001.yaml
+│   ├── nodes/               # Network node definitions (.yaml)  ✅ node_001–node_005
 │   ├── filesystem/
 │   │   └── home.yaml        # Player filesystem template  ✅ DONE
 │   ├── dialogue/            # NPC dialogue, IRC logs (.yaml)
@@ -410,13 +411,16 @@ ssh root@10.1.40.101 "cd /opt/hackerzork/repo && git pull origin main && systemc
 
 | Priority | Feature | Status | Notes |
 |---|---|---|---|
-| High | `commands/hacking.py` | ⬜ TODO | exploit commands calling `network.attempt_exploit()`; emit `node_compromised` event — network layer is ready |
-| High | Hidden dev console | ⬜ TODO | `/etc/.hz_debug` VFS file (hidden, root-owned); `hz_debug <key>` unlocks; subcommands: `hz heat`, `hz node`, `hz unlock`, `hz scan`, `hz flag`, `hz state`, `hz reset` |
-| Medium | More network nodes | ⬜ TODO | Add `node_002.yaml`–`node_005.yaml` to `data/nodes/` |
-| Medium | IRC implementation | ⬜ TODO | `irc` command connects to darknet channels; Z0RK-7 contact lives here (comms system already supports channels) |
-| Low | Narrator panel | ⬜ PLAN ONLY | Plain-English sidebar panel in `game.html` explaining what the player is doing; third tab alongside Network Map and Files |
-| Low | `recover` command polish | ⬜ TODO | Mechanically works; needs story text when player recovers `exfil.py` from trash |
+| Low | Narrator panel | ⬜ TODO | Plain-English sidebar panel in `game.html` explaining what the player is doing; third tab alongside Network Map and Files. Listens to existing side-channel events |
 | Bug | Terminal fullscreen sizing | ⬜ UNRESOLVED | Shows 80×24 with dead space in maximized mode; normal mode works. Multiple approaches tried, none fixed fullscreen specifically |
+
+### Recently completed (kept here for history; do not re-do)
+
+- `commands/hacking.py` — exploit/bruteforce/loot/backdoor/privesc, all wired through `network.attempt_exploit()`
+- Hidden dev console — `commands/devtools.py` registers `hz_debug` (subcommands: heat, node, unlock, scan, flag, state, reset)
+- More network nodes — `node_002.yaml` through `node_005.yaml`
+- IRC implementation — `irc`, `msg`, `contacts` in `comms_cmds.py`; Z0RK-7 contact lives there
+- `recover` command polish — story text added (commit `98a1166`)
 
 ---
 
@@ -425,7 +429,7 @@ ssh root@10.1.40.101 "cd /opt/hackerzork/repo && git pull origin main && systemc
 All sessions completed through session 16 + browser deployment. Current work is incremental feature additions and polish.
 
 ```bash
-# Run all tests (1533 passing)
+# Run all tests (1807 passing)
 pytest tests/ --ignore=tests/test_browser_deploy -v
 
 # Run with coverage
