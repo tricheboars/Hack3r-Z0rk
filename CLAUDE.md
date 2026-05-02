@@ -411,11 +411,13 @@ ssh root@10.1.40.101 "cd /opt/hackerzork/repo && git pull origin main && systemc
 
 | Priority | Feature | Status | Notes |
 |---|---|---|---|
-| Low | Narrator panel | ⬜ TODO | Plain-English sidebar panel in `game.html` explaining what the player is doing; third tab alongside Network Map and Files. Listens to existing side-channel events |
-| Bug | Terminal fullscreen sizing | ⬜ UNRESOLVED | Shows 80×24 with dead space in maximized mode; normal mode works. Multiple approaches tried, none fixed fullscreen specifically |
+
+_(none open — file new items here as they come up)_
 
 ### Recently completed (kept here for history; do not re-do)
 
+- Terminal fullscreen sizing — body rewritten as a CSS grid (rows: topbar / 1fr / hud, cols: 1fr / sidebar). `fitTerm()` now just calls `fitAddon.fit()` — no more pixel math. Sidebar 280→360px, panel fonts +2px (commit `b2c7687`)
+- Narrator panel — third sidebar tab; plain-English feed of nmap/file/heat/SkyNet events. Hooks live in the primary UI mutators (`setHeat`, `addNetNode`, `addDiscoveredFile`, `showSkyNet`) so it fires from both the WebSocket path and demo mode (commit `a9bffc6`)
 - `commands/hacking.py` — exploit/bruteforce/loot/backdoor/privesc, all wired through `network.attempt_exploit()`
 - Hidden dev console — `commands/devtools.py` registers `hz_debug` (subcommands: heat, node, unlock, scan, flag, state, reset)
 - More network nodes — `node_002.yaml` through `node_005.yaml`
