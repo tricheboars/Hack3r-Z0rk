@@ -817,9 +817,9 @@ class TestSymlinks:
 
     def test_template_broken_symlink(self):
         fs = yaml_fs()
-        # tools/decrypt → /opt/skynet-tools/decrypt (doesn't exist)
+        # tools/decrypt → /opt/skynet-tools/decrypt — target now exists (SkyNet-sealed binary)
         assert fs.path_is_symlink("/home/user/tools/decrypt")
-        assert fs.symlink_is_broken("/home/user/tools/decrypt")
+        assert not fs.symlink_is_broken("/home/user/tools/decrypt")
 
     def test_template_config_symlink_to_dotfiles(self):
         fs = yaml_fs()
@@ -1113,7 +1113,8 @@ class TestNarrativeTemplate:
     def test_home_yaml_broken_symlinks(self):
         template = self._load_yaml_template()
         fs = VirtualFS(template=template)
-        assert fs.symlink_is_broken("/home/user/tools/decrypt")
+        # decrypt symlink resolves — /opt/skynet-tools/decrypt now exists as a SkyNet-sealed binary
+        assert not fs.symlink_is_broken("/home/user/tools/decrypt")
         assert fs.symlink_is_broken("/tmp/.sk_tmp_003.swp")
 
     def test_home_yaml_encrypted_files(self):

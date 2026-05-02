@@ -1445,7 +1445,7 @@
     permissions: "755"
     owner: root
     timestamp: "2026-04-26T09:14:01"
-  null:
+  "null":
     content: "[character device — /dev/null]"
     permissions: "666"
     owner: root
