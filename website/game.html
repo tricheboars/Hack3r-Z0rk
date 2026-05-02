@@ -370,6 +370,40 @@
       line-height: 1.6;
     }
 
+    /* ─── NARRATOR PANEL ──────────────────────────────────── */
+    #narrator-panel { background: #010801; }
+
+    .narrator-entry {
+      padding: 6px 0 6px 8px;
+      border-left: 2px solid var(--green-dark);
+      border-bottom: 1px solid #010e01;
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    .narrator-entry.info  { border-left-color: var(--green-dark); }
+    .narrator-entry.event { border-left-color: var(--cyan); }
+    .narrator-entry.warn  { border-left-color: var(--amber); }
+    .narrator-entry.alert { border-left-color: var(--red); }
+
+    .narrator-time {
+      color: #1a4a1a;
+      font-size: 9px;
+      letter-spacing: 0.04em;
+      display: block;
+    }
+    .narrator-text  { color: var(--green-dim); font-size: 11px; }
+    .narrator-entry.event .narrator-text { color: var(--cyan); }
+    .narrator-entry.warn  .narrator-text { color: var(--amber); }
+    .narrator-entry.alert .narrator-text { color: var(--red); text-shadow: var(--glow-sm); }
+
+    .narrator-locked-msg {
+      color: #1a3d1a;
+      font-size: 11px;
+      text-align: center;
+      padding: 20px 8px;
+      line-height: 1.6;
+    }
+
     /* ═══════════════════════════════════════════════════════
        HUD BAR (bottom)
     ═══════════════════════════════════════════════════════ */
@@ -767,8 +801,9 @@
   </div>
 
   <div class="topbar-right">
-    <button class="topbar-btn active" id="btn-net"    onclick="togglePanel('net')">[ network ]</button>
-    <button class="topbar-btn active" id="btn-files"  onclick="togglePanel('files')">[ files ]</button>
+    <button class="topbar-btn active" id="btn-net"      onclick="togglePanel('net')">[ network ]</button>
+    <button class="topbar-btn active" id="btn-files"    onclick="togglePanel('files')">[ files ]</button>
+    <button class="topbar-btn active" id="btn-narrator" onclick="togglePanel('narrator')">[ narrator ]</button>
     <button class="topbar-btn active" id="btn-mute" onclick="toggleMute()" title="Toggle audio">[ ♪ audio ]</button>
     <a href="index.html" class="topbar-btn" style="text-decoration:none;">[ ← back ]</a>
   </div>
@@ -834,6 +869,20 @@
 </pre>
           <div class="lock-msg">No files catalogued.<br/>Use <span style="color:var(--green-dim)">cat</span> or <span style="color:var(--green-dim)">ls</span> to explore.</div>
           <div class="lock-hint">// interesting files appear here</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NARRATOR PANEL -->
+    <div class="sidebar-panel" id="narrator-panel">
+      <div class="panel-titlebar">
+        <span>// NARRATOR</span>
+        <span id="narrator-count" style="color:#1a3d1a">silent</span>
+      </div>
+      <div class="panel-body" id="narrator-body">
+        <div class="narrator-locked-msg">
+          // awaiting events<br/>
+          <span style="color:#0d2b0d">plain-English play-by-play of what you're doing</span>
         </div>
       </div>
     </div>
@@ -913,6 +962,9 @@ const STATE = {
   skynetLevel: 0,
   panelNet: true,
   panelFiles: true,
+  panelNarrator: true,
+  narratorEntries: [],     // {time, kind, text} — newest first
+  lastNarratedHeatBucket: 0,  // floor(heat/5) — log only on bucket change
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -1806,6 +1858,118 @@ term.onKey(({ key, domEvent }) => {
 });
 
 /* ─────────────────────────────────────────────────────────────
+   NARRATOR
+   Translates side-channel events into a plain-English running
+   feed in the right sidebar. Newest entry rendered first.
+───────────────────────────────────────────────────────────── */
+const NARRATOR_MAX = 50;
+
+const NARRATOR = {
+  push(kind, text) {
+    const t = new Date();
+    const time = String(t.getHours()).padStart(2,'0') + ':'
+               + String(t.getMinutes()).padStart(2,'0') + ':'
+               + String(t.getSeconds()).padStart(2,'0');
+    STATE.narratorEntries.unshift({ time, kind, text });
+    if (STATE.narratorEntries.length > NARRATOR_MAX) {
+      STATE.narratorEntries.length = NARRATOR_MAX;
+    }
+    NARRATOR.render();
+  },
+
+  render() {
+    const body = document.getElementById('narrator-body');
+    const count = STATE.narratorEntries.length;
+    const counter = document.getElementById('narrator-count');
+    if (count === 0) {
+      counter.textContent = 'silent';
+      counter.style.color = '#1a3d1a';
+      return;
+    }
+    counter.textContent = count + ' event' + (count !== 1 ? 's' : '');
+    counter.style.color = 'var(--green-dim)';
+
+    const escape = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    let html = '';
+    for (const e of STATE.narratorEntries) {
+      html += `<div class="narrator-entry ${e.kind}">`
+            + `<span class="narrator-time">${e.time}</span>`
+            + `<span class="narrator-text">${escape(e.text)}</span>`
+            + `</div>`;
+    }
+    body.innerHTML = html;
+  },
+
+  // Heat: only narrate threshold crosses + 5-point bucket changes.
+  // Cooling (heat dropping) is silent — too noisy.
+  onHeat(heat) {
+    const bucket = Math.floor(heat / 5);
+    if (bucket <= STATE.lastNarratedHeatBucket) {
+      STATE.lastNarratedHeatBucket = bucket;
+      return;
+    }
+    STATE.lastNarratedHeatBucket = bucket;
+
+    if (heat >= 90) {
+      NARRATOR.push('alert',
+        `Heat ${heat.toFixed(0)}% — identity burn imminent. They are coming.`);
+    } else if (heat >= 75) {
+      NARRATOR.push('alert',
+        `Heat ${heat.toFixed(0)}% — hunter teams active. Move or hide.`);
+    } else if (heat >= 50) {
+      NARRATOR.push('warn',
+        `Heat ${heat.toFixed(0)}% — ICE countermeasures deployed against you.`);
+    } else if (heat >= 25) {
+      NARRATOR.push('warn',
+        `Heat ${heat.toFixed(0)}% — passive monitoring engaged. They noticed.`);
+    } else if (heat >= 10) {
+      NARRATOR.push('info',
+        `Heat ticking up — ${heat.toFixed(0)}%. Still ghosted, but not for long.`);
+    }
+  },
+
+  onNode(node) {
+    if (node.status === 'owned') {
+      NARRATOR.push('event',
+        `Compromised ${node.name || node.hostname || node.ip} — full access on ${node.ip}.`);
+    } else {
+      const conn = (node.connections && node.connections.length)
+        ? ` — ${node.connections.length} link${node.connections.length !== 1 ? 's' : ''} mapped`
+        : '';
+      NARRATOR.push('event',
+        `Discovered ${node.name || node.hostname || 'node'} at ${node.ip}${conn}.`);
+    }
+  },
+
+  onFile(file) {
+    if (file.encrypted) {
+      NARRATOR.push('warn',
+        `Read ${file.path} — encrypted blob. Need a key.`);
+    } else if (file.isNew) {
+      NARRATOR.push('event',
+        `Catalogued ${file.path} — new lead.`);
+    } else {
+      NARRATOR.push('info',
+        `Read ${file.path}.`);
+    }
+  },
+
+  onSkyNet(message, level) {
+    NARRATOR.push('alert',
+      `SkyNet pinged you${level ? ' (' + level + ')' : ''}. Check the alert overlay.`);
+  },
+
+  onPrompt(user, node) {
+    if (node && node !== STATE.currentNode) {
+      NARRATOR.push('event',
+        node === 'localhost'
+          ? `Returned to localhost. Off the wire.`
+          : `Connected to ${node}${user ? ' as ' + user : ''}.`);
+    }
+  },
+};
+
+/* ─────────────────────────────────────────────────────────────
    SIDE-CHANNEL EVENT HANDLER
    Server sends JSON messages for UI effects.
 ───────────────────────────────────────────────────────────── */
@@ -1829,6 +1993,7 @@ function handleSideChannel(evt) {
       break;
     case 'prompt_update':
       // server sends new prompt string — update title bar
+      NARRATOR.onPrompt(evt.payload.user, evt.payload.node);
       if (evt.payload.user) STATE.currentUser = evt.payload.user;
       if (evt.payload.node) STATE.currentNode = evt.payload.node;
       fitTerm();
@@ -1874,16 +2039,29 @@ function setHeat(value) {
   // Heat-reactive drone morph + music escalation
   AUDIO.heatUpdate(pct);
   MUSIC.setHeat(pct);
+
+  NARRATOR.onHeat(pct);
 }
 
 /* ─────────────────────────────────────────────────────────────
    NETWORK MAP
 ───────────────────────────────────────────────────────────── */
 function addNetNode(node) {
-  // Avoid duplicates
-  if (STATE.discoveredNodes.find(n => n.ip === node.ip)) return;
+  const existing = STATE.discoveredNodes.find(n => n.ip === node.ip);
+  if (existing) {
+    // Status update (e.g., scanned → owned). Without this, follow-up
+    // node_discovered events with status:"owned" silently no-op.
+    if (node.status && node.status !== existing.status) {
+      existing.status = node.status;
+      if (node.connections) existing.connections = node.connections;
+      renderNetMap();
+      NARRATOR.onNode(existing);
+    }
+    return;
+  }
   STATE.discoveredNodes.push(node);
   renderNetMap();
+  NARRATOR.onNode(node);
 }
 
 function renderNetMap() {
@@ -1918,12 +2096,12 @@ function renderNetMap() {
    FILE CATALOGUE
 ───────────────────────────────────────────────────────────── */
 function addDiscoveredFile(file) {
-  if (STATE.discoveredFiles.find(f => f.path === file.path)) {
-    // Update existing
-    const idx = STATE.discoveredFiles.findIndex(f => f.path === file.path);
+  const idx = STATE.discoveredFiles.findIndex(f => f.path === file.path);
+  if (idx >= 0) {
     STATE.discoveredFiles[idx] = file;
   } else {
     STATE.discoveredFiles.push(file);
+    NARRATOR.onFile(file);
   }
   renderFileList();
 }
@@ -2050,6 +2228,8 @@ function showSkyNet(message, level) {
   alert.classList.add('visible');
   triggerGlitch(200);
   AUDIO.skynetAlert();
+
+  NARRATOR.onSkyNet(message, level);
 }
 
 function dismissSkyNet() {
@@ -2077,11 +2257,16 @@ function togglePanel(which) {
     STATE.panelFiles = !STATE.panelFiles;
     document.getElementById('file-panel').style.display = STATE.panelFiles ? '' : 'none';
     document.getElementById('btn-files').classList.toggle('active', STATE.panelFiles);
+  } else if (which === 'narrator') {
+    STATE.panelNarrator = !STATE.panelNarrator;
+    document.getElementById('narrator-panel').style.display = STATE.panelNarrator ? '' : 'none';
+    document.getElementById('btn-narrator').classList.toggle('active', STATE.panelNarrator);
   }
 
-  // Collapse sidebar entirely if both off
+  // Collapse sidebar entirely if all off
   const sidebar = document.getElementById('sidebar');
-  sidebar.classList.toggle('collapsed', !STATE.panelNet && !STATE.panelFiles);
+  sidebar.classList.toggle('collapsed',
+    !STATE.panelNet && !STATE.panelFiles && !STATE.panelNarrator);
 
   setTimeout(fitTerm, 350);
 }
