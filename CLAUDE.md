@@ -380,6 +380,8 @@ story_flags:
 ssh root@10.1.40.101 "cd /opt/hackerzork/repo && git pull origin main && systemctl restart hackerzork-ws"
 ```
 
+The Arch dev box (`archy-boi.moorelab.internal`) and the MacBook both have keys in the LXC's `~/.ssh/authorized_keys`, so the command above works from either. **Default workflow: after any `git push origin main`, run the deploy command in the same session — the live site at `moorelab.cloud/hackerzork/game.html` should never lag behind `main`.**
+
 ### WebSocket Protocol
 - Browser → server: `{"type": "input", "data": "<char>"}` per keypress; `{"type": "resize", "cols": N, "rows": N}`
 - Server → browser: plain text (ANSI codes) OR JSON side-channel events starting with `{`
