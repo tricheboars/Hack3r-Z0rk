@@ -55,7 +55,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 > **SYSTEM ALERT:** An unidentified process is observing this repository. SkyNet awareness tier has been updated.
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+┌──[user@burner]──[~]──[heat:0.0]──[SKYNET:DORMANT]──┐
 └─❯ cat README
 
   A cyberpunk hacking text adventure played entirely through a fake terminal.
@@ -75,7 +75,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 ```
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+┌──[user@burner]──[~]──[heat:0.0]──[SKYNET:DORMANT]──┐
 └─❯ hackerzork --about
 
  ┌──────────────────────────────────────────────────────────────────────────┐
@@ -137,7 +137,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 > **HEAT THRESHOLD EXCEEDED:** Scanning = +3. Exploiting = +10. Identity burn at 100. There are countermeasures. There are hunter teams. **There is no undo.**
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+┌──[user@burner]──[~]──[heat:0.0]──[SKYNET:DORMANT]──┐
 └─❯ cat INSTALL
 
  ┌──────────────────────────────────────────────────────────────────────────┐
@@ -182,7 +182,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 ```
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:0.0]──[SKYNET:DORMANT]
+┌──[user@burner]──[~]──[heat:0.0]──[SKYNET:DORMANT]──┐
 └─❯ hackerzork --help
 
   usage: hackerzork [OPTIONS]
@@ -195,10 +195,10 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 ```
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ # you start cold. the laptop boots. 42-day gap in the auth logs.
 
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ ls -la
   total 9
   drwxr-xr-x  user  .
@@ -212,7 +212,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   drwxr-xr-x  user  notes/
   lrwxrwxrwx  user  .config -> .dotfiles/
 
-┌──[user@burner]──[~/evidence]─────────────────[heat:0.0]──[SKYNET:DORMANT]
+┌──[user@burner]──[~/evidence]──[heat:0.0]──[SKYNET:DORMANT]──┐
 └─❯ cat README.md
   SKYNET EVIDENCE PACKAGE
   collected: 2026-03-15 02:34
@@ -221,14 +221,14 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   7 files. encrypted. key not delivered.
   find the key. find the relay. find the truth.
 
-┌──[user@burner]──[~]──────────────────────────[heat:2.1]──[SKYNET:DORMANT]
+┌──[user@burner]──[~]──[heat:2.1]──[SKYNET:DORMANT]──┐
 └─❯ cat /var/log/auth.log | tail -5
   Mar 15 02:31:44 sshd: Accepted publickey for root from 45.152.66.201
   Mar 15 02:43:38 sshd: Connection closed by 45.152.66.201
                                                       ^
                                                who is this
 
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ nmap 10.13.37.1
   Starting scan on relay-alpha.darknet.local (10.13.37.1)
   PORT     STATE  SERVICE  VERSION
@@ -236,7 +236,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   80/tcp   open   http     nginx 1.18.0  [CVE-2021-23017]
   3306/tcp open   mysql    5.7.38        [default_credentials]
 
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ neofetch
   ╔═══════════╗   user@burner
   ║           ║   ───────────
@@ -249,7 +249,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
   ═════╩═══╩═════  Procs   18 total  │  3 sk_* active
                    Session sk-9a7f3c2d-8b1e-4f6a-9c…
 
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ irc list
   #underground    14 users    "come correct or don't come"
   #zero-day        3 users    [encrypted]
@@ -263,7 +263,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 <summary><b>[ BUILD STATUS — 16 sessions · 1418 tests ]</b></summary>
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ ./status.sh
 
  ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -300,7 +300,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 <summary><b>[ WEB VERSION — play in browser, no install ]</b></summary>
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ cat DEPLOYMENT
 
  ┌──────────────────────────────────────────────────────────────────────────┐
@@ -359,7 +359,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 <summary><b>[ ARCHITECTURE — hackerzork/ source tree ]</b></summary>
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ tree hackerzork/ -L 2 --dirsfirst
 
   hackerzork/
@@ -397,11 +397,11 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 </details>
 
 ```
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ cat LICENSE
   MIT License — Copyright (c) 2026 Patrick Moore
 
-┌──[user@burner]──[~]──────────────────────────[heat:5.3]──[SKYNET:SUBTLE]
+┌──[user@burner]──[~]──[heat:5.3]──[SKYNET:SUBTLE ]──┐
 └─❯ █
 ```
 
