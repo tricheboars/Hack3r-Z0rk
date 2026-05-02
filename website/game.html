@@ -223,15 +223,15 @@
       flex: 1 1 0;
       min-height: 0;
       overflow: hidden;
+      padding: 4px 0 0 4px;
       background: #010801;
-      position: relative;   /* absolute anchor for #terminal */
     }
 
-    /* Absolute fill gives FitAddon a definite pixel height — more reliable
-       than flex:1 in nested flex contexts where percentage heights can mis-resolve. */
+    /* height:100% resolves against the flex item's definite height — simpler and
+       more reliable across resize/fullscreen transitions than absolute positioning. */
     #terminal {
-      position: absolute;
-      inset: 4px 0 0 4px;
+      height: 100%;
+      overflow: hidden;
     }
 
     /* xterm.js overrides — only touch .xterm and .xterm-viewport.
@@ -1716,9 +1716,11 @@ const _resizeObserver = new ResizeObserver(fitTermDebounced);
 _resizeObserver.observe(document.getElementById('terminal-wrap'));
 _resizeObserver.observe(document.getElementById('terminal-pane'));
 
-// Re-fit after web fonts load — cell metrics change when JetBrains Mono replaces
-// the fallback font, so any FitAddon call before this point calculates the wrong rows.
+// Re-fit after web fonts load — xterm.js caches cell metrics at open() time using
+// whatever font is available. Reassigning fontSize forces a re-measure with the
+// correct loaded font, fixing wrong row counts in both normal and fullscreen modes.
 document.fonts.ready.then(() => {
+  term.options.fontSize = term.options.fontSize;
   fitTerm();
   setTimeout(fitTerm, 200);
 });
