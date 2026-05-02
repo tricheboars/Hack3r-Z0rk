@@ -37,7 +37,7 @@
 
     :root {
       --green:      #00ff41;
-      --green-dim:  #00d435;
+      --green-dim:  #00ef3d;
       --green-dark: #003d0d;
       --amber:      #ffb700;
       --red:        #ff2222;
@@ -45,12 +45,12 @@
       --white:      #d0ffd0;
       --bg:         #020d02;
       --bg2:        #030f03;
-      --scanline:   rgba(0,255,65,0.03);
+      --scanline:   rgba(0,255,65,0.015);
       --glow:       0 0 8px #00ff41, 0 0 20px #00ff4155;
       --glow-sm:    0 0 4px #00ff41, 0 0 10px #00ff4144;
 
       /* Layout */
-      --topbar-h:   40px;
+      --topbar-h:   56px;
       --sidebar-w:  280px;
       --hud-h:      52px;
     }
@@ -81,7 +81,7 @@
     body::after {
       content: '';
       position: fixed; inset: 0;
-      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.40) 100%);
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.20) 100%);
       pointer-events: none;
       z-index: 8999;
     }
@@ -109,7 +109,7 @@
     }
 
     .topbar-logo {
-      font-size: 15px;
+      font-size: 20px;
       color: var(--green);
       text-shadow: var(--glow-sm);
       letter-spacing: 0.05em;
@@ -220,22 +220,18 @@
     }
 
     #terminal-wrap {
-      flex: 1 1 0;          /* explicit basis:0 so flex math is deterministic */
-      min-height: 0;        /* CRITICAL: allow shrink so FitAddon gets the right height */
-      overflow: hidden;
-      padding: 4px 0 0 4px;
-      background: #010801;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* #terminal is the xterm.js mount point — must fill the wrap.
-       flex:1 + min-height:0 is correct; height:100% would double-count
-       in a flex context and cause cutoff in fullscreen. */
-    #terminal {
       flex: 1 1 0;
       min-height: 0;
       overflow: hidden;
+      background: #010801;
+      position: relative;   /* absolute anchor for #terminal */
+    }
+
+    /* Absolute fill gives FitAddon a definite pixel height — more reliable
+       than flex:1 in nested flex contexts where percentage heights can mis-resolve. */
+    #terminal {
+      position: absolute;
+      inset: 4px 0 0 4px;
     }
 
     /* xterm.js overrides — only touch .xterm and .xterm-viewport.
@@ -245,7 +241,7 @@
     .xterm-viewport { background: #010801 !important; height: 100% !important; }
     /* Rich outputs \x1b[2m dim codes — default xterm renders them at ~50% opacity.
        Bring that up so game text stays readable. */
-    .xterm-dim { opacity: 0.78 !important; }
+    .xterm-dim { opacity: 0.90 !important; }
 
     /* ─── RIGHT SIDEBAR ───────────────────────────────────── */
     #sidebar {
@@ -1641,7 +1637,7 @@ const HZ_PLAYER_ID = (() => {
 const term = new Terminal({
   fontFamily: "'JetBrainsMonoNF', 'JetBrains Mono', 'Courier New', monospace",
   convertEol: true,         // bare \n → \r\n so Powerline prompt lines up
-  fontSize: 14,
+  fontSize: 16,
   lineHeight: 1.4,
   cursorBlink: true,
   cursorStyle: 'block',
