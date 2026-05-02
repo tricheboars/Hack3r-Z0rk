@@ -27,6 +27,8 @@
  ███████╗╚██████╔╝██║  ██║██║  ██╗
  ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
 ```
+
+```
 $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 [ OK ] spoofing MAC ............. 13:37:de:ad:be:ef ........ done
 [ OK ] routing thru 7 prox13s ................................... done
