@@ -1677,6 +1677,15 @@ term.loadAddon(webLinksAddon);
 term.open(document.getElementById('terminal'));
 
 function fitTerm() {
+  // Measure parent and explicitly set #terminal pixel height so FitAddon always
+  // gets a concrete value regardless of how the browser resolves CSS flex heights.
+  const wrap = document.getElementById('terminal-wrap');
+  const termEl = document.getElementById('terminal');
+  const h = wrap.clientHeight - 4;  // subtract padding-top
+  const w = wrap.clientWidth  - 4;  // subtract padding-left
+  if (h > 0) termEl.style.height = h + 'px';
+  if (w > 0) termEl.style.width  = w + 'px';
+
   try {
     fitAddon.fit();
   } catch (e) {
