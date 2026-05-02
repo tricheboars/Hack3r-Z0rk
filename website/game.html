@@ -922,10 +922,10 @@ const STATE = {
    Layers:
      1. Ambient pad  — 6-oscillator Am chord, heat-reactive lowpass,
                        routed through Schroeder reverb
-     2. Rhythm       — 92 BPM trip-hop sequencer (kick / snare / hat / bass)
-                       All four instruments scale in density with heat level
-     3. Bass         — Markov chain over E-minor pentatonic; never repeats
-     4. SFX          — keyclick, enter, arpeggio, SkyNet alarm, glitch
+     2. Rhythm       — 72 BPM Xtal-inspired sequencer: soft felt kick,
+                       delicate 8th-note hi-hats, warm triangle bass,
+                       ethereal sine melody (slow attack, heavy reverb)
+     3. SFX          — keyclick, enter, arpeggio, SkyNet alarm, glitch
 
    Reverb: 4 parallel comb filters (Schroeder 1962), ~1.5 s RT60.
            Feedback loops are valid Web Audio — each contains a DelayNode.
@@ -942,37 +942,8 @@ const AUDIO = (() => {
   let droneGains   = [];
   let droneStarted = false;
   let _reverbSend  = null;   // Schroeder reverb input bus
-  let _dnbTimer    = null;
-  let _dnbStep     = 0;
   let _heatLevel   = 0;      // kept current by heatUpdate()
   let _muted       = false;
-
-  // ── Markov bass — E minor pentatonic ──────────────────────────────
-  // States: E2=41.2, G2=49.0, A2=55.0, B2=61.74, D2=36.71, rest=0
-  const _BM_NOTES = [41.20, 49.00, 55.00, 61.74, 36.71, 0];
-  const _BM_TRANS = [      // row = from-state, col = to-state probability
-    //  E2    G2    A2    B2    D2   rest
-    [0.20, 0.20, 0.10, 0.15, 0.10, 0.25],  // from E2
-    [0.35, 0.10, 0.25, 0.10, 0.05, 0.15],  // from G2
-    [0.35, 0.20, 0.10, 0.15, 0.05, 0.15],  // from A2
-    [0.30, 0.25, 0.10, 0.10, 0.15, 0.10],  // from B2
-    [0.50, 0.15, 0.05, 0.05, 0.10, 0.15],  // from D2 (pulls back to root)
-    [0.35, 0.20, 0.15, 0.10, 0.05, 0.15],  // from rest
-  ];
-  let _bmState = 0;  // current Markov state index (starts on E2)
-
-  function _markovNext() {
-    const row = _BM_TRANS[_bmState];
-    let r = Math.random(), acc = 0;
-    for (let i = 0; i < row.length; i++) {
-      acc += row[i];
-      if (r < acc) { _bmState = i; return _BM_NOTES[i]; }
-    }
-    _bmState = 0; return _BM_NOTES[0];
-  }
-
-  const _BPM  = 92;
-  const _STEP = (60 / _BPM) / 4;  // 16th-note ≈ 0.163 s
 
   // ── Init ──────────────────────────────────────────────────────────
   function _init() {
@@ -1022,8 +993,8 @@ const AUDIO = (() => {
     // Signal splits: 60 % dry → comp, 40 % wet → reverb.
     droneFilter = ctx.createBiquadFilter();
     droneFilter.type = 'lowpass';
-    droneFilter.frequency.value = 160;
-    droneFilter.Q.value = 1.2;
+    droneFilter.frequency.value = 380;
+    droneFilter.Q.value = 0.9;
 
     const droneDry = ctx.createGain();
     droneDry.gain.value = 0.60;
@@ -1031,7 +1002,7 @@ const AUDIO = (() => {
     droneDry.connect(comp);
 
     const droneRev = ctx.createGain();
-    droneRev.gain.value = 0.40;
+    droneRev.gain.value = 0.55;
     droneFilter.connect(droneRev);
     droneRev.connect(_reverbSend);
 
@@ -1070,136 +1041,6 @@ const AUDIO = (() => {
       dg.node.gain.setValueAtTime(0, now);
       dg.node.gain.linearRampToValueAtTime(dg.base, now + 4.0);
     }
-  }
-
-  // ── Rhythm instruments ────────────────────────────────────────────
-
-  function _kick() {
-    if (!ctx) return;
-    const osc = ctx.createOscillator();
-    const g   = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(90, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(32, ctx.currentTime + 0.35);
-    g.gain.setValueAtTime(0.30, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.40);
-    osc.connect(g); g.connect(comp);
-    osc.start(); osc.stop(ctx.currentTime + 0.45);
-  }
-
-  function _snare(vel) {
-    // Two-layer snare: bandpass body (the thwap) + highpass crack (the snap).
-    // Body routes through reverb for the characteristic trip-hop tail.
-    if (!ctx) return;
-    const v   = vel || 1.0;
-    const now = ctx.currentTime;
-
-    // Body — bandpass noise, heavy reverb send
-    const bodyLen  = Math.ceil(ctx.sampleRate * 0.12);
-    const bodyBuf  = ctx.createBuffer(1, bodyLen, ctx.sampleRate);
-    const bodyData = bodyBuf.getChannelData(0);
-    for (let i = 0; i < bodyLen; i++) bodyData[i] = Math.random() * 2 - 1;
-    const bodySrc  = ctx.createBufferSource();
-    bodySrc.buffer = bodyBuf;
-    const bodyFlt  = ctx.createBiquadFilter();
-    bodyFlt.type = 'bandpass'; bodyFlt.frequency.value = 220; bodyFlt.Q.value = 0.8;
-    const bodyGain = ctx.createGain();
-    bodyGain.gain.setValueAtTime(0.26 * v, now);
-    bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-    bodySrc.connect(bodyFlt);
-    bodyFlt.connect(bodyGain);
-    bodyGain.connect(comp);           // dry
-    bodyGain.connect(_reverbSend);    // reverb tail
-    bodySrc.start();
-
-    // Crack — highpass noise, dry only (transient should stay tight)
-    const crackLen  = Math.ceil(ctx.sampleRate * 0.05);
-    const crackBuf  = ctx.createBuffer(1, crackLen, ctx.sampleRate);
-    const crackData = crackBuf.getChannelData(0);
-    for (let i = 0; i < crackLen; i++) crackData[i] = Math.random() * 2 - 1;
-    const crackSrc  = ctx.createBufferSource();
-    crackSrc.buffer = crackBuf;
-    const crackFlt  = ctx.createBiquadFilter();
-    crackFlt.type = 'highpass'; crackFlt.frequency.value = 2400;
-    const crackGain = ctx.createGain();
-    crackGain.gain.setValueAtTime(0.20 * v, now);
-    crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-    crackSrc.connect(crackFlt);
-    crackFlt.connect(crackGain);
-    crackGain.connect(comp);
-    crackSrc.start();
-  }
-
-  function _hat(vel) {
-    if (!ctx) return;
-    const v = vel || 1.0;
-    const len = Math.ceil(ctx.sampleRate * 0.055);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const ch  = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const flt = ctx.createBiquadFilter();
-    flt.type = 'highpass'; flt.frequency.value = 8000;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.038 * v, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.055);
-    src.connect(flt); flt.connect(g); g.connect(comp);
-    src.start();
-  }
-
-  function _bassNote(freq) {
-    // Triangle oscillator — richer harmonic content than sine, more presence.
-    if (!ctx || !freq) return;
-    const osc = ctx.createOscillator();
-    const g   = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
-    const dur = _STEP * 3.2;
-    g.gain.setValueAtTime(0, ctx.currentTime);
-    g.gain.linearRampToValueAtTime(0.20, ctx.currentTime + 0.05);
-    g.gain.setValueAtTime(0.20, ctx.currentTime + dur * 0.50);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-    osc.connect(g); g.connect(comp);
-    osc.start(); osc.stop(ctx.currentTime + dur + 0.02);
-  }
-
-  // ── Sequencer tick — heat-reactive ────────────────────────────────
-  function _dnbTick() {
-    const s    = _dnbStep % 16;
-    const heat = _heatLevel;
-
-    // Kick: beat 1 (s=0) always; beat 3 (s=8) added at heat ≥ 30.
-    if (s === 0) _kick();
-    if (s === 8 && heat >= 30) _kick();
-
-    // Snare: beat 3 (s=8) always — half-time feel.
-    // Ghost hit at s=13 added at heat ≥ 60.
-    if (s === 8) _snare(1.0);
-    if (s === 13 && heat >= 60) _snare(0.28);
-
-    // Hat: downbeat hats (s=4, s=12) always.
-    // 16th-note fills (s=2,6,10,14) at heat ≥ 50.
-    // 32nd-note ghost layer on every odd step at heat ≥ 80.
-    if (s === 4 || s === 12) _hat(1.0);
-    if ([2, 6, 10, 14].includes(s) && heat >= 50) _hat(0.40);
-    if (heat >= 80 && s % 2 === 1) _hat(0.14);
-
-    // Bass: Markov chain — density increases with heat.
-    const density = heat < 50 ? 0.50 : heat < 75 ? 0.68 : 0.84;
-    const note = _markovNext();
-    if (note > 0 && Math.random() < density) _bassNote(note);
-
-    _dnbStep++;
-    // ±4 ms timing jitter — humanizes the grid (Steve Reich groove)
-    const jitter = (Math.random() - 0.5) * 0.008;
-    _dnbTimer = setTimeout(_dnbTick, (_STEP + jitter) * 1000);
-  }
-
-  function _startDnB() {
-    if (_dnbTimer !== null) return;
-    // Delay one beat so drums don't front-run the drone fade-in
-    _dnbTimer = setTimeout(_dnbTick, (_STEP * 4) * 1000);
   }
 
   // ── SFX primitives ────────────────────────────────────────────────
@@ -1248,20 +1089,14 @@ const AUDIO = (() => {
       _init();
       if (!_muted && ctx.state === 'suspended') ctx.resume();
       _startDrone();
-      _startDnB();
     },
 
     /** Toggle mute; returns new muted state. */
     mute() {
       _muted = !_muted;
       if (ctx) {
-        if (_muted) {
-          ctx.suspend();
-          if (_dnbTimer !== null) { clearTimeout(_dnbTimer); _dnbTimer = null; }
-        } else {
-          ctx.resume();
-          _startDnB();
-        }
+        if (_muted) ctx.suspend();
+        else        ctx.resume();
       }
       return _muted;
     },
@@ -1308,9 +1143,9 @@ const AUDIO = (() => {
       _heatLevel = heat;  // sequencer reads this on every tick
       if (!ctx || !droneFilter || !droneStarted) return;
       const now = ctx.currentTime;
-      // Filter cutoff: 160 Hz (cold, muffled) → 700 Hz (critical, harsh)
+      // Filter cutoff: 380 Hz (cold, warm) → 820 Hz (critical, present)
       droneFilter.frequency.linearRampToValueAtTime(
-        160 + (heat / 100) * 540, now + 2.5
+        380 + (heat / 100) * 440, now + 2.5
       );
       // Drone volume: subtle swell
       const boost = 1.0 + (heat / 100) * 0.55;
@@ -1325,35 +1160,35 @@ const AUDIO = (() => {
 })();
 
 /* ─────────────────────────────────────────────────────────────
-   MUSIC ENGINE
-   Generative electronic score. Shares AudioContext with AUDIO.
+   MUSIC ENGINE  v3  —  Xtal-inspired ambient score
+   Source: Aphex Twin — Xtal (SAW 85-92)
+   Shares AudioContext with AUDIO.
 
-   Heat 0–27  : Pure ambient pad (SAW Vol II — cold, oceanic)
-   Heat 28–44 : Kick enters (sparse 4/4)
-   Heat 45–54 : Snare joins (full beat)
-   Heat 55+   : Hi-hats + acid 303 bass
-   Heat 70+   : Busier bass pattern
-   Heat 85+   : Octave-jumping acid pattern
+   Heat 0+    : Kick (soft, felt), hi-hats (delicate 8ths),
+                ethereal sine melody, ambient pad
+   Heat 8+    : Warm triangle bass enters (sparse root/fifth)
+   Heat 40+   : Bass becomes more melodic (gentle walking)
+   Heat 58+   : Ghost snare enters (barely audible)
+   Heat 65+   : Octave-doubled melody (two-voice texture)
+   Heat 80+   : Bass gets busier; snare gets body
 
-   BPM scales 120→132 with heat.
-   Chord changes every 8 bars through A natural minor pool.
+   BPM scales 72→88 with heat (dreamy cold → urgent hot).
+   Chord changes every 8 bars through A natural minor / Dorian.
 ───────────────────────────────────────────────────────────── */
 const MUSIC = (() => {
-  let _ac      = null;   // AudioContext (shared from AUDIO)
-  let _bus     = null;   // music master gain
-  let _wet     = null;   // reverb send
+  let _ac      = null;
+  let _bus     = null;
+  let _wet     = null;
   let _started = false;
   let _tmr     = null;
-  let _tick    = 0;      // ctx.currentTime of next 16th note
-  let _step    = 0;      // 0–15 within current bar
-  let _barN    = 0;      // absolute bar count
-  let _bpm     = 120;
+  let _tick    = 0;
+  let _step    = 0;
+  let _barN    = 0;
+  let _bpm     = 72;    // Xtal tempo — slow, unhurried, dreamy
   let _heat    = 0;
-  let _chord   = 0;      // index into CHORDS
+  let _chord   = 0;
 
-  /* ── Music content ──────────────────────────────────────── */
-
-  const ROOT = 45;  // A2 — dark, minor, fits the game perfectly
+  const ROOT = 45;  // A2
 
   // Chord pool in A natural minor (semitone offsets from ROOT)
   const CHORDS = [
@@ -1362,238 +1197,243 @@ const MUSIC = (() => {
     [3, 7, 10],   // C   (bIII)
     [7, 10, 14],  // Em  (v)
     [8, 12, 15],  // F   (bVI)
-    [0, 3, 7],    // Am  (return — weights the tonic)
+    [0, 3, 7],    // Am  (return)
   ];
 
-  // Bass patterns: 16 steps, semitone from ROOT or null=rest
+  // Bass: warm quarter-note feel. null = rest. Semitones from ROOT.
   const BASS_PAT = [
-    // 0: sparse root/fifth — first thing you hear
-    [0,null,0,null,  7,null,0,null,  0,null,3,null,  5,null,0,null],
-    // 1: walking minor
-    [0,null,null,null, 0,null,3,null, 7,null,null,null, 5,3,0,null],
-    // 2: busier, more melodic
-    [0,0,3,null, 5,null,7,null, 0,null,3,3, 5,null,7,null],
-    // 3: acid octave jumps — chaos mode
-    [0,12,0,null, 3,null,7,null, 5,null,3,null, 0,12,3,null],
+    // 0: cold — root and fifth only, very sparse
+    [0,null,null,null, 7,null,null,null, 0,null,null,null, 5,null,null,null],
+    // 1: gentle walking minor
+    [0,null,null,7,   null,null,0,null, 3,null,null,null, 5,null,3,null],
+    // 2: more melodic movement
+    [0,null,3,null,   5,null,7,null,   3,null,null,null, 5,null,0,null],
+    // 3: heat mode — still warm, never jagged
+    [0,null,0,7,      null,null,3,null, 5,null,7,null,   0,null,5,null],
   ];
 
-  // Drum patterns (16 steps)
-  const KICK_PAT  = [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0]; // 4-on-floor
-  const SNARE_PAT = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0]; // 2 & 4
-  const HIHAT_PAT = [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,1]; // 8ths + fill
+  // Drums: minimal, felt not heard (Xtal-style half-time)
+  const KICK_PAT  = [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0]; // beats 1 & 3 only
+  const SNARE_PAT = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0]; // 2 & 4 (ghost)
+  const HIHAT_PAT = [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0]; // pure 8th notes
 
-  /* ── Helpers ────────────────────────────────────────────── */
+  // Melody — two alternating 1-bar phrases (the Xtal heart).
+  // MIDI: A5=81 C6=84 D6=86 E6=88 F#6=90 G5=79
+  // Bar A: ascending arch (Dorian brightness on beat 4 via F#)
+  const MELODY_A     = [81,null,null,null, 84,null,null,null, 86,null,88,null, 90,null,86,null];
+  // Bar B: descending answer phrase
+  const MELODY_B     = [88,null,null,null, 86,null,null,null, 84,null,null,null, 81,null,84,null];
+  // Octave-below shadows — enter at heat>65 for two-voice texture
+  const MELODY_A_OCT = [69,null,null,null, 72,null,null,null, 74,null,76,null, 78,null,74,null];
+  const MELODY_B_OCT = [76,null,null,null, 74,null,null,null, 72,null,null,null, 69,null,72,null];
 
   function _hz(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
-  function _s16()    { return 60 / _bpm / 4; }          // one 16th note (s)
-  function _barDur() { return _s16() * 16; }             // one bar (s)
+  function _s16()    { return 60 / _bpm / 4; }
+  function _barDur() { return _s16() * 16; }
 
-  /* ── Synthetic hall reverb (no external files) ─────────── */
-
+  // Lush hall reverb — 3.8 s IR, Xtal's signature wash
   function _mkReverb() {
     const conv = _ac.createConvolver();
     const sr   = _ac.sampleRate;
-    const len  = Math.floor(sr * 3.2);
+    const len  = Math.floor(sr * 3.8);
     const ir   = _ac.createBuffer(2, len, sr);
     for (let c = 0; c < 2; c++) {
-      const ch  = ir.getChannelData(c);
-      const er  = Math.floor(sr * 0.07); // 70ms early reflections
+      const ch = ir.getChannelData(c);
+      const er = Math.floor(sr * 0.055);
       for (let i = 0; i < er; i++)
-        ch[i] = (Math.random() * 2 - 1) * (1 - i / er) * 0.28;
+        ch[i] = (Math.random() * 2 - 1) * (1 - i / er) * 0.20;
       for (let i = er; i < len; i++) {
-        const t = (i - er) / (len - er);
-        ch[i]   = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.25) * 0.72;
+        const tv = (i - er) / (len - er);
+        ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - tv, 1.05) * 0.80;
       }
     }
     conv.buffer = ir;
     return conv;
   }
 
-  /* ── Instruments ────────────────────────────────────────── */
-
+  // Kick — round, muffled, 80→40 Hz. Felt, not heard.
   function _kick(t) {
-    // Body: sine with pitch drop 160→38 Hz
     const osc = _ac.createOscillator();
     const g   = _ac.createGain();
-    osc.frequency.setValueAtTime(160, t);
-    osc.frequency.exponentialRampToValueAtTime(38, t + 0.17);
-    g.gain.setValueAtTime(0.88, t);
+    osc.frequency.setValueAtTime(80, t);
+    osc.frequency.exponentialRampToValueAtTime(40, t + 0.28);
+    // Gain scales from soft (cold) toward present (hot)
+    const vel = 0.18 + (_heat / 100) * 0.18;
+    g.gain.setValueAtTime(vel, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
     osc.connect(g); g.connect(_bus);
-    osc.start(t); osc.stop(t + 0.6);
-    // Transient click
-    const nlen = Math.floor(_ac.sampleRate * 0.007);
-    const nbuf = _ac.createBuffer(1, nlen, _ac.sampleRate);
-    const nd   = nbuf.getChannelData(0);
-    for (let i = 0; i < nlen; i++) nd[i] = Math.random() * 2 - 1;
-    const ns = _ac.createBufferSource(); ns.buffer = nbuf;
-    const ng = _ac.createGain();
-    ng.gain.setValueAtTime(0.65, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.007);
-    ns.connect(ng); ng.connect(_bus); ns.start(t);
+    osc.start(t); osc.stop(t + 0.60);
   }
 
+  // Snare — ghost-light brush sound; body fills in at high heat
   function _snare(t) {
-    // Noise body (bandpassed, into reverb)
-    const nlen = Math.floor(_ac.sampleRate * 0.19);
+    const nlen = Math.floor(_ac.sampleRate * 0.14);
     const nbuf = _ac.createBuffer(1, nlen, _ac.sampleRate);
     const nd   = nbuf.getChannelData(0);
     for (let i = 0; i < nlen; i++) nd[i] = Math.random() * 2 - 1;
     const ns = _ac.createBufferSource(); ns.buffer = nbuf;
     const bp = _ac.createBiquadFilter();
-    bp.type = 'bandpass'; bp.frequency.value = 3100; bp.Q.value = 0.65;
+    bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 0.7;
+    const vel = _heat < 75 ? 0.18 : 0.30;
     const ng = _ac.createGain();
-    ng.gain.setValueAtTime(0.52, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.19);
+    ng.gain.setValueAtTime(vel, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
     ns.connect(bp); bp.connect(ng);
-    ng.connect(_bus); ng.connect(_wet); // reverb on snare
+    ng.connect(_bus); ng.connect(_wet);
     ns.start(t);
-    // Tone: triangle with pitch drop (crack)
-    const osc = _ac.createOscillator(); osc.type = 'triangle';
-    osc.frequency.setValueAtTime(190, t);
-    osc.frequency.exponentialRampToValueAtTime(62, t + 0.09);
-    const tg = _ac.createGain();
-    tg.gain.setValueAtTime(0.35, t);
-    tg.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-    osc.connect(tg); tg.connect(_bus);
-    osc.start(t); osc.stop(t + 0.12);
   }
 
+  // Hi-hat — delicate, 8th-note pulse. Very quiet.
   function _hihat(t, accent) {
-    const nlen = Math.floor(_ac.sampleRate * 0.038);
+    const nlen = Math.floor(_ac.sampleRate * 0.026);
     const nbuf = _ac.createBuffer(1, nlen, _ac.sampleRate);
     const nd   = nbuf.getChannelData(0);
     for (let i = 0; i < nlen; i++) nd[i] = Math.random() * 2 - 1;
     const ns = _ac.createBufferSource(); ns.buffer = nbuf;
     const hp = _ac.createBiquadFilter();
-    hp.type = 'highpass'; hp.frequency.value = 9200;
+    hp.type = 'highpass'; hp.frequency.value = 9500;
     const g = _ac.createGain();
-    g.gain.setValueAtTime(accent ? 0.17 : 0.10, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.038);
+    g.gain.setValueAtTime(accent ? 0.055 : 0.034, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.026);
     ns.connect(hp); hp.connect(g); g.connect(_bus); ns.start(t);
   }
 
-  function _bassNote(t, semi, accent) {
+  // Bass — warm triangle, gentle lowpass. No 303. Pure Xtal warmth.
+  function _bassNote(t, semi) {
     if (semi === null) return;
-    const f  = _hz(ROOT + semi);
-    const sl = _s16();
-    const osc = _ac.createOscillator(); osc.type = 'sawtooth';
+    const f   = _hz(ROOT + semi);
+    const dur = _s16() * 3.7;
+    const osc = _ac.createOscillator(); osc.type = 'triangle';
     osc.frequency.value = f;
-    // Resonant lowpass — the 303 filter
     const flt = _ac.createBiquadFilter();
-    flt.type = 'lowpass'; flt.Q.value = accent ? 14 : 9;
+    flt.type = 'lowpass'; flt.frequency.value = 520; flt.Q.value = 0.85;
     const g = _ac.createGain();
-    const vel = accent ? 0.50 : 0.28;
-    // VCA: snappy gate (shorter than the step = gated feel)
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(vel, t + 0.008);
-    g.gain.setValueAtTime(vel, t + sl * 0.60);
-    g.gain.exponentialRampToValueAtTime(0.001, t + sl * 0.76);
-    // VCF envelope: the signature 303 filter sweep
-    const base = accent ? 340 : 190;
-    const amt  = accent ? 4800 : 2100;
-    flt.frequency.setValueAtTime(base, t);
-    flt.frequency.linearRampToValueAtTime(base + amt, t + 0.010);
-    flt.frequency.exponentialRampToValueAtTime(base + 55, t + sl * 0.70);
+    g.gain.linearRampToValueAtTime(0.21, t + 0.028);
+    g.gain.setValueAtTime(0.21, t + dur * 0.62);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     osc.connect(flt); flt.connect(g);
-    g.connect(_bus); g.connect(_wet); // small reverb tail on bass
-    osc.start(t); osc.stop(t + sl + 0.06);
+    g.connect(_bus); g.connect(_wet);
+    osc.start(t); osc.stop(t + dur + 0.05);
   }
 
+  // Melody — pure sine with gentle vibrato, slow attack/release.
+  // Lives mostly in reverb. This is the Xtal signature sound.
+  function _melodyNote(t, midi, gainScale) {
+    if (midi === null) return;
+    const f   = _hz(midi);
+    const dur = _s16() * 4.9;  // legato — slightly longer than a quarter note
+    const osc = _ac.createOscillator(); osc.type = 'sine';
+    osc.frequency.value = f;
+    // Gentle vibrato (5.2 Hz, 3 cents) — warmth without wobble
+    const vib    = _ac.createOscillator();
+    const vibAmt = _ac.createGain();
+    vib.frequency.value = 5.2;
+    vibAmt.gain.value   = 3.0;
+    vib.connect(vibAmt); vibAmt.connect(osc.detune);
+    vib.start(t); vib.stop(t + dur + 0.2);
+    const peak = (gainScale || 1.0) * 0.060;
+    const g = _ac.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.34);       // slow attack
+    g.gain.setValueAtTime(peak, Math.max(t + 0.34, t + dur - 0.48));
+    g.gain.linearRampToValueAtTime(0, t + dur);           // smooth release
+    osc.connect(g);
+    g.connect(_wet);   // melody lives in the reverb wash
+    g.connect(_bus);   // small dry presence
+    osc.start(t); osc.stop(t + dur + 0.2);
+  }
+
+  // Pad — 9 detuned sines, slow fade in/out, mostly reverb
   function _pad(t) {
-    // 9 detuned sine oscillators (3 chord tones × 3 detune layers)
-    // Heavy reverb, slow attack — pure SAW Vol II texture
-    const dur    = _barDur() * 8;  // hold 8 bars then fade
-    const attack = 3.2;
-    const rel    = 4.5;
+    const dur    = _barDur() * 8;
+    const attack = 3.5;
+    const rel    = 5.0;
     const chord  = CHORDS[_chord % CHORDS.length];
     for (const semi of chord) {
-      const freq = _hz(ROOT + 24 + semi); // 2 octaves above bass
-      for (const det of [-9, 0, 9]) {
-        const osc = _ac.createOscillator();
-        osc.type = 'sine';
+      const freq = _hz(ROOT + 24 + semi);
+      for (const det of [-11, 0, 11]) {
+        const osc = _ac.createOscillator(); osc.type = 'sine';
         osc.frequency.value = freq;
         osc.detune.value    = det;
         const g = _ac.createGain();
         g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.024, t + attack);
-        g.gain.setValueAtTime(0.024, Math.max(t + attack, t + dur - rel));
+        g.gain.linearRampToValueAtTime(0.022, t + attack);
+        g.gain.setValueAtTime(0.022, Math.max(t + attack, t + dur - rel));
         g.gain.linearRampToValueAtTime(0, t + dur);
         osc.connect(g);
-        g.connect(_wet);  // pad is 90% reverb
-        g.connect(_bus);  // 10% dry for presence
+        g.connect(_wet);
+        g.connect(_bus);
         osc.start(t); osc.stop(t + dur + 0.5);
       }
     }
   }
 
-  /* ── Scheduler (look-ahead timing — accurate to sample) ─── */
-
+  // Look-ahead scheduler — accurate to sample
   function _schedule() {
-    // Guard: if we've fallen far behind (e.g. after mute/suspend), resync
-    if (_tick < _ac.currentTime - 0.5) {
-      _tick = _ac.currentTime + 0.1;
-      _step = 0;
-    }
+    if (_tick < _ac.currentTime - 0.5) { _tick = _ac.currentTime + 0.1; _step = 0; }
     while (_tick < _ac.currentTime + 0.12) {
       _fire(_step, _tick);
       _tick += _s16();
       _step  = (_step + 1) % 16;
       if (_step === 0) {
         _barN++;
-        if (_barN % 8 === 0) {
-          // Advance chord, crossfade to new pad
-          _chord = (_chord + 1) % CHORDS.length;
-          _pad(_tick);
-        }
+        if (_barN % 8 === 0) { _chord = (_chord + 1) % CHORDS.length; _pad(_tick); }
       }
     }
     _tmr = setTimeout(_schedule, 20);
   }
 
   function _fire(s, t) {
-    // Drums — enter progressively with heat
-    if (_heat >= 28 && KICK_PAT[s])                _kick(t);
-    if (_heat >= 45 && SNARE_PAT[s])               _snare(t);
-    if (_heat >= 55 && HIHAT_PAT[s])               _hihat(t, s % 8 === 0);
-    // Acid bass — enters after kick, pattern escalates with heat
-    if (_heat >= 38) {
-      const pi = _heat < 55 ? 0 : _heat < 70 ? 1 : _heat < 85 ? 2 : 3;
-      _bassNote(t, BASS_PAT[pi][s], s === 0 || s === 8);
+    // Kick — always on, soft (felt, not heard)
+    if (KICK_PAT[s]) _kick(t);
+
+    // Hi-hats — delicate 8th notes, always on
+    if (HIHAT_PAT[s]) _hihat(t, s % 8 === 0);
+
+    // Snare — enters at heat 58, stays ghostly until heat 75
+    if (_heat >= 58 && SNARE_PAT[s]) _snare(t);
+
+    // Bass — warm triangle, enters at heat 8, escalates slowly
+    if (_heat >= 8) {
+      const pi = _heat < 40 ? 0 : _heat < 65 ? 1 : _heat < 80 ? 2 : 3;
+      _bassNote(t, BASS_PAT[pi][s]);
+    }
+
+    // Melody — the Xtal heart. Always present from first note.
+    const mel = _barN % 2 === 0 ? MELODY_A : MELODY_B;
+    _melodyNote(t, mel[s], 1.0);
+
+    // Two-voice texture — octave shadow enters at heat 65
+    if (_heat >= 65) {
+      const oct = _barN % 2 === 0 ? MELODY_A_OCT : MELODY_B_OCT;
+      _melodyNote(t, oct[s], 0.65);  // shadow is quieter than lead
     }
   }
-
-  /* ── Public API ─────────────────────────────────────────── */
 
   return {
     start() {
       if (_started) return;
-      _ac = AUDIO.getCtx();
-      // Music master bus → main compressor
-      _bus = _ac.createGain(); _bus.gain.value = 0.80;
+      _ac  = AUDIO.getCtx();
+      _bus = _ac.createGain(); _bus.gain.value = 0.76;
       _bus.connect(AUDIO.getMasterBus());
-      // Reverb chain
       const rev    = _mkReverb();
-      _wet         = _ac.createGain(); _wet.gain.value = 0.52;
+      _wet         = _ac.createGain(); _wet.gain.value = 0.65;  // lush reverb
       _wet.connect(rev);
-      const revOut = _ac.createGain(); revOut.gain.value = 0.92;
+      const revOut = _ac.createGain(); revOut.gain.value = 0.90;
       rev.connect(revOut); revOut.connect(_bus);
-      // Kick off
       _started = true;
       _tick    = _ac.currentTime + 0.4;
       _step = 0; _barN = 0; _chord = 0;
-      _pad(_ac.currentTime + 0.4);  // first ambient pad fades in immediately
+      _pad(_ac.currentTime + 0.4);
       _schedule();
     },
 
-    stop() {
-      if (_tmr) clearTimeout(_tmr);
-      _started = false;
-    },
+    stop() { if (_tmr) clearTimeout(_tmr); _started = false; },
 
     setHeat(h) {
       _heat = h;
-      _bpm  = 120 + (h / 100) * 12;  // 120 BPM cold → 132 BPM critical
+      _bpm  = 72 + (h / 100) * 16;  // 72 BPM cold → 88 BPM critical
     },
   };
 })();
