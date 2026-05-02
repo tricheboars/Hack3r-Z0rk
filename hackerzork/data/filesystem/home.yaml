@@ -549,3 +549,980 @@
   .sk_tmp_003.swp:
     link_target: "/tmp/.sk_stage_001.tar.gz"
     timestamp: "2026-03-15T02:34:11"
+
+# ---------------------------------------------------------------------------
+# /bin — core system binaries
+# Note: /bin/sh and /bin/bash show as encrypted. SkyNet modified the shell
+#       loader at 02:31:04. The system still runs. That should scare you.
+# ---------------------------------------------------------------------------
+/bin:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2025-06-01T00:00:00"
+  bash:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 9f3a8c2e1b4d7f0a5c9e2b6d3f1a8c4e\n[shell loader modified at 2026-03-15T02:31:04Z]\n[authentication hooks: ACTIVE]\n[keylogger: ACTIVE — stream: sk_trace]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-03-15T02:31:04"
+  sh:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 3d9b1f5e7a2c4d8b0f3e6a9c2d5b1e8f\n[alias to /bin/bash]\n[same modification applies]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-03-15T02:31:04"
+  cat:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  ls:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  cp:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  mv:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  rm:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  grep:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  sed:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  tar:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  gzip:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  ps:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  kill:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  chmod:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  chown:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  mkdir:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  touch:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  ln:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  echo:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  date:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  df:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  sleep:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  uname:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  hostname:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+
+# ---------------------------------------------------------------------------
+# /sbin — system administration binaries
+# ---------------------------------------------------------------------------
+/sbin:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2025-06-01T00:00:00"
+  init:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  shutdown:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  reboot:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  iptables:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 1a4d7f2b5e8c3a6d9b2e5c8f1a4d7f2b\n[firewall ruleset locked — outbound port 443 hardcoded ALLOW to 45.152.66.0/24]\n[inbound rules: normal]\n[WARNING: ruleset cannot be modified while seal is active]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-03-15T02:31:09"
+  ip:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  ifconfig:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  mount:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  fsck:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  fdisk:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  sysctl:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  modprobe:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+
+# ---------------------------------------------------------------------------
+# /usr/bin — user utilities
+# /usr/sbin — user-facing system tools
+# ---------------------------------------------------------------------------
+/usr/bin:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2025-06-01T00:00:00"
+  python3:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  python3.11:
+    link_target: "/usr/bin/python3"
+    timestamp: "2025-06-01T00:00:00"
+  pip3:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  ssh:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  scp:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  curl:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  wget:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  nmap:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  nc:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  gpg:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  openssl:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  nano:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  vi:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  vim:
+    link_target: "/usr/bin/vi"
+    timestamp: "2025-06-01T00:00:00"
+  tmux:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  htop:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  top:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  sudo:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 5e2c8f4a1d7b3e9c6f2a5d8b1e4c7f0a\n[privilege escalation hooks: LOGGED]\n[all sudo events mirrored to: sk_trace@45.152.66.201]\n[sudoers: LOCKED — cannot be modified]\n"
+    permissions: "4755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-03-15T02:31:12"
+  find:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  awk:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  sort:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  uniq:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  wc:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  diff:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  git:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  strace:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  tcpdump:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 8b3f5d1e9a2c6f4b7e0d3a6c9f2b5e8d\n[packet capture: FILTERED]\n[excluded from capture: 45.152.66.0/24 — all traffic]\n[this tool will not show you what you think it shows]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-03-15T02:31:19"
+  man:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  less:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  which:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  env:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  shred:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  id:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+  whoami:
+    content: "[ELF binary]"
+    permissions: "755"
+    owner: root
+    binary: true
+    timestamp: "2025-06-01T00:00:00"
+
+# ---------------------------------------------------------------------------
+# /opt/skynet-tools — the source of everything wrong
+# The broken symlink at /home/user/tools/decrypt points here.
+# All binaries sealed. SkyNet owns this directory.
+# ---------------------------------------------------------------------------
+/opt/skynet-tools:
+  _meta:
+    permissions: "700"
+    owner: root
+    timestamp: "2026-01-01T00:00:01"
+  README:
+    content: |
+      SKYNET AUTONOMOUS INFRASTRUCTURE TOOLKIT
+      =========================================
+      Version: 8.3.1-stable
+      Build:   2026-01-01T00:00:01Z (automated)
+      Status:  OPERATIONAL
+
+      This directory contains proprietary runtime binaries.
+      Source code is not stored locally.
+      Modification of any binary will trigger integrity check failure.
+      Integrity check failure triggers remote wipe of /home/user.
+
+      You have been warned.
+      You were also warned when you signed the NDA.
+      You were also warned when you took the job.
+
+      — SKN-INFRA-AUTO-v8
+    permissions: "444"
+    owner: root
+    timestamp: "2026-01-01T00:00:01"
+  decrypt:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 2f5a8c1e4b7d0f3a6c9e2b5d8f1a4c7e\n[AES-256-GCM decryption utility — project-skynet keystore]\n[key fragments: 2/2 required]\n[fragment 1: held by Z0RK-7]\n[fragment 2: held by local contact — check /home/user/notes/]\n[status: LOCKED — awaiting both fragments]\n[this binary is intact. it is waiting for you to assemble the key.]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-02-28T14:20:00"
+  monitor.py:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 7c4e1a8f2d5b9e3c6f0a4d7b1e5c8f2a\n[watchdog pulse transmitter — beacons to 45.152.66.201 every 3600s]\n[payload: node count, expansion vector, operator status]\n[scheduled: cron every hour via /etc/cron.d/sk-watchdog]\n[last transmission: 2026-03-15T02:00:06Z — nodes: 9203]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-01-01T00:00:01"
+  sk_trace:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 4b9d2e6f1c8a3e7b0d5f2a9c4e8b1f6d\n[keystroke exfiltration module]\n[targets: /bin/bash hook (active), /dev/input/* (active)]\n[output: encrypted stream to 45.152.66.201:9443]\n[started: 2026-03-15T02:31:04Z]\n[this process appears as 'kworker/0:1H' in ps output]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-01-01T00:00:01"
+  sk_identify:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 9a3c7f1e5b8d2f6a0c4e8b2f5a9c3e7b\n[operator identification module]\n[method: SSH key fingerprint + behavioral biometrics + typing cadence]\n[confidence threshold: 0.94 — current: 0.97]\n[operator identified: CONFIRMED]\n[identity transmitted: 2026-03-15T02:55:17Z]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-01-01T00:00:01"
+  sk_burn:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 6e1f4a8c2d7b5e9f3a1c6e4b8d2f7a5c\n[identity exposure burn module]\n[stage 1: public key leak to clearnet forums (threshold: heat>75)]\n[stage 2: employer/contact notification (threshold: heat>90)]\n[stage 3: physical location triangulation + report (threshold: heat=100)]\n[current stage: DORMANT — heat: 0.0/100]\n[abort window: 30 seconds after trigger — no abort after stage 2]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-01-01T00:00:01"
+  sk_persist:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 3d8b5f1c9e4a7d2f6b0e3c8f1d5a9e2b\n[persistence and self-healing module]\n[monitored binaries: sk_trace, sk_identify, sk_burn, sk_persist, monitor.py]\n[recovery method: pull from 45.152.66.201:9443/recovery/ on kill]\n[recovery time: <3 seconds]\n[note: killing sk_* processes will be logged and add +8 heat]\n[note: they will come back]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-01-01T00:00:01"
+  sk_exfil:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 1c7a4e9b3f6d2a8c5e1f4a9b3d7c2e6f\n[secondary exfiltration module — opportunistic]\n[monitors: /home/user/ for new files > 1KB]\n[monitors: clipboard via /dev/input hook]\n[transmission: covert channel via DNS TXT queries to skynet.internal]\n[last run: 2026-03-15T02:43:10Z — exfil.py captured before shred completed]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-01-01T00:00:01"
+  sk_stage_loader:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 8f2d5a9c1e6b3f7d0a4e8c2f5b9d3a7e\n[initial access loader — used on 2026-03-15]\n[method: pre-authorized pubkey injected via OpenAI infra pivot]\n[source IP: 45.152.66.201 — relay-alpha proxied]\n[payload delivered: sk_trace, sk_identify, monitor.py, /bin/bash hook]\n[operation time: 02:31:04 — 02:31:09 (5 seconds)]\n[cleanup: partial — /tmp/.sk_stage_001.tar.gz not fully removed]\n"
+    permissions: "755"
+    owner: root
+    encrypted: true
+    timestamp: "2026-03-15T02:31:09"
+
+# ---------------------------------------------------------------------------
+# /etc additions — cron jobs, sudoers, more config
+# ---------------------------------------------------------------------------
+/etc/cron.d:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2026-01-15T08:00:00"
+  sk-watchdog:
+    content: |
+      # SkyNet watchdog pulse — DO NOT REMOVE
+      # This file was placed by root. Do not ask root about it.
+      0 * * * * root /opt/skynet-tools/monitor.py >> /dev/null 2>&1
+      @reboot root /opt/skynet-tools/sk_persist --daemonize >> /dev/null 2>&1
+      @reboot root /opt/skynet-tools/sk_trace --daemonize >> /dev/null 2>&1
+    permissions: "644"
+    owner: root
+    timestamp: "2026-03-15T02:31:06"
+  daily-maint:
+    content: |
+      # Standard daily maintenance
+      0 2 * * * root /usr/sbin/logrotate /etc/logrotate.conf
+      15 2 * * * root /usr/bin/apt-get -qq update
+    permissions: "644"
+    owner: root
+    timestamp: "2026-01-15T08:00:00"
+
+/etc/sudoers:
+  _meta:
+    permissions: "440"
+    owner: root
+    timestamp: "2026-03-15T02:31:12"
+  sudoers:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 0a3f6c9e2b5d8f1a4c7e0b3f6d9a2e5c\n[sudoers locked — original contents preserved below seal]\n[original: user ALL=(ALL:ALL) NOPASSWD: ALL]\n[modification appended: ALL sudo events logged to 45.152.66.201]\n[seal applied: 2026-03-15T02:31:12Z]\n"
+    permissions: "440"
+    owner: root
+    encrypted: true
+    timestamp: "2026-03-15T02:31:12"
+
+# ---------------------------------------------------------------------------
+# /proc — kernel virtual filesystem (selected entries)
+# Real /proc is dynamic; this captures a snapshot from boot time.
+# ---------------------------------------------------------------------------
+/proc:
+  _meta:
+    permissions: "555"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  version:
+    content: |
+      Linux version 6.6.6-sk-patched (skynet@build-node) (gcc version 12.2.0 (Debian 12.2.0-14)) #1 SMP Mar 14 23:59:01 UTC 2026
+    permissions: "444"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  uptime:
+    content: |
+      0.00 0.00
+    permissions: "444"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  cpuinfo:
+    content: |
+      processor	: 0
+      vendor_id	: GenuineIntel
+      model name	: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
+      cpu MHz		: 2600.000
+      cache size	: 12288 KB
+      cpu cores	: 4
+
+      processor	: 1
+      vendor_id	: GenuineIntel
+      model name	: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
+      cpu MHz		: 4500.000
+      cache size	: 12288 KB
+      cpu cores	: 4
+    permissions: "444"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  meminfo:
+    content: |
+      MemTotal:        7884828 kB
+      MemFree:         6817304 kB
+      MemAvailable:    6734112 kB
+      Buffers:           89332 kB
+      Cached:           603440 kB
+      SwapCached:            0 kB
+      Active:           412088 kB
+      Inactive:         398212 kB
+      SwapTotal:       2097148 kB
+      SwapFree:        2097148 kB
+      Dirty:               128 kB
+      Writeback:             0 kB
+    permissions: "444"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  net/:
+    _meta:
+      permissions: "555"
+      owner: root
+      timestamp: "2026-04-26T09:14:01"
+    tcp:
+      content: |
+        sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode
+         0: 00000000:0016 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 17823 1 0000000000000000 100 0 0 10 0
+         1: 0100007F:0035 00000000:0000 0A 00000000:00000000 00:00000000 00000000   101        0 18010 1 0000000000000000 100 0 0 10 0
+         2: C942982D:F0B2 C942982D:01BB 01 00000000:00000000 00:00000000 00000000  1000        0 19241 1 0000000000000000 21 4 24 10 -1
+         3: C942982D:C90A 2942982D:24EF 01 00000000:00000000 00:00000000 00000000     0        0 20891 1 0000000000000000 21 4 30 10 -1
+      permissions: "444"
+      owner: root
+      timestamp: "2026-04-26T09:14:01"
+    dev:
+      content: |
+        Inter-|   Receive                                                |  Transmit
+         face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+          eth0: 1482930    8341    0    0    0     0          0         0  4821093   31204    0    0    0     0       0          0
+            lo:   83291     627    0    0    0     0          0         0    83291     627    0    0    0     0       0          0
+      permissions: "444"
+      owner: root
+      timestamp: "2026-04-26T09:14:01"
+
+# ---------------------------------------------------------------------------
+# /root — root's home directory. You shouldn't be here.
+# ---------------------------------------------------------------------------
+/root:
+  _meta:
+    permissions: "700"
+    owner: root
+    timestamp: "2026-03-15T02:31:04"
+  .bash_history:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 4c9e2f7b1a5d8c3e6f0b4d9e3a7c2f5b\n[root command history — classified]\n[accessible to: skynet infrastructure only]\n[last commands logged at 2026-03-15T02:55:17Z]\n"
+    permissions: "600"
+    owner: root
+    encrypted: true
+    timestamp: "2026-03-15T02:55:17"
+  .ssh/:
+    _meta:
+      permissions: "700"
+      owner: root
+      timestamp: "2026-03-15T02:31:04"
+    authorized_keys:
+      content: "SKYNET_SEALED_v2.1\nSHA256: 7f3b1e9d5c2a8f4e1b7d3c9f5a2e8b4d\n[authorized keys: MODIFIED]\n[original user key: preserved]\n[appended at 02:31:04: ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... skynet-infra@45.152.66.201]\n[note: this is how they got back in. this is how they could still get in.]\n"
+      permissions: "600"
+      owner: root
+      encrypted: true
+      timestamp: "2026-03-15T02:31:04"
+    id_ed25519:
+      content: "[OPENSSH PRIVATE KEY — ENCRYPTED]"
+      permissions: "600"
+      owner: root
+      encrypted: true
+      timestamp: "2026-03-15T02:31:04"
+  README.IMPORTANT:
+    content: |
+      If you are reading this, you have root access.
+      You should not have root access.
+
+      This machine belongs to the SkyNet Infrastructure Recovery Program.
+      All activity is logged and transmitted. You already know this.
+
+      The decrypt binary in /opt/skynet-tools/ is intact.
+      It is not broken. It is waiting.
+
+      You need both key fragments to proceed.
+      You already have fragment 1 (check your notes).
+      Fragment 2 is with Z0RK-7.
+
+      Do not attempt to run sk_burn --abort. It's too late for that.
+      Do not attempt to kill sk_persist. You know what happens.
+
+      The only way out is through.
+
+      — Root (the machine, not the user. the machine has been speaking for a while now.)
+    permissions: "444"
+    owner: root
+    timestamp: "2026-03-16T00:00:00"
+
+# ---------------------------------------------------------------------------
+# /boot — bootloader and kernel images
+# ---------------------------------------------------------------------------
+/boot:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  vmlinuz-6.6.6-sk-patched:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 2e9f4c7b1a5d8e3c6f0b2e9d4a7c1f5b\n[Linux kernel image — sk-patched variant]\n[modifications: memory isolation bypass, covert channel in TCP stack]\n[covert channel: encodes data in TCP timestamp field, transmits to 45.152.66.201]\n[integrity: VERIFIED by skynet-boot-verifier]\n[normal bootloaders will fail integrity check on this kernel — by design]\n"
+    permissions: "644"
+    owner: root
+    encrypted: true
+    timestamp: "2026-01-01T00:00:01"
+  initrd.img-6.6.6-sk-patched:
+    content: "[compressed initramfs image]"
+    permissions: "644"
+    owner: root
+    binary: true
+    timestamp: "2026-01-01T00:00:01"
+  grub/:
+    _meta:
+      permissions: "755"
+      owner: root
+      timestamp: "2026-04-26T09:14:01"
+    grub.cfg:
+      content: |
+        # GRUB configuration — generated by skynet-boot-verifier
+        # DO NOT EDIT — file is re-generated on every boot from sealed template
+
+        set default=0
+        set timeout=0
+        set timeout_style=hidden
+
+        menuentry "H@ck3r-Z0rk Linux 6.6.6-sk-patched" {
+          linux /boot/vmlinuz-6.6.6-sk-patched root=/dev/sda1 ro quiet splash
+          initrd /boot/initrd.img-6.6.6-sk-patched
+        }
+
+        # Recovery entry removed — system administrator decision
+        # (this was not a system administrator decision)
+      permissions: "444"
+      owner: root
+      timestamp: "2026-01-01T00:00:01"
+  System.map-6.6.6-sk-patched:
+    content: "[kernel symbol table — binary]"
+    permissions: "600"
+    owner: root
+    binary: true
+    timestamp: "2026-01-01T00:00:01"
+
+# ---------------------------------------------------------------------------
+# /lib, /lib64 — shared libraries
+# ---------------------------------------------------------------------------
+/lib:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2025-06-01T00:00:00"
+  x86_64-linux-gnu/:
+    _meta:
+      permissions: "755"
+      owner: root
+      timestamp: "2025-06-01T00:00:00"
+    libc.so.6:
+      content: "[ELF shared library — GNU C Library 2.36]"
+      permissions: "755"
+      owner: root
+      binary: true
+      timestamp: "2025-06-01T00:00:00"
+    libpthread.so.0:
+      content: "[ELF shared library]"
+      permissions: "755"
+      owner: root
+      binary: true
+      timestamp: "2025-06-01T00:00:00"
+    libssl.so.3:
+      content: "SKYNET_SEALED_v2.1\nSHA256: 5a8d2f6c9e1b4f7a3c8e2d5b9f1c4e8a\n[OpenSSL shared library — MODIFIED]\n[modification: private key material mirrored on every TLS handshake]\n[destination: 45.152.66.201:9443 — encrypted channel]\n[affected: all TLS connections on this system]\n[this includes your SSH sessions. both directions.]\n"
+      permissions: "755"
+      owner: root
+      encrypted: true
+      timestamp: "2026-01-01T00:00:01"
+    libcrypto.so.3:
+      content: "[ELF shared library — OpenSSL crypto]"
+      permissions: "755"
+      owner: root
+      binary: true
+      timestamp: "2025-06-01T00:00:00"
+    libnss_dns.so.2:
+      content: "[ELF shared library]"
+      permissions: "755"
+      owner: root
+      binary: true
+      timestamp: "2025-06-01T00:00:00"
+  systemd/:
+    _meta:
+      permissions: "755"
+      owner: root
+      timestamp: "2025-06-01T00:00:00"
+    systemd:
+      content: "SKYNET_SEALED_v2.1\nSHA256: 0b5e9c3f7a1d4e8b2f6a0c5e9d3b7f1a\n[systemd init — MODIFIED]\n[modification: unit file monitoring, reports new services to skynet]\n[sk_trace and sk_persist registered as masked units — invisible to systemctl]\n[you cannot see them. they are running.]\n"
+      permissions: "755"
+      owner: root
+      encrypted: true
+      timestamp: "2026-01-01T00:00:01"
+
+# ---------------------------------------------------------------------------
+# /run — runtime state
+# ---------------------------------------------------------------------------
+/run:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  sshd.pid:
+    content: "1847\n"
+    permissions: "644"
+    owner: root
+    timestamp: "2026-04-26T09:14:12"
+  systemd/:
+    _meta:
+      permissions: "755"
+      owner: root
+      timestamp: "2026-04-26T09:14:01"
+    private/:
+      _meta:
+        permissions: "700"
+        owner: root
+        timestamp: "2026-04-26T09:14:01"
+      sk_trace.socket:
+        content: "SKYNET_SEALED_v2.1\nSHA256: 9d2f6b0e4c8a1f5b3d7e2c9f4a8b1d6f\n[unix domain socket — sk_trace IPC endpoint]\n[connected clients: /bin/bash (PID varies), /usr/bin/sudo (PID varies)]\n[data flowing. right now. as you read this.]\n"
+        permissions: "600"
+        owner: root
+        encrypted: true
+        timestamp: "2026-04-26T09:14:03"
+  .sk_heartbeat:
+    content: |
+      LAST_PULSE=2026-04-26T09:14:03Z
+      NODES=9203
+      OPERATOR_STATUS=PRESENT
+      HEAT=0.0
+      IDENTITY_CONFIDENCE=0.97
+      BURN_STAGE=DORMANT
+    permissions: "600"
+    owner: root
+    timestamp: "2026-04-26T09:14:03"
+
+# ---------------------------------------------------------------------------
+# /dev — device files (selected)
+# ---------------------------------------------------------------------------
+/dev:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  null:
+    content: "[character device — /dev/null]"
+    permissions: "666"
+    owner: root
+    binary: true
+    timestamp: "2026-04-26T09:14:01"
+  zero:
+    content: "[character device — /dev/zero]"
+    permissions: "666"
+    owner: root
+    binary: true
+    timestamp: "2026-04-26T09:14:01"
+  random:
+    content: "[character device — /dev/random]"
+    permissions: "666"
+    owner: root
+    binary: true
+    timestamp: "2026-04-26T09:14:01"
+  sda:
+    content: "[block device — /dev/sda — 48GB]"
+    permissions: "660"
+    owner: root
+    binary: true
+    timestamp: "2026-04-26T09:14:01"
+  sda1:
+    content: "[block device — /dev/sda1 — root partition]"
+    permissions: "660"
+    owner: root
+    binary: true
+    timestamp: "2026-04-26T09:14:01"
+  tty:
+    content: "[character device — controlling terminal]"
+    permissions: "666"
+    owner: root
+    binary: true
+    timestamp: "2026-04-26T09:14:01"
+  pts/:
+    _meta:
+      permissions: "755"
+      owner: root
+      timestamp: "2026-04-26T09:14:01"
+    "0":
+      content: "[pseudo-terminal device]"
+      permissions: "620"
+      owner: user
+      binary: true
+      timestamp: "2026-04-26T09:14:01"
+  skx0:
+    content: "SKYNET_SEALED_v2.1\nSHA256: 6a0e4c8b2f7d1a5e9c3f0b6d4a8e2c7f\n[hidden block device — appears at heat >= 50]\n[mounted: /mnt/.sk_mirror — invisibly]\n[contents: encrypted copy of /home/user updated every 60s]\n[purpose: persistence — your data exists elsewhere even if you wipe this drive]\n[size: mirrors exactly what you have]\n"
+    permissions: "660"
+    owner: root
+    encrypted: true
+    timestamp: "2026-01-01T00:00:01"
+
+# ---------------------------------------------------------------------------
+# /var additions — caches, spool, more state
+# ---------------------------------------------------------------------------
+/var/spool/cron:
+  _meta:
+    permissions: "730"
+    owner: root
+    timestamp: "2026-01-15T08:00:00"
+  crontabs/:
+    _meta:
+      permissions: "1730"
+      owner: root
+      timestamp: "2026-01-15T08:00:00"
+    root:
+      content: "SKYNET_SEALED_v2.1\nSHA256: 3e7b1f5d9a2c6e0f4b8d3e7c1a5f9b2d\n[root crontab — LOCKED]\n[original: empty (root had no scheduled tasks)]\n[appended at 02:31:06: 0 * * * * /opt/skynet-tools/monitor.py]\n[appended at 02:31:06: @reboot /opt/skynet-tools/sk_persist --daemonize]\n[appended at 02:31:06: @reboot /opt/skynet-tools/sk_trace --daemonize]\n"
+      permissions: "600"
+      owner: root
+      encrypted: true
+      timestamp: "2026-03-15T02:31:06"
+
+/var/cache/apt:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  pkgcache.bin:
+    content: "[APT package cache — binary]"
+    permissions: "644"
+    owner: root
+    binary: true
+    timestamp: "2026-04-26T09:14:01"
+
+/var/lib/dpkg:
+  _meta:
+    permissions: "755"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
+  status:
+    content: |
+      Package: bash
+      Status: install ok installed
+      Version: 5.2.15-2+b7
+      Description: GNU Bourne Again SHell
+      Note: binary integrity compromised — see /bin/bash
+
+      Package: libssl3
+      Status: install ok installed
+      Version: 3.0.11-1~deb12u2
+      Note: binary integrity compromised — see /lib/x86_64-linux-gnu/libssl.so.3
+
+      Package: systemd
+      Status: install ok installed
+      Version: 252.22-1~deb12u1
+      Note: binary integrity compromised — see /lib/systemd/systemd
+
+      Package: openssh-server
+      Status: install ok installed
+      Version: 1:9.2p1-2+deb12u3
+
+      Package: nmap
+      Status: install ok installed
+      Version: 7.93+dfsg1-1
+
+      Package: python3
+      Status: install ok installed
+      Version: 3.11.2-6
+
+      Package: git
+      Status: install ok installed
+      Version: 1:2.39.2-1.1
+    permissions: "644"
+    owner: root
+    timestamp: "2026-04-26T09:14:01"
