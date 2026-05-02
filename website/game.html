@@ -1716,6 +1716,13 @@ const _resizeObserver = new ResizeObserver(fitTermDebounced);
 _resizeObserver.observe(document.getElementById('terminal-wrap'));
 _resizeObserver.observe(document.getElementById('terminal-pane'));
 
+// Re-fit after web fonts load — cell metrics change when JetBrains Mono replaces
+// the fallback font, so any FitAddon call before this point calculates the wrong rows.
+document.fonts.ready.then(() => {
+  fitTerm();
+  setTimeout(fitTerm, 200);
+});
+
 /* ─────────────────────────────────────────────────────────────
    WEBSOCKET
 ───────────────────────────────────────────────────────────── */
@@ -3092,6 +3099,9 @@ function runBootSequence() {
     setTimeout(() => {
       splash.style.display = 'none';
       fitTerm();
+      setTimeout(fitTerm, 100);
+      setTimeout(fitTerm, 400);
+      setTimeout(fitTerm, 800);
       // Try WebSocket — demo mode starts automatically via ws.onclose if it fails
       connectWS();
     }, 600);
