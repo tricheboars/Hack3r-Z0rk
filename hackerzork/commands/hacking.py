@@ -271,6 +271,9 @@ def cmd_exploit(ctx: CommandContext, args: list[str]) -> str:
 
     _emit(ctx, "exploit_attempted", target=ip, port=port, exploit=exploit, stealth=stealth)
 
+    # Snapshot discovered set before exploit so we can report newly found nodes
+    pre_discovered = set(net.discovered)
+
     result: ExploitResult = net.attempt_exploit(ip, port, exploit)
 
     # Apply heat
@@ -285,16 +288,29 @@ def cmd_exploit(ctx: CommandContext, args: list[str]) -> str:
         out.append(f"[*] Heat cost: {_ANSI_YELLOW}+{heat_cost:.1f}{_ANSI_RESET}")
         out.append("")
 
+        # Report any newly discovered neighbour IPs
+        newly_found = net.discovered - pre_discovered - {ip}
+        if newly_found:
+            out.append(f"{_ANSI_CYAN}[*] Relay config reveals upstream nodes:{_ANSI_RESET}")
+            for new_ip in sorted(newly_found):
+                new_node = net.nodes.get(new_ip)
+                label = f"  {new_ip}"
+                if new_node and new_node.hostname:
+                    label += f"  ({new_node.hostname})"
+                out.append(label)
+            out.append("")
+
         _emit(ctx, "exploit_succeeded", target=ip, port=port, exploit=exploit)
+        conn_ips = [
+            nbr.ip for cid in node.connections
+            if (nbr := net._nodes_by_id.get(cid)) is not None
+        ]
         _emit(ctx, "node_compromised",
               ip=ip,
               name=node.name,
               hostname=node.hostname,
               status="owned",
-              connections=[
-                  nbr.ip for cid in node.connections
-                  if (nbr := net._nodes_by_id.get(cid)) is not None
-              ])
+              connections=conn_ips)
 
         # Write loot to VFS
         if result.loot:
@@ -428,17 +444,19 @@ def cmd_bruteforce(ctx: CommandContext, args: list[str]) -> str:
             found_cred = (u, p)
             break
 
-    # Print first few tries
+    # Print first few tries — stop just before the matching credential
     shown = 0
     for u, p in pairs:
         if shown >= 6:
             break
+        if found_cred and (u.lower(), p.lower()) == (found_cred[0].lower(), found_cred[1].lower()):
+            break  # success line printed below
         out.append(f"    {_ANSI_DIM}trying {u}:{p}… denied{_ANSI_RESET}")
         shown += 1
 
     if found_cred:
         u, p = found_cred
-        out.append(f"    {_ANSI_DIM}trying {u}:{p}… {_ANSI_RESET}", )
+        out.append(f"    {_ANSI_DIM}trying {u}:{p}… {_ANSI_RESET}")
         out.append("")
         out.append(f"{_ANSI_GREEN}{_ANSI_BOLD}[+] Credentials found: {u}:{p}{_ANSI_RESET}")
         out.append(f"[*] Service: {service} on {ip}:{port}")

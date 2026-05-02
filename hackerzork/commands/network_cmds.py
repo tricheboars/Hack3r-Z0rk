@@ -185,6 +185,8 @@ def cmd_nmap(ctx: CommandContext, args: list[str]) -> str:
                     port_obj = node.get_port(pr.port)
                     ver = port_obj.version if port_obj else ""
                     lines.append(f"{tag:<10} {state:<10} {svc:<12} {ver}")
+                    if port_obj and port_obj.vuln:
+                        lines.append(f"{'':10} {'':10} {'':12} \033[33m[!] {port_obj.vuln}\033[0m")
                 else:
                     lines.append(f"{tag:<10} {state:<10} {svc}")
 
@@ -400,16 +402,21 @@ def cmd_ssh(ctx: CommandContext, args: list[str]) -> str:
     if node is None:
         return f"ssh: connect to host {host} port {port}: No route to host"
 
-    # Check SSH port is accessible
-    if not node.firewall.allows_port(port):
-        return (
-            f"ssh: connect to host {host} port {port}: Connection refused\n"
-            f"ssh: No route to host"
-        )
+    already_owned = ip in net.compromised
+
+    # For compromised nodes we tunnel through our existing shell — firewall is bypassed
+    if not already_owned:
+        if not node.firewall.allows_port(port):
+            return (
+                f"ssh: connect to host {host} port {port}: Connection refused\n"
+                f"ssh: No route to host"
+            )
 
     ssh_port = node.get_port(port)
     if ssh_port is None or ssh_port.state != "open":
-        return f"ssh: connect to host {host} port {port}: Connection refused"
+        # Compromised nodes: we already have shell access regardless of port
+        if not already_owned:
+            return f"ssh: connect to host {host} port {port}: Connection refused"
 
     _emit(ctx, "ssh_attempted", target=ip, port=port, user=login_user)
 
@@ -417,7 +424,7 @@ def cmd_ssh(ctx: CommandContext, args: list[str]) -> str:
     can_connect = False
     auth_note = ""
 
-    if ip in net.compromised:
+    if already_owned:
         can_connect = True
         auth_note = "authenticated (post-compromise)"
     elif keyfile:

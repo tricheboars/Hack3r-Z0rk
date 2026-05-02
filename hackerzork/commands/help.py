@@ -54,6 +54,8 @@ _EARLY_HINTS = [
 
 _MID_HINTS = [
     "The network is not empty. Try: nmap 10.13.37.1",
+    "nmap -sV shows service versions AND vulns. That CVE number is your key.",
+    "Exploit syntax: exploit -p PORT -e CVE_OR_VULN_NAME <target>",
     "Standard tools won't cut it here. Try: shadow list",
     "z0rk_7 has been trying to reach you. Try: msg list",
     "There are IRC channels. Try: irc list, then irc join #underground",

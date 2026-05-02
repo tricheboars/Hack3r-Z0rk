@@ -46,10 +46,12 @@ loot:
     path: "/etc/relay.conf"
     content: |
       # Darknet relay configuration
-      upstream_node = node_002
-      log_retention = 0
-      anonymize = true
-    description: "Relay config — references node_002"
+      upstream_relay   = sk-staging-01.internal  # 10.13.37.2
+      exit_node        = tor-exit-7.anon.network  # 10.13.37.5
+      log_retention    = 0
+      anonymize        = true
+      tunnel_proto     = obfs4
+    description: "Relay config — upstream IPs for node_002 and node_005"
 
 connections:
   - node_002

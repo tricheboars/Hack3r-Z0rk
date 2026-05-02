@@ -63,6 +63,10 @@ _SKYNET_PIDS: dict[int, str] = {
     891: "sk_watchdog",
     892: "sk_comms",
     893: "sk_uplink",
+    # Escalation processes — appear as heat rises; killable (+8 heat, respawn)
+    894: "sk_trace",
+    895: "sk_identify",
+    896: "sk_burn",
 }
 
 # Escalation processes — appear when heat crosses thresholds.
@@ -152,7 +156,8 @@ def _record_kill(ctx: CommandContext, pid: int) -> None:
 
 def _heat_level(ctx: CommandContext) -> float:
     if ctx.heat is not None:
-        return getattr(ctx.heat, "current", 0.0)
+        # HeatSystem stores the value as .level; fall back to .current for compat
+        return getattr(ctx.heat, "level", getattr(ctx.heat, "current", 0.0))
     return 0.0
 
 
@@ -772,13 +777,14 @@ def cmd_kill(ctx: CommandContext, args: list[str]) -> str:
             lines.append(f"kill: {tok!r}: arguments must be process or job IDs")
             continue
 
-        # Check process exists in our table
+        # Check process exists — look in base table and heat-escalation table
         proc = next((p for p in _PROCESSES if p[0] == pid), None)
-        if proc is None:
+        # Also accept escalation PIDs (894/895/896) when they're active
+        if proc is None and pid not in _SKYNET_PIDS:
             lines.append(f"kill: ({pid}) - No such process")
             continue
 
-        cmd_str = proc[6].split()[0]
+        cmd_str = (proc[6] if proc else _SKYNET_PIDS.get(pid, str(pid))).split()[0]
 
         if pid in _SKYNET_PIDS:
             name = _SKYNET_PIDS[pid]

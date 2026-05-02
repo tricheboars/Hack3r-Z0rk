@@ -399,11 +399,20 @@ class TestSsh:
         cmd_ssh(ctx, ["10.0.0.1"])
         assert ctx.env.get("LAST_SSH_HOST") == "10.0.0.1"
 
-    def test_no_ssh_port_refused(self):
+    def test_no_ssh_port_uncompromised_refused(self):
+        # Uncompromised node with no SSH port → refused
+        node = _make_node(ports=[_make_port(80, "http")])  # no SSH port
+        ctx = _make_ctx(node, compromised=False)
+        result = cmd_ssh(ctx, ["10.0.0.1"])
+        assert "refused" in result.lower() or "Permission denied" in result
+
+    def test_no_ssh_port_compromised_connects(self):
+        # Owned node: SSH port doesn't matter — we tunnel through existing shell
         node = _make_node(ports=[_make_port(80, "http")])  # no SSH port
         ctx = _make_ctx(node, compromised=True)
         result = cmd_ssh(ctx, ["10.0.0.1"])
-        assert "refused" in result.lower()
+        assert "Permission denied" not in result
+        assert "Connection" in result
 
 
 # ---------------------------------------------------------------------------
