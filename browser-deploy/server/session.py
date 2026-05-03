@@ -286,7 +286,10 @@ class GameSession:
     # ── Sync EventBus handlers — queue JSON for flushing after each command ──
 
     def _queue_heat_event(self, event: object) -> None:
-        heat = getattr(event, "data", {}).get("heat", 0.0)
+        # HeatSystem emits with field "level" (not "heat") — see heat.py _emit.
+        # Fall back to "heat" in case future events use that name.
+        data = getattr(event, "data", {})
+        heat = data.get("level", data.get("heat", 0.0))
         self._pending_events.append(json.dumps({
             "type": "event",
             "name": "heat_update",

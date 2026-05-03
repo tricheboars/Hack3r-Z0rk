@@ -220,6 +220,24 @@ async def test_session_resize_no_crash() -> None:
 
 
 @pytest.mark.slow
+async def test_queue_heat_event_uses_level_field() -> None:
+    """HeatSystem emits with field name 'level'; the WS heat_update payload
+    must reflect the real heat, not always 0.0 (regression — was reading 'heat').
+    """
+    fake = _FakeWS([])
+    session = GameSession(ws=fake)
+
+    class _Evt:
+        data = {"level": 47.3, "amount": 12.0, "source": "test"}
+
+    session._queue_heat_event(_Evt())
+    assert session._pending_events, "queue_heat_event should append to pending_events"
+    payload = json.loads(session._pending_events[-1])
+    assert payload["name"] == "heat_update"
+    assert payload["payload"]["heat"] == 47.3
+
+
+@pytest.mark.slow
 async def test_session_heat_side_channel() -> None:
     """nmap should not crash the session; if it emits heat_update it's well-formed."""
     cmd = json.dumps({"type": "input", "data": "nmap 10.13.37.1"})
