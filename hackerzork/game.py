@@ -19,13 +19,9 @@ class GameConfig:
     save_file: str | None = None
 
 
-_MOTD = """\
-[dim]Last login: Fri Mar 15 02:55:41 2026 from 45.152.66.201[/dim]
-
-[yellow]42 days since your last session.[/yellow]
-[dim]The laptop was sealed. The drive is intact. They don't know you're back.[/dim]
-[dim]Type [bold]help[/bold] for commands. Type [bold]hint[/bold] if you're lost.[/dim]
-"""
+_LAST_LOGIN = (
+    "[dim]Last login: Fri Mar 15 02:55:41 2026 from 45.152.66.201[/dim]\n"
+)
 
 
 class Game:
@@ -333,8 +329,11 @@ class Game:
             except Exception as exc:
                 con.print(f"[red]Failed to load save: {exc}[/red]")
 
-        # Message of the day
-        con.print(_MOTD)
+        # Message of the day — last-login banner + sysreport orientation panel
+        from hackerzork.effects.sysreport import render_sysreport
+        con.print(_LAST_LOGIN)
+        heat_lvl = self._heat.level if hasattr(self._heat, "level") else 0.0
+        con.print(render_sysreport(heat=heat_lvl))
 
         # Hand off to the shell REPL
         await self._shell.run()
