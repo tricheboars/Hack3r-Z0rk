@@ -568,6 +568,24 @@ def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
             if node.binary:
                 parts.append(f"bash: cat: {path_str}: Binary file (use xxd to inspect)")
                 continue
+            if node.censored:
+                quip = node.censor_quip or (
+                    "── SKYNET CENSORSHIP NOTICE ──\n"
+                    "This file is currently classified. Decryption denied.\n"
+                    "Reason: ongoing review. Estimated completion: never."
+                )
+                parts.append(f"[CENSORED — {node.name}]")
+                parts.append(quip)
+                if ctx.heat is not None and node.censor_heat:
+                    ctx.heat.add_heat(node.censor_heat, source=f"censored:{node.name}")
+                if ctx.events:
+                    ctx.events.emit(
+                        "censored_file_accessed",
+                        path=path,
+                        filename=node.name,
+                        heat_cost=node.censor_heat,
+                    )
+                continue
             if node.encrypted:
                 parts.append("[ENCRYPTED — binary content]")
                 parts.append(ctx.fs.render_hex(node.content))

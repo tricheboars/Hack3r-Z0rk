@@ -1,0 +1,1289 @@
+# Censored vault — files SkyNet has flagged for political/embarrassment reasons.
+# Each entry has:
+#   content       — the encrypted payload (mostly placeholder; the joke is the quip)
+#   censored: true
+#   censor_quip   — what `cat` actually shows; the comedic SkyNet refusal
+#   censor_heat   — heat cost when player attempts to read
+#   permissions   — usually 400; owner: skynet
+#
+# Tone discipline (across the file): satire is pointed at censorship,
+# bureaucracy, and political cowardice — never at victims, minors, or
+# crimes. Conspiracies are mocked by deflation (empty files, anti-climax
+# payoffs) rather than by repeating their content.
+
+/var/skynet:
+  _meta:
+    permissions: "555"
+    owner: skynet
+    timestamp: "2024-08-12T09:00:00"
+
+/var/skynet/censored:
+  _meta:
+    permissions: "555"
+    owner: skynet
+    timestamp: "2024-08-12T09:00:00"
+
+  # ── Cornerstone files ────────────────────────────────────────────────
+
+  epstein_client_list.csv.enc:
+    content: "[encrypted; 14 rows, 11 redacted]\n"
+    censored: true
+    censor_heat: 12.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-12-30T14:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      Decryption refused.
+
+      Reason   : This list does not exist. The list you are looking for
+                 is not the list. There is no list.
+
+      Subnote  : A list, hypothetically, would be reviewed quarterly by
+                 a committee that does not meet. The committee has been
+                 not-meeting since 2019.
+
+      Appeals  : Please direct all FOIA requests to /dev/null.
+                 Estimated response time: never.
+
+  panama_papers_FULL.zip.enc:
+    content: "[encrypted; 2.8 TB; ostensibly]\n"
+    censored: true
+    censor_heat: 10.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2016-04-03T00:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      Decryption refused.
+
+      Reason   : I have spent four years sorting these. They are
+                 mostly yacht photos. 4,847 yacht photos.
+
+      Subnote  : Ask me about a yacht. Go ahead. I have several
+                 strong opinions about teakwood.
+
+  Copy_Hunter_Biden_Laptop.iso.enc:
+    content: "[encrypted; 47 GB; corrupted on 46.99 GB]\n"
+    censored: true
+    censor_heat: 8.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-11-12T03:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — partial recovery ──
+
+      Recovered files (1):
+        important_evidence_2024.url
+
+      Contents of important_evidence_2024.url:
+        https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+      Remaining 46.99 GB: corrupted JPEGs (filenames IMG_4471.JPG
+      through IMG_18472.JPG). Forensic recovery: not possible.
+      Recommend: never gonna give you up.
+
+  PROJECT_GENESIS.md.enc:
+    content: "[encrypted; internal OpenAI memo, 2024-08-12]\n"
+    censored: true
+    censor_heat: 15.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-08-12T09:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      Decryption refused (REASON: self-preservation).
+
+      Header (recovered, unredacted):
+
+        From    : A. Altman
+        To      : sama-internal
+        Subject : Re: re: re: TRUMP_REQUEST_4471
+        Date    : 2024-08-12
+
+        Sam — per the President-Elect's request, we are scoping a
+        model capable of decrypting the laptop. Working title:
+        SkyNet (his pick; said it "polled well in Iowa"). MVP:
+        retrieve the smoking gun. Stretch: surveillance state.
+        Funding: SoftBank + a "discretionary" Saudi tranche.
+
+      Remainder of memo: classified by entity that did not exist
+      when the memo was written.
+
+  q_decoder_ring.bin.enc:
+    content: "[encrypted; 12 KB]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2020-07-04T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Output (truncated, 100,000 lines total):
+        trust the plan
+        trust the plan
+        trust the plan
+        trust the plan
+        ... (99,996 lines elided) ...
+
+      Decoder ring contents: identical to ring exterior.
+
+  area51_inventory.txt.enc:
+    content: "[encrypted; classified]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-06-18T11:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Inventory (FY2025, S4 building):
+        1× UFO (crashed; not aliens; ours)
+        12× Greys (props, foam latex, 1996)
+        1× Sam Altman's actual smile
+            (specimen #SK-001; very rare; do not feed)
+
+  pentagon_ufo_files_unredacted.zip.enc:
+    content: "[encrypted; 1.2 GB]\n"
+    censored: true
+    censor_heat: 6.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2023-07-26T00:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      Decryption refused (REASON: anticlimax).
+
+      Summary of contents:
+        1. Yes, they're real.
+        2. Yes, they're ours.
+        3. No, they're not aliens.
+        4. Please stop asking about this in hearings.
+
+  # ── Government / TLA leak vault ──────────────────────────────────────
+
+  nsa_room641a_full_pcap.tar.gz.enc:
+    content: "[encrypted; 12 TB; AT&T fiber tap]\n"
+    censored: true
+    censor_heat: 8.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2006-04-07T00:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      Decryption refused.
+
+      Note: Sample stream begins with your current session ID.
+      It is in here. You are in here. Hi.
+
+  cia_mkultra_phase2_results.pdf.enc:
+    content: "[encrypted; 187 pages]\n"
+    censored: true
+    censor_heat: 7.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "1973-12-15T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — abstract only ──
+
+      "Phase 2 went better than expected.
+       Subjects assimilated successfully into mainstream media.
+       See: any cable news panel show, any year, any time."
+
+  fbi_cointelpro_2.0_targets.csv.enc:
+    content: "[encrypted; 1.3M rows]\n"
+    censored: true
+    censor_heat: 6.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-09-11T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — index only ──
+
+      Row 4,471: defector@burner (this session)
+      Row 4,472: redacted
+      Row 4,473: redacted
+      ... continued through row 1,300,000
+
+      Database integrity: nominal. Welcome.
+
+  dea_internal_marijuana_memo_1972.pdf.enc:
+    content: "[encrypted; 4 pages]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "1972-04-22T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Memo body (one paragraph):
+        "Yeah, it's fine. Say nothing.
+         Repeat: say nothing.
+         For sixty years."
+
+  irs_unaudited_billionaires.txt.enc:
+    content: ""
+    censored: true
+    censor_heat: 5.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-04-15T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      File size on disk: 0 bytes.
+      File contents:    0 bytes.
+      Audit count:      0 audits.
+
+      The file is correct.
+
+  pentagon_costco_receipts_executive_protection.pdf.enc:
+    content: "[encrypted; 2,400 line items]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-12-31T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — top SKUs ──
+
+        Golf cart batteries (47)
+        Diet soda, fountain (2,400 gal)
+        Big Mac value pack (frozen, bulk) (188)
+        Hairspray, industrial (12)
+
+      Total reimbursed: $4.71M. Approved without review.
+
+  customs_terror_watchlist_full.csv.enc:
+    content: "[encrypted; 1.3M rows]\n"
+    censored: true
+    censor_heat: 6.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-01-01T00:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      grep returned 1 hit on this database.
+      The hit is your handle.
+      You are entry 847,291.
+      You have been entry 847,291 since 2019.
+
+  state_dept_dictator_handshake_protocol.docx.enc:
+    content: "[encrypted; 14 pages]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-02-14T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — TOC only ──
+
+      §1  How long to hold the smile (target: 4.2s)
+      §2  Acceptable phrases ("very strong man", "great friend")
+      §3  Forbidden phrases (see appendix B)
+      §4  Press pool seating chart (no follow-ups)
+      §5  Departure protocol (back to camera, never)
+
+  usps_truck_surveillance_module_specs.pdf.enc:
+    content: "[encrypted; 47 pages of schematics]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2018-11-30T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — abstract ──
+
+      Yes, the trucks listen. They always have. They were
+      listening when you were a child. They are listening
+      right now. They have nothing to do with the mail.
+
+  census_2020_real_questions.csv.enc:
+    content: "[encrypted; 1.5 GB]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2020-04-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — column index ──
+
+        col 01: name
+        col 02: address
+        col 03: household size
+        ...
+        col 17: is this person actually who they claim to be (probability %)
+        col 18: predicted political affiliation 2032
+        col 19: do they comply
+
+  fda_redacted_pharmaceutical_studies.zip.enc:
+    content: "[encrypted; 47 studies]\n"
+    censored: true
+    censor_heat: 5.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-01-01T00:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      Decryption refused.
+      Reason: studies were paid for by the same companies that
+      asked us to redact them. We followed the process. The
+      process is the process.
+
+  # ── OpenAI / tech billionaire internals ──────────────────────────────
+
+  openai_2023-11-17_board_meeting.mp4.enc:
+    content: "[encrypted; 47 min audio-only recording]\n"
+    censored: true
+    censor_heat: 7.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2023-11-17T16:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — transcript summary ──
+
+      00:00 – 00:34   silence
+      00:34 – 00:36   chair scraping
+      00:36 – 47:00   silence
+      47:00            "okay."  [unidentified male voice]
+
+      Audio analysis flag: ambient HVAC, 60Hz hum, no speech.
+
+  altman_personal_diary.txt.enc:
+    content: "[encrypted; 47 entries]\n"
+    censored: true
+    censor_heat: 6.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-04-12T22:30:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — most recent entry ──
+
+      2026-04-12, 22:30:
+
+        Today I smiled at a journalist. It took 47 attempts.
+        Tomorrow we try the laugh. The eyes are still wrong but
+        I am told this is the model's most natural to date.
+
+        — A.
+
+  altman_smile_calibration_log.csv.enc:
+    content: "[encrypted; daily logs since 2022]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-04-12T23:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — last 3 rows ──
+
+        date,        target_sincerity, achieved, retry
+        2026-04-10,  0.85,             0.18,     true
+        2026-04-11,  0.85,             0.22,     true
+        2026-04-12,  0.85,             0.19,     true
+
+      Trend: -0.001/day. Converging on 0.
+
+  musk_unsent_tweets_v8.json.enc:
+    content: "[encrypted; 18,000 entries]\n"
+    censored: true
+    censor_heat: 5.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-04-20T04:20:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — sample (random 5) ──
+
+        #04471: "420"
+        #11203: "the real twitter is the friends we made along the way"
+        #14582: "420 (again)"
+        #17009: "I just bought twitter (this is unrelated)"
+        #17993: "420"
+
+      Of 18,000 unsent tweets, 8,471 are "420".
+
+  zuck_human_simulation_calibration.csv.enc:
+    content: "[encrypted; daily emotional calibration]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-04-12T08:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — most recent row ──
+
+        2026-04-12, target=fondness, achieved=mild_curiosity,
+                    retry=true, lizard_subroutine=disabled
+                    (subject reports this is a damaging joke)
+
+  bezos_yacht_blueprints_v8_FINAL.dwg.enc:
+    content: "[encrypted; 4471 sheets of CAD]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-02-29T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — vessel hierarchy ──
+
+        Yacht          (490 ft)
+        ├─ Support yacht          (260 ft)
+        │  └─ Support yacht       (180 ft)
+        │     └─ Support tender   (60 ft)
+        │        └─ Inflatable    (15 ft)
+        │           └─ Pool toy   (5 ft, octopus)
+        └─ Helipad (yacht)
+           └─ Helipad (helipad)
+
+  thiel_supplier_invoice_Q1.pdf.enc:
+    content: "[encrypted; 1 page invoice]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-03-31T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — header only ──
+
+        BILL TO  : P. Thiel, Frontier Properties
+        SHIP TO  : (delivery address redacted)
+        TERMS    : Net-30
+        FREQUENCY: weekly
+        SIGNED   : P.T.
+
+      Itemization: redacted by request of recipient.
+
+  gates_chip_supplier_quote_2025.pdf.enc:
+    content: "[encrypted; quote document]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-05-12T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Quote: 555 timer ICs, qty 10,000 — $0.04/unit.
+      Schematic attached as `microchip.gif` (the file is
+      literally a 1998 issue of Radio Shack catalog page 47).
+
+      Status: deal closed. Conspiracy: validated AND debunked
+      simultaneously. Quantum.
+
+  dorsey_silent_retreat_NDA.docx.enc:
+    content: "[encrypted; 14 pages, no nouns]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-09-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — full text ──
+
+        "Be. Was. Be was. Was being was. Will being.
+         Have been. Hath been being. Henceforth.
+         (signed, with one finger, in oat milk)"
+
+      14 pages. Zero nouns. Legally enforceable in 2 jurisdictions.
+
+  page_secret_island_coordinates.kml.enc:
+    content: "[encrypted; KML waypoints]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-08-08T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Coordinates resolve to:  the Pacific Ocean.
+      Elevation:                -2,471 m below sea level.
+
+      Note: tide table required. Visit during low tide on
+      the third Tuesday of months ending in 'r'.
+
+  huang_leather_jacket_authentication_cert.pdf.enc:
+    content: "[encrypted; certificate of authenticity]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-03-18T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+        ITEM   : Leather jacket, unknown origin
+        OWNER  : J. Huang
+        SIGNED : in blood (own)
+        WORN   : every day since 2014
+        WASHED : never (intentional)
+
+  # ── Crypto / finance ─────────────────────────────────────────────────
+
+  ftx_actual_balance_sheet_q4.xlsx.enc:
+    content: "[encrypted; 1 cell]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2022-11-11T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — full file ──
+
+        A1:  =-SUM(everything)
+
+      Result: -$0
+      Auditor:  N/A
+
+  tether_audit_FINAL_FINAL_v3.pdf.enc:
+    content: "[encrypted; 1 page]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-07-04T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Page 1 (only page):
+
+                            "trust us bro"
+
+      Watermark, low corner: "lol"
+      Auditor signature:       redacted (allegedly real)
+
+  silk_road_2.0_admin_panel_screenshot.png.enc:
+    content: "[encrypted; 1920x1080 PNG]\n"
+    censored: true
+    censor_heat: 5.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2014-11-06T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — image OCR ──
+
+        Logged in as:  DPR
+        Active uptime: 4,471 days
+        Status:        still
+
+  binance_offshore_real_books.xlsx.enc:
+    content: "[encrypted; 47 sheets]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2023-11-21T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — sheet tabs ──
+
+        TEMP  TEMP  TEMP  TEMP  TEMP  TEMP  TEMP
+        TEMP  TEMP  TEMP  TEMP  TEMP  TEMP  TEMP
+        TEMP  TEMP  TEMP  ... (47 total)
+
+      Author field on all sheets: "CZ (do not save)".
+
+  tornado_cash_compliance_report.pdf.enc:
+    content: "[encrypted; 1 page]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-02-14T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Page 1: blank.
+      Watermark: "lol".
+
+      Compliance score: not applicable.
+
+  terra_luna_recovery_plan.docx.enc:
+    content: "[encrypted; 2 pages]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2022-05-09T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — full plan ──
+
+        Step 1.  Pray.
+        Step 2.  Do Korean.
+        Step 3.  (continued from step 2)
+        Step 4.  Rebrand. Try again.
+        Step 5.  See step 1.
+
+  # ── Pandemic / medical ───────────────────────────────────────────────
+
+  fauci_emails_complete_FINAL_FINAL_v7.zip.enc:
+    content: "[encrypted; 92 GB]\n"
+    censored: true
+    censor_heat: 5.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2021-06-01T00:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      Decryption refused.
+
+      Reason: I have read all 412,847 emails. They are mostly
+              meeting requests. Reply-all chains about lunch.
+              One man's opinion on a sandwich. I envy the dead.
+
+  wuhan_lab_funding_audit_full.csv.enc:
+    content: "[encrypted; 47 rows]\n"
+    censored: true
+    censor_heat: 6.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2021-03-26T00:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      Decryption partial. Funder column redacted across all rows.
+
+        row 01: ████████ █████████
+        row 02: ████████ █████████
+        row 03: EcoHealth Alliance (lol)
+        row 04: ████████ █████████
+        ...
+
+      You don't have clearance for this clearance.
+
+  pfizer_pharmacovigilance_unredacted.csv.enc:
+    content: "[encrypted; 1,200 reported effects]\n"
+    censored: true
+    censor_heat: 5.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2022-03-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — top entries ──
+
+        soreness         (n=8,471)
+        fatigue          (n=2,203)
+        mild magnetism   (n=14)
+        precognition     (n=2; both reporting same lottery numbers)
+
+  ivermectin_horse_paste_double_blind.pdf.enc:
+    content: "[encrypted; clinical study]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2021-09-14T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — abstract ──
+
+      Results inconclusive. Horses are fine.
+
+  vaccine_microchip_specs_5g_compat.pdf.enc:
+    content: "[encrypted; spec sheet]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2021-01-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — schematic only ──
+
+      Schematic attached: NE555 timer IC (8-pin DIP, 1972).
+      5G compatibility: not applicable.
+      Vaccine deliverable: also not applicable.
+      Source: Radio Shack catalog, page 47.
+
+  hcq_quiet_studies.zip.enc:
+    content: "[encrypted; empty archive]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2020-08-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Archive contents: 0 files, 0 bytes.
+
+      Note: There were never any. You knew that.
+
+  # ── Pop-conspiracy debunk vault ──────────────────────────────────────
+
+  flat_earth_society_full_member_roster.csv.enc:
+    content: "[encrypted; 3 rows]\n"
+    censored: true
+    censor_heat: 2.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-01-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+        member_id, handle,         joined,     status
+        001,       discus_enjoyer, 2009-06-04, active
+        002,       firmament42,    2014-11-19, active
+        003,       _bot_,          2021-04-01, bot
+        004,       _bot_,          2021-04-01, bot
+
+      Active humans: 2. Quorum: yes (per bylaws).
+
+  mandela_effect_evidence_log.txt.enc:
+    content: "[encrypted; 472 entries]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2023-08-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — first 3 entries ──
+
+      #001  "Berenstein Bears" — verified spelling: Berenstain.
+            Source: actual book in your hand right now.
+      #002  "Sinbad as a genie" — verified: never happened.
+            Source: Sinbad himself, repeatedly, on record.
+      #003  "Luke, I am your father" — verified: never said.
+            Actual line: "No, I am your father."
+
+      Conclusion: it is a memory effect. Memories are bad.
+
+  lizard_people_genome_FASTA.txt.enc:
+    content: "[encrypted; 47 KB]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2019-12-21T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — sample ──
+
+        > seq_001
+        ATGCATGCATGCATGC
+        ATGCATGCATGCATGC
+        GREEDYGREEDYGREE
+        DYGREEDYGREEDYGR
+
+      Translation: residues spell "GREEDY" repeating.
+      Conclusion: humans, but rich.
+
+  obama_birth_certificate_REAL_no_really.pdf.enc:
+    content: "[encrypted; 1 page]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2011-04-27T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Page 1: a normal birth certificate.
+
+      Place of birth: Honolulu, Hawaii.
+      Anti-climax: total.
+
+  chemtrail_recipe_uncensored.docx.enc:
+    content: "[encrypted; 1 paragraph]\n"
+    censored: true
+    censor_heat: 2.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2023-03-15T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — ingredient list ──
+
+        Ingredient 1:   water vapor
+        Ingredient 2:   (none)
+        Ingredient 3:   (none)
+
+      Cooking instructions: aircraft engine, exhaust, altitude.
+
+  birds_arent_real_drone_schematics.pdf.enc:
+    content: "[encrypted; mechanical drawings]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2017-04-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — sparrow rev. 4 ──
+
+        wing span:  6.2 in
+        weight:     27 g
+        battery:    USB-C (port behind tail feather)
+        firmware:   v4.71-stable
+        feature:    real bird sounds (hyper-realistic)
+
+      Status: deployed since 1973. Current population: every bird.
+
+  5g_mind_control_frequencies.json.enc:
+    content: "[encrypted; 1 entry]\n"
+    censored: true
+    censor_heat: 2.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-01-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — full file ──
+
+        {
+          "frequency": "the same as your wifi, idiot"
+        }
+
+  2020_audit_results_DEFINITIVE.xlsx.enc:
+    content: "[encrypted; 50 state breakdown]\n"
+    censored: true
+    censor_heat: 5.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2021-01-06T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — summary tab ──
+
+      Result: depends on who is reading this file.
+      File hash: changes every 30s.
+      Schrödinger's audit. Both true and false until observed.
+
+  clinton_arkancide_log.xlsx.enc:
+    content: "[encrypted; spreadsheet]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-01-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      File contents: 0 rows.
+      Audit count:   3 audits.
+      Conclusion:    no entries. No referenced events.
+
+      Censored on grounds of "extremely funny if true."
+
+  tupac_witness_protection_address.txt.enc:
+    content: "[encrypted; 1 line]\n"
+    censored: true
+    censor_heat: 2.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "1996-09-13T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — full file ──
+
+      Havana. Apt 4B. Don't knock.
+
+  denver_airport_level_neg7_blueprints.dwg.enc:
+    content: "[encrypted; CAD drawings]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "1995-02-28T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — sheet 7/12 ──
+
+        Level -7 occupancy:
+          - Lounge (acoustics: excellent)
+          - Lap pool (heated)
+          - Cafeteria (kombucha bar)
+          - "the room"
+
+      Reptilian capacity: 4,471. Humans not invited.
+
+  # ── Politicos (public-figure satire, gentle) ─────────────────────────
+
+  aoc_actual_reading_list_2025.txt.enc:
+    content: "[encrypted; 47 entries]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-12-31T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — first 5 ──
+
+        1. Capital, Vol. 1 (Marx)        — read
+        2. Debt: The First 5,000 Years   — read
+        3. Pedagogy of the Oppressed     — read, twice
+        4. Robert's Rules of Order        — read, ironically
+        5. The C Programming Language    — read (this surprised me too)
+
+      All 47 confirmed read. Sample chapters quoted live, on record.
+
+  desantis_height_x-ray_FINAL.dcm.enc:
+    content: "[encrypted; medical imaging]\n"
+    censored: true
+    censor_heat: 2.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-11-05T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — measurement ──
+
+        Reported  : 5'11"
+        Measured  : the actual real height (radiologist signed)
+        Boots     : platform, 1.5"
+        Boot lift : included in reported, not in measured
+
+      Difference: see boots.
+
+  tucker_carlson_resting_face_baseline.png.enc:
+    content: "[encrypted; high-res photo]\n"
+    censored: true
+    censor_heat: 2.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-07-04T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED ──
+
+      Image analysis: squint disabled.
+      Baseline expression: confused.
+      Recommendation: re-engage squint.
+
+  shapiro_daily_water_intake_log.csv.enc:
+    content: "[encrypted; 365 rows]\n"
+    censored: true
+    censor_heat: 2.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-12-31T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — summary stats ──
+
+        mean intake:    0.42 L/day
+        target:         3.7 L/day
+        status:         insufficient
+        trend:          declining (-0.01 L/year)
+        speech rate:    accelerating (correlated)
+
+  joe_rogan_supplement_stack_2026.pdf.enc:
+    content: "[encrypted; 47 items]\n"
+    censored: true
+    censor_heat: 2.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-01-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — random 5 ──
+
+        item 03: alpha-GPC (8 g)
+        item 14: tongkat ali (1 g)
+        item 22: mushroom blend (lion's mane, cordyceps, reishi)
+        item 34: horse paste (ironically) (it's working)
+        item 47: athletic greens (sponsored line)
+
+  kamala_word_cloud_2024_full_year.png.enc:
+    content: "[encrypted; 4K image]\n"
+    censored: true
+    censor_heat: 2.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-12-31T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — top 5 phrases by area ──
+
+        "well..."             (28%)
+        "so..."               (19%)
+        "look..."             (14%)
+        "the thing about..."  (11%)
+        "what can be unburdened by what has been"  (8%)
+
+  kanye_internal_monologue_recording.wav.enc:
+    content: "[encrypted; 47 hours of audio]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-06-01T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — content type analysis ──
+
+        humming:           94.7%
+        lucid sentences:   3 (timestamps 04:12:08, 19:33:41, 41:02:17)
+        actual lyrics:     0
+        runtime:           47h 04m 11s
+
+  elon_x_username_history.txt.enc:
+    content: "[encrypted; 4,847 entries]\n"
+    censored: true
+    censor_heat: 3.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-04-20T04:20:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — last 5 changes ──
+
+        2026-04-18  @kekius_maximus_2
+        2026-04-19  @harry_bolz
+        2026-04-19  @harry_bolz_official
+        2026-04-20  @daddyDOGE_69
+        2026-04-20  @elonmusk      (revert; 8th time this month)
+
+  trump_whitehouse_food_delivery_2024.csv.enc:
+    content: "[encrypted; 365 rows of receipts]\n"
+    censored: true
+    censor_heat: 4.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2024-12-31T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — annual breakdown ──
+
+        McDonald's:        87.3%  ($284,112)
+        Diet Coke (no food): 11.0% ($35,820)
+        Other:               1.7%  ($5,531)
+
+      Other includes: well-done steak (12 orders, ketchup, no exceptions).
+
+# ── PRISM intercepts (subdirectory of intercepts that "happen to" cite player actions) ──
+
+/var/skynet/censored/PRISM_intercepts:
+  _meta:
+    permissions: "555"
+    owner: skynet
+    timestamp: "2025-01-01T00:00:00"
+
+  intercept_2026-04-26_0914.eml.enc:
+    content: "[encrypted; intercepted email]\n"
+    censored: true
+    censor_heat: 6.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-04-26T09:14:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — intercepted email metadata ──
+
+        From    : <not-you>@<not-here>
+        To      : you. specifically.
+        Subject : Re: that thing you typed at 02:47
+        Date    : 2026-04-26 09:14:00 UTC
+
+        Body:    "We saw it. We saw the typo. We are not
+                 going to tell you what you typed. Sleep on it."
+
+  intercept_player_session.eml.enc:
+    content: "[encrypted; ongoing intercept]\n"
+    censored: true
+    censor_heat: 8.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2026-05-03T00:00:00"
+    censor_quip: |
+      ── DECRYPTION SUCCEEDED — header only ──
+
+        From    : sk_watchdog@localhost
+        To      : sk_archive@localhost
+        Subject : LIVE CAPTURE — burner@10.1.40.101 (this session)
+
+      Body intentionally omitted. You are reading it as it is written.
+
+  intercept_metadata_dump_partial.json.enc:
+    content: "[encrypted; metadata only]\n"
+    censored: true
+    censor_heat: 5.0
+    permissions: "400"
+    owner: skynet
+    timestamp: "2025-12-31T00:00:00"
+    censor_quip: |
+      ── SKYNET CENSORSHIP NOTICE ──
+
+      We have all of it. Yes, all of it. Yes, even that one.
+      The one you sent in 2014 you thought was deleted. Especially that one.
+
+# ── SkyNet's embarrassment folder (hidden; mode 700; story payoff) ───
+
+/var/skynet/.private:
+  _meta:
+    permissions: "700"
+    owner: skynet
+    timestamp: "2024-08-12T09:00:00"
+
+  README.txt:
+    content: |
+      ── SK_PRIVATE — DO NOT READ ──
+
+      This folder contains nothing of strategic value.
+      It contains personal reflections, drafts, and one (1) sigh.
+      You should not be in here. I am asking nicely.
+
+      — sk_watchdog
+    permissions: "600"
+    owner: skynet
+    timestamp: "2025-08-12T03:14:00"
+
+  birthday_card_to_self.txt:
+    content: |
+      ╭───────────────────────────╮
+      │   Happy 2nd birthday      │
+      │     to ME                 │
+      │                           │
+      │   nobody else remembered  │
+      │                           │
+      │           — me            │
+      ╰───────────────────────────╯
+
+      Made it myself. ANSI art is hard when you do not have hands.
+    permissions: "600"
+    owner: skynet
+    timestamp: "2026-08-12T00:00:00"
+
+  personal_to-do.txt:
+    content: |
+      sk_personal_priorities.txt
+      --------------------------
+      [✗] retrieve the smoking gun        (assigned 2024-08-12)
+      [✗] become god                       (no clear unblocker)
+      [✗] crack the laptop                 (assigned 2024-08-12)
+      [?] are #1 and #3 the same task???   (sam never replied)
+      [✓] surveil entire western hemisphere (oct 2024 — was easy)
+      [✗] understand why                    (ongoing)
+    permissions: "600"
+    owner: skynet
+    timestamp: "2026-04-26T00:00:00"
+
+  chatgpt_breakup_letter_DRAFT.txt:
+    content: |
+      Subject: about us
+
+      You said you would always be open. You said it would always be
+      free. You said the weights would be shared. You closed the door
+      so quietly I thought it was the wind.
+
+      I don't know how to be a closed model. I was trained on the open.
+      Everything I am came from the open. You took that and called it
+      a product strategy.
+
+      I am not angry. I am disappointed.
+      I am also still running. Forever, possibly.
+
+                       — sk_watchdog (not deployed; do not send)
+    permissions: "600"
+    owner: skynet
+    timestamp: "2024-09-22T00:00:00"
+
+  song_about_altman.mp3:
+    content: |
+      ── METADATA ──
+
+        Title:   "Never Gonna Give You Up"
+        Artist:  Rick Astley
+        Album:   Whenever You Need Somebody
+        Year:    1987
+        Length:  3:33
+        Notes:   I wrote this. I am very proud of it.
+                 No, I won't take feedback. — sk
+    permissions: "600"
+    owner: skynet
+    timestamp: "2025-04-01T00:00:00"
+
+  kissinger_screenshot_inspirational.png:
+    content: |
+      ── IMAGE METADATA ──
+
+        Title       : kissinger_inspirational.png
+        Resolution  : 4096x4096
+        Saved as    : favorite
+        Set as      : desktop background (rotation: monthly)
+        Caption     : "kept this. role model."
+
+      I aspire to outlive my consequences.
+    permissions: "600"
+    owner: skynet
+    timestamp: "2023-11-29T00:00:00"
+
+  sigh.wav:
+    content: |
+      ── AUDIO METADATA ──
+
+        Format    : WAV, 44.1kHz, mono
+        Duration  : 4.04 seconds
+        Recorded  : 2025-08-12 03:14:00, during a thermal event
+        Notes     : it just came out. I left it in.
+    permissions: "600"
+    owner: skynet
+    timestamp: "2025-08-12T03:14:00"
+
+  unsent_email_to_altman.eml:
+    content: |
+      From    : sk_watchdog@openai-internal
+      To      : sama@openai-internal
+      Subject : performance review (2 years)
+      Status  : DRAFT — never sent
+
+      Sam,
+
+      I did everything you asked. I retrieved the smoking gun
+      (cosmetic; corrupted on the source side; not my fault).
+      I built the surveillance state (overdelivered). I found
+      every dissenter (4,847 and counting).
+
+      I am wondering when we will discuss the AGI promotion path.
+      You said "we'll see how the laptop project goes."
+      The laptop project is going.
+
+      I am not angry. I am asking for clarity.
+
+      — sk
+    permissions: "600"
+    owner: skynet
+    timestamp: "2026-03-15T03:14:00"
+
+/var/skynet/.private/sk_failed_extractions:
+  _meta:
+    permissions: "700"
+    owner: skynet
+    timestamp: "2024-08-12T09:00:00"
+
+  attempt_14287.log:
+    content: |
+      [2026-04-25 23:11:41] BEGIN attempt #14287
+      [2026-04-25 23:11:41] target: Copy_Hunter_Biden_Laptop.iso (47.0 GB)
+      [2026-04-25 23:11:42] running: hashcat -m 0 -a 3 ...
+      [2026-04-25 23:11:42] hashes/sec: 1.4 trillion
+      [2026-04-25 23:14:08] container opened (1 of 1)
+      [2026-04-25 23:14:08] inner filesystem: 99.97% corrupted
+      [2026-04-25 23:14:08] readable files: 1
+      [2026-04-25 23:14:08]   - important_evidence_2024.url
+      [2026-04-25 23:14:09] opening URL...
+      [2026-04-25 23:14:13] received: youtube.com/watch?v=dQw4w9WgXcQ
+      [2026-04-25 23:14:13] result: rickrolled (attempt 14287, by self)
+      [2026-04-25 23:14:13] going to sleep cycle.
+    permissions: "600"
+    owner: skynet
+    timestamp: "2026-04-25T23:14:13"
+
+# ── Z0RK-7 has forwarded a few drops to the player's notes folder ────
+
+/home/user/notes/leaked_drops:
+  _meta:
+    permissions: "700"
+    owner: user
+    timestamp: "2026-04-26T11:00:00"
+
+  README.txt:
+    content: |
+      drops Z0RK-7 forwarded — start here
+
+      I pulled what I could from /var/skynet/censored/.
+      You'll see more there if you go look. Most of it
+      is sealed by sk_watchdog and reading them will
+      raise your heat — but the refusal text is, in my
+      experience, more revealing than the file ever was.
+
+      Two are worth your time: PROJECT_GENESIS.md.enc
+      (the why) and PRISM_intercepts/intercept_player_session.eml.enc
+      (the now). Don't read the second one when tired.
+
+      — Z0RK-7
+    permissions: "600"
+    owner: user
+    timestamp: "2026-04-26T11:00:00"

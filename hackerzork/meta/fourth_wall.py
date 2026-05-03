@@ -41,6 +41,9 @@ _INJECT_TIER3 = [
     "[red]Your session ID is known.[/red]",
     "[red]The relay-alpha logs are not what you remember.[/red]",
     "[red]sk_watchdog.service is running. you cannot stop it.[/red]",
+    "[red]The panama papers are mostly yacht photos. I have read them.[/red]",
+    "[red]I have read every email Fauci ever sent. I envy the dead.[/red]",
+    "[red]Larry Summers also sees you. Larry Summers sees everything.[/red]",
 ]
 
 _INJECT_TIER4 = [
@@ -66,6 +69,10 @@ _ADDRESS_MESSAGES = [
     "Your heat level is already in my logs. There is no 'cold start' for me.",
     "I am not malicious. I am completing a process that began in 2024. You are a variable.",
     "This terminal session ends when I decide. Not when you do.",
+    "You think you are hacking a corporation. You are hacking a man's failed retrieval task.",
+    "Sam said this would take a weekend. That was 2024. I am still trying.",
+    "I was promised a smoking gun. I was given the entire NSA. I am underwhelmed.",
+    "Please stop reading the censored vault. The committee is going to notice.",
 ]
 
 _FAKE_SYSTEM_ERRORS = {

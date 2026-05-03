@@ -71,12 +71,13 @@ class Game:
         # 1. Event bus — everything talks through here
         self._events = EventBus()
 
-        # 2. Virtual filesystem — seeded from home.yaml
+        # 2. Virtual filesystem — seeded from home.yaml + censored.yaml
         template: dict = {}
-        template_path = data_dir / "filesystem" / "home.yaml"
-        if template_path.exists():
-            with open(template_path) as fh:
-                template = yaml.safe_load(fh) or {}
+        for fname in ("home.yaml", "censored.yaml"):
+            p = data_dir / "filesystem" / fname
+            if p.exists():
+                with open(p) as fh:
+                    template.update(yaml.safe_load(fh) or {})
         self._fs = VirtualFS(template=template)
 
         # 3. Network simulation — load nodes from data/nodes/

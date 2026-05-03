@@ -121,6 +121,9 @@ class FSEntry:
     binary: bool = False
     is_symlink: bool = False
     link_target: str = ""
+    censored: bool = False     # SkyNet refuses to decrypt; cat prints censor_quip
+    censor_quip: str = ""      # SkyNet's refusal text
+    censor_heat: float = 5.0   # heat cost when player tries to read
 
 
 @dataclass
@@ -144,6 +147,9 @@ class _Node:
     binary: bool = False      # non-text file hint
     is_symlink: bool = False
     link_target: str = ""     # absolute target path (resolved at creation)
+    censored: bool = False    # SkyNet refuses; cat prints censor_quip + heat spike
+    censor_quip: str = ""     # SkyNet's refusal text (rendered as the cat output)
+    censor_heat: float = 5.0  # heat cost when player attempts to read
 
     def to_entry(self) -> FSEntry:
         return FSEntry(
@@ -159,6 +165,9 @@ class _Node:
             binary=self.binary,
             is_symlink=self.is_symlink,
             link_target=self.link_target,
+            censored=self.censored,
+            censor_quip=self.censor_quip,
+            censor_heat=self.censor_heat,
         )
 
     def to_dict(self) -> dict:
@@ -174,6 +183,9 @@ class _Node:
             "binary": self.binary,
             "is_symlink": self.is_symlink,
             "link_target": self.link_target,
+            "censored": self.censored,
+            "censor_quip": self.censor_quip,
+            "censor_heat": self.censor_heat,
         }
         if self.is_dir:
             d["children"] = {k: v.to_dict() for k, v in self.children.items()}
@@ -193,6 +205,9 @@ class _Node:
             binary=d.get("binary", False),
             is_symlink=d.get("is_symlink", False),
             link_target=d.get("link_target", ""),
+            censored=d.get("censored", False),
+            censor_quip=d.get("censor_quip", ""),
+            censor_heat=float(d.get("censor_heat", 5.0)),
         )
         if node.is_dir:
             for name, child_dict in d.get("children", {}).items():
@@ -777,6 +792,9 @@ class VirtualFS:
                     modified=_parse_timestamp(value.get("timestamp")),
                     encrypted=value.get("encrypted", False),
                     binary=value.get("binary", False),
+                    censored=value.get("censored", False),
+                    censor_quip=value.get("censor_quip", ""),
+                    censor_heat=float(value.get("censor_heat", 5.0)),
                 )
                 deleted = value.get("deleted", False)
                 file_path = current_path.rstrip("/") + "/" + name

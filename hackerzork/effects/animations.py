@@ -58,6 +58,8 @@ _SERVICE_LINES: list[tuple[str, float]] = [
     # sk_watchdog starts silently, dim — no green bracket, different formatting
     ("[dim]  [  OK  ] Started sk_watchdog.service[/dim]",                                 0.03),
     ("[green]  [  OK  ][/green] [dim]Started sk_comms.service[/dim]",                     0.04),
+    ("[green]  [  OK  ][/green] [dim]Started sk_altman_appeasement.service[/dim]",        0.04),
+    ("[yellow]  [FAILED][/yellow] [dim]sk_smoking_gun_extractor.service: target corrupted (attempt 14287)[/dim]", 0.06),
     ("[green]  [  OK  ][/green] [dim]Reached target Multi-User System[/dim]",             0.06),
 ]
 
