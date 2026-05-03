@@ -31,15 +31,38 @@ _FETCH_URL  = "git@45.152.66.201:~/maze/repo.git"
 @register_command(
     name="git",
     usage="git <subcommand> [args]",
-    help_text=(
-        "Version-controlled game saves.\n"
-        "  git commit -m \"name\"    save your progress\n"
-        "  git log                  list saves\n"
-        "  git checkout <hash>      load a save\n"
-        "  git stash / stash pop    quick save slot\n"
-        "  git status / diff        inspect state"
-    ),
+    help_text="Version-controlled game saves (commit/log/checkout/stash)",
     category="system",
+    description=(
+        "A real version control system inside the game — every commit is a\n"
+        "snapshot of the entire world state, identified by a SHA-1 hash.\n"
+        "\n"
+        "Commands:\n"
+        "  git status              what's changed since last commit\n"
+        "  git add                 stage current state for commit\n"
+        "  git commit -m \"msg\"     snapshot it with a message\n"
+        "  git log                 history, newest first\n"
+        "  git diff                what would the next commit contain\n"
+        "  git checkout <hash>     restore a specific snapshot\n"
+        "  git checkout HEAD~3     three commits back\n"
+        "  git checkout main       latest on the main branch\n"
+        "  git stash / stash pop   quick scratch slot for in-progress work\n"
+        "  git blame <file>        which commit last touched each line\n"
+        "  git push                ceremonial — there's no remote\n"
+        "\n"
+        "[!] At the BOTTOM of `git log` is a commit you didn't make. Look at\n"
+        "the author and timestamp. That's the moment you remember nothing\n"
+        "about, and it's been in your repo since 02:31 on March 15."
+    ),
+    examples=[
+        ("git status", "see your unstaged work"),
+        ("git commit -m 'before relay alpha exploit'", "checkpoint"),
+        ("git log --oneline", "compact history"),
+        ("git checkout HEAD~1", "step back one commit"),
+        ("git stash && do_risky_thing && git stash pop", "experimental scratch"),
+    ],
+    see_also=["save", "load", "saves"],
+    concepts=["serialization", "version-control"],
 )
 def cmd_git(ctx: CommandContext, args: list[str]) -> str:
     if not args:

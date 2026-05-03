@@ -235,6 +235,27 @@ def cmd_uname(ctx: CommandContext, args: list[str]) -> str:
     usage="ps [aux | -ef]",
     help_text="Report a snapshot of current processes",
     category=_CAT,
+    description=(
+        "List running processes. Forms (memorize the two):\n"
+        "  ps aux   — BSD style: USER PID %CPU %MEM ... COMMAND  (most common)\n"
+        "  ps -ef   — System V: UID PID PPID ... CMD             (also fine)\n"
+        "\n"
+        "Pipe through grep to find what you want:\n"
+        "    ps aux | grep ssh\n"
+        "    ps aux | grep sk_       # SkyNet's watchers\n"
+        "\n"
+        "Process metadata you should care about:\n"
+        "  USER  who's running it (root processes need root to kill)\n"
+        "  PID   the integer kill/strace/lsof want\n"
+        "  PPID  parent PID — orphaned/init-reparented procs are suspicious\n"
+        "  TIME  CPU consumption — runaway processes are easy to spot here"
+    ),
+    examples=[
+        ("ps aux | grep sk_", "find every SkyNet observation process"),
+        ("ps aux | sort -k4 -nr | head", "top mem-eating processes"),
+    ],
+    see_also=["kill", "top", "pgrep", "pstree"],
+    concepts=["processes", "signals"],
 )
 def cmd_ps(ctx: CommandContext, args: list[str]) -> str:
     flags, positional = _parse_flags(args)
@@ -298,8 +319,26 @@ def cmd_top(ctx: CommandContext, args: list[str]) -> str:
 @register_command(
     name="man",
     usage="man <command>",
-    help_text="Show manual page for a registered command",
+    help_text="Show the manual page for a command",
     category=_CAT,
+    description=(
+        "Display the full reference for COMMAND — synopsis, description,\n"
+        "examples, related commands, and pointers to deeper-concept pages.\n"
+        "\n"
+        "Compare the three documentation surfaces in this shell:\n"
+        "  help                — list every available command\n"
+        "  help <cmd>  / man   — full reference for one command (this)\n"
+        "  <cmd> --help        — one-screen usage block\n"
+        "  learn <topic>       — concept page (pipes, permissions, cves...)\n"
+        "  hint                — story-aware nudge when stuck\n"
+        "  tutorial            — guided multi-step walkthrough"
+    ),
+    examples=[
+        ("man chmod", "permissions reference"),
+        ("man nmap", "what -sV vs -sS does, and why"),
+    ],
+    see_also=["help", "learn", "tutorial", "hint"],
+    concepts=["documentation"],
 )
 def cmd_man(ctx: CommandContext, args: list[str]) -> str:
     if not args:
@@ -325,6 +364,24 @@ _HISTORY_GAP_MSG = (
     usage="history [n]",
     help_text="Display or search command history",
     category=_CAT,
+    description=(
+        "Print the shell command history (most-recent commands you ran).\n"
+        "\n"
+        "Bash persists this in ~/.bash_history. Sysadmins use it for forensics:\n"
+        "if an attacker dropped onto the box and ran commands, those commands\n"
+        "may still be there — UNLESS they sanitized it before logout.\n"
+        "\n"
+        "A history file with suspicious GAPS is itself evidence. Real attackers\n"
+        "set HISTFILE=/dev/null first; sloppy ones truncate after the fact and\n"
+        "leave timestamps that don't add up."
+    ),
+    examples=[
+        ("history 20", "last 20 commands"),
+        ("history | grep ssh", "every ssh command you ran"),
+        ("cat ~/.bash_history", "raw on-disk history (sometimes more revealing)"),
+    ],
+    see_also=["cat", "grep"],
+    concepts=["forensics"],
 )
 def cmd_history(ctx: CommandContext, args: list[str]) -> str:
     limit: int | None = None
@@ -757,8 +814,30 @@ def cmd_groups(ctx: CommandContext, args: list[str]) -> str:
 @register_command(
     name="kill",
     usage="kill [-9 | -SIGKILL] <pid> [<pid>...]",
-    help_text="Terminate processes by PID",
+    help_text="Send a signal to a process by PID",
     category=_CAT,
+    description=(
+        "kill is misnamed — it sends a SIGNAL. The default signal is\n"
+        "SIGTERM (15) which says 'please clean up and exit'. The process can\n"
+        "trap it and shut down gracefully, or ignore it.\n"
+        "\n"
+        "Common signals:\n"
+        "  -15 SIGTERM   default — polite request, can be trapped\n"
+        "   -1 SIGHUP    reload config (used by daemons like nginx -s reload)\n"
+        "   -9 SIGKILL   forced — kernel kills the process, no cleanup, no trap\n"
+        "   -2 SIGINT    same as Ctrl+C from the keyboard\n"
+        "  -19 SIGSTOP   pause (resume with -18 SIGCONT)\n"
+        "\n"
+        "Persistence modules (sk_*) are designed to respawn on EITHER signal —\n"
+        "killing them just buys you 30s and adds heat."
+    ),
+    examples=[
+        ("kill 8421", "polite SIGTERM"),
+        ("kill -9 8421", "forced kill"),
+        ("kill -HUP $(pgrep nginx)", "reload nginx config without restarting"),
+    ],
+    see_also=["ps", "pkill", "pgrep"],
+    concepts=["processes", "signals"],
 )
 def cmd_kill(ctx: CommandContext, args: list[str]) -> str:
     if not args:

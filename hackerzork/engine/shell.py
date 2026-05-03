@@ -30,6 +30,13 @@ class Shell:
         self._console = console or Console(highlight=False, markup=False)
         self._running = False
         self._click_fn: Callable[[], None] | None = None
+
+        # Lazy-import to avoid a hard cycle: teach -> registry -> shell.
+        try:
+            from hackerzork.engine.teach import TeachEngine
+            self._teach = TeachEngine(state=getattr(ctx, "state", None))
+        except Exception:
+            self._teach = None
         self._nerd_prompt = NerdPrompt(
             env=self._ctx.env,
             fs=getattr(self._ctx, "fs", None),
@@ -131,6 +138,16 @@ class Shell:
 
             if result:
                 outputs.append(result)
+
+        # Tutorial may have queued a follow-up message during dispatch.
+        tut = getattr(self._ctx, "tutorial", None)
+        if tut is not None:
+            try:
+                pending = tut.consume_pending()
+            except Exception:
+                pending = ""
+            if pending:
+                outputs.append(pending)
 
         return "\n".join(outputs)
 
@@ -295,10 +312,24 @@ class Shell:
         if handler is None:
             return f"bash: {cmd.name}: command not found"
         args = self._expand_globs(_reconstruct_args(cmd))
+
+        # Universal --help — every command supports it, no per-command code.
+        # We intentionally skip `-h` because several commands use it for their
+        # own purposes (du -h, df -h, free -h, ls -h, head -n).
+        if "--help" in args:
+            return self._registry.get_brief_help(cmd.name)
+
         try:
-            return handler(self._ctx, args)
+            result = handler(self._ctx, args)
         except Exception as exc:
             return f"bash: {cmd.name}: {exc}"
+
+        # First-use teaching footers — appended once per concept-key
+        if self._teach is not None:
+            footer = self._teach.maybe_footer(cmd.name, args)
+            if footer:
+                result = (result.rstrip("\n") + "\n\n" + footer) if result else footer
+        return result
 
     def _expand_globs(self, argv: list[str]) -> list[str]:
         """Expand ``*``, ``?``, ``[...]`` against the VFS like bash does.

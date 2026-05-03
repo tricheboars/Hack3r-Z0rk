@@ -47,6 +47,8 @@ class GameState:
         self.flags: set[str] = set()
         self.chapter: int = 0
         self.timeline: list[StoryEvent] = []
+        # Tutorial progress — 0 = not started; 1+ = current step number; -1 = done
+        self.tutorial_step: int = 0
         self._events = events
 
     # ------------------------------------------------------------------
@@ -113,6 +115,7 @@ class GameState:
         return {
             "flags": sorted(self.flags),
             "chapter": self.chapter,
+            "tutorial_step": self.tutorial_step,
             "timeline": [
                 {
                     "name": e.name,
@@ -126,6 +129,7 @@ class GameState:
     def load_state(self, state: dict) -> None:
         self.flags = set(state.get("flags", []))
         self.chapter = int(state.get("chapter", 0))
+        self.tutorial_step = int(state.get("tutorial_step", 0))
         self.timeline = [
             StoryEvent(
                 name=e["name"],

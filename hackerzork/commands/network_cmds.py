@@ -142,6 +142,33 @@ def _emit(ctx: CommandContext, event: str, **data: object) -> None:
     usage="nmap [-sV] [-sS] [-p PORT[,PORT...]] <target>",
     help_text="Network exploration and port scanning",
     category=_CAT,
+    description=(
+        "Discover what's listening on a target's TCP/UDP ports.\n"
+        "\n"
+        "How a port scan works: nmap sends packets and watches the response.\n"
+        "  SYN/ACK reply  → port is OPEN  (something accepted the connection)\n"
+        "  RST   reply    → port is CLOSED (host is up, nothing listening)\n"
+        "  no reply       → port is FILTERED (firewall dropped the packet)\n"
+        "\n"
+        "Scan modes:\n"
+        "  -sS  SYN scan (default — half-open, doesn't complete the handshake,\n"
+        "       avoids being logged by simple connection-tracking)\n"
+        "  -sV  service-version scan — speak each protocol to the open port\n"
+        "       and parse the banner. SLOWER but tells you 'OpenSSH 8.9' vs\n"
+        "       just 'something on tcp/22'. Versions reveal CVEs.\n"
+        "  -p   restrict to a port list (default: top-1000 ports)\n"
+        "\n"
+        "Every scan increments your HEAT. Stealth flags reduce it; the noisier\n"
+        "the scan, the more SkyNet notices."
+    ),
+    examples=[
+        ("nmap 10.13.37.1", "default SYN scan, top ports"),
+        ("nmap -sV 10.13.37.1", "fingerprint each open service"),
+        ("nmap -p 22,80,443,3306 10.13.37.1", "scan only these ports"),
+        ("nmap -sV -p- 10.13.37.1", "every TCP port (slow + loud)"),
+    ],
+    see_also=["ssh", "netcat", "curl", "exploit"],
+    concepts=["port-scanning", "cves"],
 )
 def cmd_nmap(ctx: CommandContext, args: list[str]) -> str:
     """Scan a target for open ports and services."""
@@ -249,6 +276,22 @@ def cmd_nmap(ctx: CommandContext, args: list[str]) -> str:
     usage="ping [-c COUNT] <host>",
     help_text="Send ICMP echo requests to a network host",
     category=_CAT,
+    description=(
+        "Send ICMP ECHO_REQUEST packets and time the ECHO_REPLY round trip.\n"
+        "\n"
+        "If you get replies, the host is reachable AND has IP up. If you get\n"
+        "no reply, that's not proof the host is down — many firewalls drop ICMP\n"
+        "as policy. Use a TCP probe (nmap, nc -z) for stronger evidence.\n"
+        "\n"
+        "Round-trip time tells you about the path: <1ms = local, ~30ms = same\n"
+        "country, ~200ms = transcontinental, jitter = congestion or radio."
+    ),
+    examples=[
+        ("ping -c 4 10.13.37.1", "four packets then stop"),
+        ("ping relay-alpha.darknet.local", "resolve via DNS first"),
+    ],
+    see_also=["traceroute", "nmap", "ip"],
+    concepts=["networking"],
 )
 def cmd_ping(ctx: CommandContext, args: list[str]) -> str:
     net = _net(ctx)
@@ -329,6 +372,22 @@ def cmd_ping(ctx: CommandContext, args: list[str]) -> str:
     usage="traceroute <host>",
     help_text="Print the route packets take to a network host",
     category=_CAT,
+    description=(
+        "Discover the chain of routers between you and a target.\n"
+        "\n"
+        "TRICK: traceroute sends packets with TTL (time-to-live) starting at 1.\n"
+        "Every router decrements TTL by 1; when it hits 0 the router drops the\n"
+        "packet AND sends back ICMP TIME_EXCEEDED, revealing its address.\n"
+        "Bump TTL to 2, 3, 4… and you peel back the path one hop at a time.\n"
+        "\n"
+        "Useful for figuring out where on the route packets get dropped, or for\n"
+        "spotting an unexpected detour through a relay you didn't choose."
+    ),
+    examples=[
+        ("traceroute relay-alpha.darknet.local", "see the path to the relay"),
+    ],
+    see_also=["ping", "nmap", "ip"],
+    concepts=["networking"],
     aliases=["tracert"],
 )
 def cmd_traceroute(ctx: CommandContext, args: list[str]) -> str:
@@ -385,6 +444,30 @@ _SSH_MOTD = "Linux relay 5.15.0-91-generic #101-Ubuntu SMP Tue Nov 14 13:30:08 U
     usage="ssh [-p PORT] [-i KEYFILE] [user@]<host>",
     help_text="Connect to a remote host via SSH",
     category=_CAT,
+    description=(
+        "Open an encrypted shell on a remote host (Secure SHell — TCP/22).\n"
+        "\n"
+        "Authentication options (the server picks one):\n"
+        "  password    interactive — typed at the prompt\n"
+        "  pubkey      your private key (in ~/.ssh/) signs a challenge.\n"
+        "              The server compares it against authorized_keys. No\n"
+        "              secret crosses the wire.\n"
+        "\n"
+        "Host verification: the first time you connect, the host's public key\n"
+        "is pinned in ~/.ssh/known_hosts. If a future connection presents a\n"
+        "different key, ssh REFUSES — that's how it detects MITM attacks.\n"
+        "\n"
+        "On a compromised box, an attacker can leave their own pubkey in\n"
+        "~/.ssh/authorized_keys → persistent backdoor that survives a password\n"
+        "change. Always audit it after an incident."
+    ),
+    examples=[
+        ("ssh user@10.13.37.1", "default port 22, password or key auth"),
+        ("ssh -p 2222 admin@relay-alpha.darknet.local", "non-default port"),
+        ("ssh -i ~/.ssh/burner_ed25519 root@target", "explicit key file"),
+    ],
+    see_also=["nmap", "netcat", "scp"],
+    concepts=["ssh-keys", "encryption"],
 )
 def cmd_ssh(ctx: CommandContext, args: list[str]) -> str:
     net = _net(ctx)

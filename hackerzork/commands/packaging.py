@@ -156,6 +156,33 @@ def _poison_notice(result: "InstallResult", ctx: CommandContext) -> str:
     usage="apt <update|search|show|install|remove|list|verify> [args...]",
     help_text="Debian-style package manager for mainline tools",
     category="package",
+    description=(
+        "Install / remove / inspect packages. apt resolves dependencies and\n"
+        "fetches binaries from configured repositories.\n"
+        "\n"
+        "Subcommands:\n"
+        "  update              refresh package indexes\n"
+        "  search <query>      find packages matching the query\n"
+        "  show <pkg>          metadata for one package\n"
+        "  install <pkg>       install (and pull dependencies)\n"
+        "  remove <pkg>        uninstall (keeps config)\n"
+        "  list --installed    what's currently on the system\n"
+        "  verify <pkg>        check the package's GPG signature\n"
+        "\n"
+        "Repositories live under /etc/apt/sources.list.d/. Each .list file\n"
+        "names a server + a release channel. Adding the SHADOW repo unlocks\n"
+        "underground packages — dual-use security tools that mainline distros\n"
+        "won't ship. The shadow repo is GPG-signed by a key the player must\n"
+        "import; signature verification is real here, not just decoration."
+    ),
+    examples=[
+        ("apt update", "refresh indexes after adding a repo"),
+        ("apt search hydra", "find a brute-force tool"),
+        ("apt install nmap", "mainline package — no shadow needed"),
+        ("apt show hashcat", "see version, deps, description"),
+    ],
+    see_also=["shadow", "gpg"],
+    concepts=["packages", "signatures"],
 )
 def cmd_apt(ctx: CommandContext, args: list[str]) -> str:
     if not args:

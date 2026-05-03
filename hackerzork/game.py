@@ -169,6 +169,14 @@ class Game:
         import hackerzork.commands.devtools      # noqa: F401
         import hackerzork.commands.help          # noqa: F401
         import hackerzork.commands.git_cmds     # noqa: F401
+        import hackerzork.commands.tutorial      # noqa: F401
+        import hackerzork.commands.learn         # noqa: F401
+
+        # 13b. Tutorial engine — subscribes to command_entered events and
+        # auto-advances when the player performs each step's goal action.
+        from hackerzork.commands.tutorial import TutorialEngine
+        self._tutorial = TutorialEngine(state=self._state, events=self._events)
+        self._ctx.tutorial = self._tutorial
 
         # 14. Command history — load persisted history from VFS
         self._history = CommandHistory(fs=self._fs)

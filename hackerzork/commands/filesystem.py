@@ -383,6 +383,23 @@ def cmd_pwd(ctx: CommandContext, args: list[str]) -> str:
     usage="cd [path]",
     help_text="Change working directory",
     category=_CAT,
+    description=(
+        "Move the shell's current working directory. Every process has a CWD —\n"
+        "relative paths are resolved against it. ls, cat, find, etc. all use it.\n"
+        "\n"
+        "Special targets:\n"
+        "  cd        with no args → $HOME\n"
+        "  cd -      → previous directory ($OLDPWD)\n"
+        "  cd ..     → parent\n"
+        "  cd ~      → $HOME"
+    ),
+    examples=[
+        ("cd /var/log", "absolute path"),
+        ("cd ..", "up one level"),
+        ("cd -", "back to where you were"),
+    ],
+    see_also=["pwd", "ls"],
+    concepts=["filesystem"],
 )
 def cmd_cd(ctx: CommandContext, args: list[str]) -> str:
     old = _cwd(ctx)
@@ -415,10 +432,32 @@ def cmd_cd(ctx: CommandContext, args: list[str]) -> str:
 
 @register_command(
     name="ls",
-    usage="ls [-laR] [path]",
+    usage="ls [-laR1] [path...]",
     help_text="List directory contents",
     category=_CAT,
     aliases=["dir"],
+    description=(
+        "Lists files and directories. By default, hides entries whose name\n"
+        "starts with a dot (the Unix convention for 'config / state, not data').\n"
+        "\n"
+        "Flags:\n"
+        "  -a  show hidden (dot) entries — dotfiles, .ssh/, .bash_history\n"
+        "  -l  long format: type | perms | links | owner | group | size | mtime\n"
+        "  -R  recurse into subdirectories\n"
+        "  -1  one entry per line (auto when output is piped)\n"
+        "\n"
+        "The first character of -l output is the type:\n"
+        "  -  regular file    d  directory    l  symlink\n"
+        "Followed by three rwx triplets for owner / group / other."
+    ),
+    examples=[
+        ("ls -la /home/user", "every entry incl. hidden, long format"),
+        ("ls -la .ssh", "see your keypair + known hosts"),
+        ("ls -R evidence", "recurse the evidence tree"),
+        ("ls *.log", "glob — bash expands the * before ls runs"),
+    ],
+    see_also=["cd", "find", "stat", "chmod"],
+    concepts=["permissions", "filesystem"],
 )
 def cmd_ls(ctx: CommandContext, args: list[str]) -> str:
     # "-1" looks like a numeric arg to the generic flag splitter, so peel it
@@ -493,6 +532,23 @@ def cmd_ls(ctx: CommandContext, args: list[str]) -> str:
     usage="cat [-n] [file...]",
     help_text="Concatenate and print file contents",
     category=_CAT,
+    description=(
+        "Print one or more files to stdout (the screen, unless redirected).\n"
+        "The name is short for 'concatenate' — `cat a b c` prints them in order\n"
+        "as one stream. With no file args, cat reads stdin.\n"
+        "\n"
+        "Encrypted files render as a hex dump (xxd-style) — the bytes are\n"
+        "real, but the plaintext only appears after decryption.\n"
+        "Binary files print a 'binary file' notice instead of garbling the term."
+    ),
+    examples=[
+        ("cat /var/log/auth.log", "read a log"),
+        ("cat -n notes/leads.txt", "with line numbers"),
+        ("cat a.txt b.txt > merged.txt", "join two files into one"),
+        ("cat | grep error", "feed cat output through grep (rare; usually `grep error file`)"),
+    ],
+    see_also=["head", "tail", "less", "grep", "xxd"],
+    concepts=["pipes", "redirects"],
 )
 def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
     flags, positional = _parse_flags(args)
@@ -838,6 +894,31 @@ def cmd_mv(ctx: CommandContext, args: list[str]) -> str:
     usage="chmod <mode> <path>",
     help_text="Change file permissions (octal or symbolic)",
     category=_CAT,
+    description=(
+        "Change a file's mode (Unix permission bits).\n"
+        "\n"
+        "Octal form — three digits: owner / group / other. Each digit is the\n"
+        "sum of read=4, write=2, execute=1.\n"
+        "  700 = rwx for owner, nothing for anyone else (locked secret)\n"
+        "  644 = rw- for owner, r-- for everyone else (default for regular files)\n"
+        "  755 = rwx for owner, r-x for others (default for directories / scripts)\n"
+        "  600 = rw- owner only (e.g. ssh private keys, .bash_history)\n"
+        "\n"
+        "Symbolic form — who+op+perm: u/g/o/a + +/-/= + r/w/x.\n"
+        "  chmod u+x script.sh   # add execute for owner\n"
+        "  chmod o-r secret      # deny read for 'other'\n"
+        "\n"
+        "On directories: r = list, w = create/delete entries, x = traverse into.\n"
+        "ssh refuses to use a private key that is group/world-readable."
+    ),
+    examples=[
+        ("chmod 700 ~/.ssh", "lock your ssh dir to just you"),
+        ("chmod 600 ~/.ssh/id_ed25519", "private key — owner read/write only"),
+        ("chmod +x exfil.py", "make a script executable"),
+        ("chmod -R 755 /var/www", "recursive — everything under web root"),
+    ],
+    see_also=["chown", "ls", "stat", "umask"],
+    concepts=["permissions"],
 )
 def cmd_chmod(ctx: CommandContext, args: list[str]) -> str:
     _, positional = _parse_flags(args)
@@ -1090,6 +1171,31 @@ def cmd_strings(ctx: CommandContext, args: list[str]) -> str:
     help_text="Search for a pattern in files",
     category=_CAT,
     aliases=["egrep"],
+    description=(
+        "Print lines matching a regex pattern.\n"
+        "\n"
+        "Flags:\n"
+        "  -r  recurse into directories (search the tree, not one file)\n"
+        "  -i  ignore case\n"
+        "  -n  prefix each match with its line number\n"
+        "  -v  invert: print lines that DON'T match\n"
+        "  -l  list filenames only (don't print the matching lines)\n"
+        "\n"
+        "If no path is given, grep reads stdin — perfect for pipes:\n"
+        "    ps aux | grep sk_      # find SkyNet processes\n"
+        "    cat auth.log | grep -i fail  # failed-auth lines, any case\n"
+        "\n"
+        "The pattern is BRE by default. Quote it to keep the shell from\n"
+        "interpreting metacharacters first."
+    ),
+    examples=[
+        ("grep -n 'CVE-' /var/log/syslog", "find CVE refs with line numbers"),
+        ("grep -ril 'sk_stage' /var/log", "which log files mention sk_stage"),
+        ("history | grep ssh", "what ssh commands have I run"),
+        ("grep -v '^#' /etc/hosts", "non-comment lines"),
+    ],
+    see_also=["find", "sed", "awk", "ripgrep"],
+    concepts=["pipes", "regex"],
 )
 def cmd_grep(ctx: CommandContext, args: list[str]) -> str:
     flags, positional = _parse_flags(args)
@@ -1171,6 +1277,27 @@ def cmd_grep(ctx: CommandContext, args: list[str]) -> str:
     usage="find [path] [-name <glob>] [-type <f|d>] [-newer <file>]",
     help_text="Search the filesystem for files matching criteria",
     category=_CAT,
+    description=(
+        "Walks the filesystem starting at PATH (default: current dir), printing\n"
+        "every entry that matches every test. Tests are AND-ed together.\n"
+        "\n"
+        "Tests:\n"
+        "  -name <glob>   match basename (quote globs!)\n"
+        "  -type f|d|l    file / directory / symlink\n"
+        "  -newer <file>  modified after FILE — find post-incident changes\n"
+        "\n"
+        "find is the workhorse of forensic triage: scope a directory, ask 'what\n"
+        "changed since X', and pipe the result into another command."
+    ),
+    examples=[
+        ("find . -name '*.py'", "every .py file under cwd"),
+        ("find /etc -type f -newer /var/log/boot.log",
+            "config files modified since last boot — incident hotspot"),
+        ("find /home/user -name '.bash_history'", "all shell histories on the box"),
+        ("find /var/log -type f | xargs grep -l 45.152", "logs that mention an IP"),
+    ],
+    see_also=["grep", "ls", "stat"],
+    concepts=["filesystem"],
 )
 def cmd_find(ctx: CommandContext, args: list[str]) -> str:
     name_pattern: str | None = None
@@ -1238,6 +1365,27 @@ def cmd_find(ctx: CommandContext, args: list[str]) -> str:
     usage="recover [path]",
     help_text="Restore a deleted file from trash",
     category=_CAT,
+    description=(
+        "Restore a previously-removed file from the recoverable trash.\n"
+        "\n"
+        "Background — when you `rm` a file, the directory entry pointing to its\n"
+        "data is unlinked. The data itself sits on the disk until something else\n"
+        "overwrites those blocks. Forensic tools recover files exactly this way:\n"
+        "they walk the raw disk for unreferenced inodes.\n"
+        "\n"
+        "Here `rm` sends entries to /trash by default (trash holds 50 entries,\n"
+        "oldest evicted first). `recover PATH` restores by the file's original\n"
+        "absolute path. `recover` with no args lists what's recoverable.\n"
+        "\n"
+        "An attacker who deleted incriminating files in a hurry probably did NOT\n"
+        "shred them — they left the inodes behind."
+    ),
+    examples=[
+        ("recover", "list everything in trash"),
+        ("recover /home/user/tools/exfil.py", "bring back the deleted exfil script"),
+    ],
+    see_also=["rm", "ls", "find"],
+    concepts=["filesystem", "forensics"],
 )
 def cmd_recover(ctx: CommandContext, args: list[str]) -> str:
     _, positional = _parse_flags(args)
@@ -1484,6 +1632,31 @@ def cmd_vi(ctx: CommandContext, args: list[str]) -> str:
     usage="sed [-i] [-n] 's/PATTERN/REPLACEMENT/[g]' [file...]",
     help_text="Stream editor — substitute, delete, or print lines",
     category="filesystem",
+    description=(
+        "Apply an editing expression to a stream (or files) line by line.\n"
+        "\n"
+        "The substitute form is the workhorse:\n"
+        "    s/PATTERN/REPLACEMENT/[flags]\n"
+        "  Flags:  g = global (every match on the line, not just the first)\n"
+        "          i = case-insensitive\n"
+        "Other forms:\n"
+        "    /REGEX/d        delete matching lines\n"
+        "    /REGEX/p        print matching lines (combine with -n to suppress\n"
+        "                    the default 'echo each line' behavior)\n"
+        "\n"
+        "Flags:\n"
+        "  -i  edit IN PLACE — rewrite the file instead of printing to stdout.\n"
+        "      Without -i, sed never modifies the original file.\n"
+        "  -n  suppress automatic output (use with /p for grep-like behavior)."
+    ),
+    examples=[
+        ("sed 's/foo/bar/' file.txt", "print first 'foo' on each line replaced"),
+        ("sed -i 's/old/new/g' notes.txt", "rewrite the file, every occurrence"),
+        ("cat file | sed '/^#/d'", "drop comment lines via pipe"),
+        ("sed -n '/ERROR/p' /var/log/syslog", "act like grep, only print matches"),
+    ],
+    see_also=["awk", "grep", "tr", "cut"],
+    concepts=["pipes", "regex"],
 )
 def cmd_sed(ctx: CommandContext, args: list[str]) -> str:
     if not args:

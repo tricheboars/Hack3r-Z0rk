@@ -217,14 +217,38 @@ _GENERIC_FLAVOUR = [
 @register_command(
     name="exploit",
     usage="exploit -p PORT -e EXPLOIT <target>",
-    help_text=(
-        "Attempt to exploit a vulnerability on a remote target.\n"
-        "  -p PORT    target port (required)\n"
-        "  -e EXPLOIT exploit identifier (e.g. CVE-2021-23017, default_credentials)\n"
-        "  -s         stealth mode — slower but lower heat\n\n"
-        "Run nmap -sV first to discover available ports and vulns."
-    ),
+    help_text="Exploit a known vulnerability on a target service",
     category=_CAT,
+    description=(
+        "Run an exploit against a remote service.\n"
+        "\n"
+        "An exploit is code that abuses a SPECIFIC bug — referenced by its CVE\n"
+        "(Common Vulnerabilities and Exposures) ID. The exploit only works if\n"
+        "the target is running a vulnerable software version.\n"
+        "\n"
+        "Standard workflow:\n"
+        "  1. nmap -sV TARGET            — fingerprint services and versions\n"
+        "  2. note the CVE on each open port (the version IS your CVE lookup)\n"
+        "  3. exploit -p PORT -e CVE TARGET\n"
+        "\n"
+        "Flags:\n"
+        "  -p PORT     which service to attack (required)\n"
+        "  -e EXPLOIT  CVE id or named technique (e.g. default_credentials)\n"
+        "  -s          stealth mode — slower, lower heat\n"
+        "\n"
+        "Failed exploits add MORE heat than successful ones. The defender\n"
+        "logs failures by design — every wrong guess is a tripwire."
+    ),
+    examples=[
+        ("nmap -sV 10.13.37.1 && exploit -p 80 -e CVE-2021-23017 10.13.37.1",
+            "scan, then exploit nginx CVE on port 80"),
+        ("exploit -p 3306 -e default_credentials 10.13.37.1",
+            "MySQL with default creds — try this first, it's free"),
+        ("exploit -s -p 22 -e CVE-2024-6387 10.13.37.5",
+            "stealth ssh exploit (regreSSHion)"),
+    ],
+    see_also=["nmap", "bruteforce", "loot", "privesc", "backdoor"],
+    concepts=["cves", "exploitation"],
 )
 def cmd_exploit(ctx: CommandContext, args: list[str]) -> str:
     """Exploit a vulnerability on a remote host."""
@@ -362,15 +386,37 @@ _BRUTE_SERVICES: dict[str, list[tuple[str, str]]] = {
 
 @register_command(
     name="bruteforce",
-    usage="bruteforce -p PORT [-s] <target>",
-    help_text=(
-        "Brute-force credentials on a service.\n"
-        "  -p PORT   target port\n"
-        "  -s        stealth (slower, lower heat per attempt)\n"
-        "  -w FILE   custom wordlist from VFS\n\n"
-        "WARNING: generates significant heat. Consider using shadow/toolkit packages."
-    ),
+    usage="bruteforce -p PORT [-s] [-w FILE] <target>",
+    help_text="Try credentials against a service until one works",
     category=_CAT,
+    description=(
+        "Iterate through a wordlist, attempting login on a service.\n"
+        "\n"
+        "Brute force works because:\n"
+        "  - users pick weak/reused passwords (rockyou.txt has 14M of them)\n"
+        "  - services without rate limits accept thousands of attempts/sec\n"
+        "  - default credentials (admin/admin) often survive deployment\n"
+        "\n"
+        "Brute force fails when:\n"
+        "  - the service rate-limits or locks accounts (modern auth does)\n"
+        "  - the password is high-entropy / not in any wordlist\n"
+        "  - 2FA gates the login\n"
+        "\n"
+        "Flags:\n"
+        "  -p PORT   target port (required)\n"
+        "  -s        stealth — slower, lower heat per attempt\n"
+        "  -w FILE   wordlist path in VFS (default: built-in top-1k)\n"
+        "\n"
+        "This is the LOUDEST tool in the kit — every failed attempt is a log\n"
+        "entry. Consider exploiting a known CVE first."
+    ),
+    examples=[
+        ("bruteforce -p 22 10.13.37.1", "ssh creds, default wordlist"),
+        ("bruteforce -s -p 22 -w /home/user/wordlists/top100.txt target",
+            "stealth + custom small list"),
+    ],
+    see_also=["exploit", "nmap"],
+    concepts=["exploitation", "passwords"],
 )
 def cmd_bruteforce(ctx: CommandContext, args: list[str]) -> str:
     """Brute-force service credentials."""
@@ -486,12 +532,25 @@ def cmd_bruteforce(ctx: CommandContext, args: list[str]) -> str:
 @register_command(
     name="loot",
     usage="loot [<ip>]",
-    help_text=(
-        "Display exfiltrated loot from compromised nodes.\n"
-        "  loot          — list all loot\n"
-        "  loot <ip>     — show loot for specific node"
-    ),
+    help_text="Show files / credentials pulled from compromised nodes",
     category=_CAT,
+    description=(
+        "After you compromise a host, the things you pulled off it (config\n"
+        "files, /etc/shadow, credentials, key material, archives) live in your\n"
+        "loot store, indexed by the node's IP. `loot` lists all of it; `loot\n"
+        "<ip>` shows a specific node's haul.\n"
+        "\n"
+        "In real engagements this corresponds to evidence collection: write\n"
+        "everything to disk, hash it, and don't touch it again. The CHAIN of\n"
+        "loot across hops is usually how the next move becomes obvious — a\n"
+        "password file on relay-A unlocks ssh into relay-B."
+    ),
+    examples=[
+        ("loot", "everything you've taken so far"),
+        ("loot 10.13.37.1", "just relay-alpha's haul"),
+    ],
+    see_also=["exploit", "backdoor"],
+    concepts=["exploitation"],
 )
 def cmd_loot(ctx: CommandContext, args: list[str]) -> str:
     """Show exfiltrated loot from compromised nodes."""
@@ -642,12 +701,30 @@ _PRIVESC_VECTORS: list[dict] = [
 @register_command(
     name="privesc",
     usage="privesc [--check] <target>",
-    help_text=(
-        "Attempt privilege escalation on a compromised node.\n"
-        "  --check    enumerate vectors without exploiting (lower heat)\n\n"
-        "Node must already be compromised."
-    ),
+    help_text="Escalate from a low-priv shell to root on a compromised host",
     category=_CAT,
+    description=(
+        "Initial access usually drops you in as a low-privilege user (www-data,\n"
+        "ftp, the user that ran the vulnerable service). Privilege escalation\n"
+        "is the second half of the kill chain — going from there to root.\n"
+        "\n"
+        "Common vectors:\n"
+        "  - sudo NOPASSWD on a binary that can spawn a shell (vim, less, find)\n"
+        "  - SUID binary owned by root with a known argument trick\n"
+        "  - kernel exploit (DirtyCOW-class) when the box is unpatched\n"
+        "  - writable cron job, or a script root runs from a writable dir\n"
+        "  - misconfigured PATH letting you shadow a binary root invokes\n"
+        "\n"
+        "Flags:\n"
+        "  --check    enumerate available vectors WITHOUT exploiting them\n"
+        "             (much lower heat — use this first)"
+    ),
+    examples=[
+        ("privesc --check 10.13.37.1", "list vectors, don't fire"),
+        ("privesc 10.13.37.1", "actually escalate"),
+    ],
+    see_also=["exploit", "loot", "backdoor"],
+    concepts=["exploitation"],
 )
 def cmd_privesc(ctx: CommandContext, args: list[str]) -> str:
     """Privilege escalation on a compromised node."""

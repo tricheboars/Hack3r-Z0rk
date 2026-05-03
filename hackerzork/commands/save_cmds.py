@@ -45,8 +45,29 @@ def _heat_level(ctx: CommandContext) -> float:
 @register_command(
     name="save",
     usage="save [name]",
-    help_text="Save game to a named slot (default: quicksave). Names: letters, numbers, _ - only.",
+    help_text="Save game to a named slot (default: quicksave)",
     category="system",
+    description=(
+        "Serialize the entire live game state — virtual filesystem, network,\n"
+        "heat, toolkit install state, comms, story flags, history, env — into\n"
+        "a JSON file under ~/.hackerzork/. Slot name defaults to 'quicksave'.\n"
+        "\n"
+        "Slots are independent files. Multiple named slots coexist (compare\n"
+        "with the git-style commit history, which lives per-session).\n"
+        "\n"
+        "Naming: letters, digits, underscore, hyphen only — no spaces. The\n"
+        "system rejects awkward names so paths stay shell-friendly.\n"
+        "\n"
+        "[NOTE] At high HEAT the save SUMMARY may appear corrupted. The on-\n"
+        "disk file is always clean JSON; the corruption is theatre."
+    ),
+    examples=[
+        ("save", "to the default 'quicksave' slot"),
+        ("save before_relay_alpha", "named checkpoint before a risky exploit"),
+        ("saves", "list every slot you've ever saved"),
+    ],
+    see_also=["load", "saves", "git"],
+    concepts=["serialization"],
 )
 def cmd_save(ctx: CommandContext, args: list[str]) -> str:
     if ctx.save_system is None:
@@ -103,8 +124,27 @@ def cmd_save(ctx: CommandContext, args: list[str]) -> str:
 @register_command(
     name="load",
     usage="load [name]",
-    help_text="Restore game from a named save slot (default: quicksave). Use 'saves' to list slots.",
+    help_text="Restore the game from a named save slot",
     category="system",
+    description=(
+        "Load a saved slot — replaces the current game state with the one on\n"
+        "disk. The default slot is 'quicksave'. List available slots with\n"
+        "`saves`.\n"
+        "\n"
+        "Loading restores everything serialized by save: filesystem entries,\n"
+        "trash contents, heat level, network discovery, story flags, comms,\n"
+        "shell history. The git-style commit history is per-SESSION and is\n"
+        "rebuilt with the ghost commit anchored at the bottom.\n"
+        "\n"
+        "[NOTE] At high HEAT the load summary may show SkyNet text injected\n"
+        "into the report. The actual on-disk save was never touched."
+    ),
+    examples=[
+        ("load", "restore the quicksave"),
+        ("load before_relay_alpha", "back to the named checkpoint"),
+    ],
+    see_also=["save", "saves"],
+    concepts=["serialization"],
 )
 def cmd_load(ctx: CommandContext, args: list[str]) -> str:
     if ctx.save_system is None:

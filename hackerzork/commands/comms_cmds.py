@@ -33,8 +33,34 @@ Subcommands:
 @register_command(
     name="irc",
     usage="irc <subcommand> [args]",
-    help_text="IRC-style channel communication. Run 'irc' with no args to see joined channels.",
+    help_text="IRC-style channel chat — list, join, read, write, nick",
     category="comms",
+    description=(
+        "IRC = Internet Relay Chat (1988). Channels are public-by-default text\n"
+        "rooms named with a leading '#'. The protocol predates the web and is\n"
+        "still where infosec, kernel, and a lot of FOSS coordination happens.\n"
+        "\n"
+        "Subcommands:\n"
+        "  irc                       list channels you're currently in\n"
+        "  irc list                  every channel known to the server\n"
+        "  irc join <#chan>          join a channel\n"
+        "  irc part <#chan>          leave\n"
+        "  irc read <#chan> [n]      last N messages (default 10)\n"
+        "  irc write <#chan> <msg>   say something\n"
+        "  irc nick <handle>         change your handle\n"
+        "\n"
+        "Some channels are GATED behind story flags — they exist but you can't\n"
+        "join until the right thing has happened in the world. #z0rk_7_ops is\n"
+        "the obvious example; you need shadow_unlocked first."
+    ),
+    examples=[
+        ("irc list", "discover channels"),
+        ("irc join #underground", "join the public underground channel"),
+        ("irc read #underground 30", "scrollback the last 30 messages"),
+        ("irc write #underground 'looking for relay-alpha tips'", "post"),
+    ],
+    see_also=["msg", "contacts"],
+    concepts=["comms"],
 )
 def cmd_irc(ctx: CommandContext, args: list[str]) -> str:
     err = _require_comms(ctx)
