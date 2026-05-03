@@ -46,7 +46,8 @@ hackerzork/
 │   ├── typing.py            # Typewriter / delayed text output  ✅ DONE
 │   ├── glitch.py            # Glitch text, corruption effects  ✅ DONE
 │   ├── matrix.py            # Matrix rain, digital rain  ✅ DONE
-│   └── animations.py        # Boot sequences, progress bars, spinners  ✅ DONE
+│   ├── animations.py        # Boot sequences, progress bars, spinners  ✅ DONE
+│   └── sysreport.py         # First-boot neofetch-style orientation panel  ✅ DONE
 ├── audio/           # Sound system (pygame.mixer — disabled server-side)
 │   ├── mixer.py             # Core audio manager, layered playback  ✅ DONE
 │   ├── ambient.py           # Ambient drone management  ✅ DONE
@@ -418,6 +419,7 @@ _(none open — file new items here as they come up)_
 
 ### Recently completed (kept here for history; do not re-do)
 
+- First-boot orientation panel — `hackerzork/effects/sysreport.py` renders a Soviet-BIOS framed neofetch-style panel after `boot_sequence`. Two-column layout: small "sealed monitor" ASCII glyph + sys-info (HOST / USER / SHELL / KERNEL / live THREAT bar / EVIDENCE / CONTACT). Threat bar gradient green→yellow→red→bright_red across heat thresholds 25/50/75 with labels NOMINAL / WATCHED / ACTIVE / BURN-IMMINENT, pulled from `self._heat.level` so post-`--load` state shows correctly. Below: `── ORIENTATION ──` block listing **help / tutorial / hint / learn**, then a dim-red "unknown ssh accepted from 45.152.66.201" footer to keep the cold-open mood. Replaces the previous 4-line dim MOTD that players were missing. **Both code paths render it:** the Python REPL prints it from `Game._run_async`, and the WebSocket session renders it directly into the captured Rich buffer in `GameSession.start()` (the WS path bypasses `_run_async`, so the panel had to be wired in twice). 14 new tests, **1868 passing**.
 - Educational system overhaul — `man <cmd>` now renders proper sections (NAME / SYNOPSIS / DESCRIPTION / EXAMPLES / SEE ALSO / LEARN MORE) for any command with the new optional `description`/`examples`/`see_also`/`concepts` fields on `@register_command`. Universal `--help` is intercepted at shell dispatch (only `--help`, never `-h` — that's used by `du`/`df`/`free`/`ls`). `tutorial` is a stateful 10-step walkthrough that subscribes to `command_entered` events and auto-advances when the player performs each step's goal; progress lives on `GameState.tutorial_step` and round-trips through save/load. `learn <topic>` reads concept pages from `hackerzork/data/learn/*.md` (pipes, redirects, permissions, cves, port-scanning, ssh-keys, encryption, processes, regex, networking, forensics, exploitation, signals — drop a new `.md` to add a topic). First-use teaching footers (`hackerzork/engine/teach.py`) append a one-line `[ ? ]` explainer the first time the player invokes specific command/flag combos (chmod, nmap -sV, grep -r, sed -i, ps aux, kill, etc.); each rule fires once via a `taught_<key>` flag on `GameState`. 1854 tests passing (was 1807 — added 47 new).
 - Playthrough-driven shell polish (commits `4526d13` round 1, `11c9ef8` round 2): parser now preserves raw argv so single-dash long flags survive (`find -name`, `-type`, `-newer` work); head/tail/sort/uniq read piped stdin like wc/grep; aliases actually expand and `.bashrc` is sourced on boot so `ll`/`scan`/`q`/`please` work; tilde expansion at the tokenizer (`echo ~` → `/home/user`); glob expansion (`*`/`?`/`[…]`) at dispatch time; `ls` accepts multiple paths/globs, gains `-1`, auto one-per-line when piped; SSH banner stops contradicting itself; `chmod` rejects invalid modes instead of no-op; `head`/`tail` honour `-n` on encrypted hex dumps; `save`/`load` reject names with spaces; `git checkout` resolves `HEAD`, `HEAD~N`, `HEAD^…`, and the `main` branch; `hz_debug state` no longer claims VFS unavailable; `gpg --version`/`apt upgrade`/`apt autoremove`/`true`/`false`/`exit`/`logout`/`which`/`sort`/`uniq`/`diff` registered. All 1807 tests still pass.
 - Terminal fullscreen sizing — body rewritten as a CSS grid (rows: topbar / 1fr / hud, cols: 1fr / sidebar). `fitTerm()` now just calls `fitAddon.fit()` — no more pixel math. Sidebar 280→360px, panel fonts +2px (commit `b2c7687`)
@@ -435,7 +437,7 @@ _(none open — file new items here as they come up)_
 All sessions completed through session 16 + browser deployment. Current work is incremental feature additions and polish.
 
 ```bash
-# Run all tests (1807 passing)
+# Run all tests (1868 passing)
 pytest tests/ --ignore=tests/test_browser_deploy -v
 
 # Run with coverage
