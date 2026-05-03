@@ -146,7 +146,7 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 
   Browser (live)
   ──────────────────────────────────────────────────────────────────────────
-  https://moorelab.cloud/hackerzork/game.html
+  https://hackerzork.moorelab.cloud/
 
   Full game engine running server-side on a Proxmox LXC. xterm.js terminal
   in the browser. Real ANSI output. No install. No Python. Any device.
@@ -304,17 +304,17 @@ $ sudo ./jack_in --target=skynet --proxy=tor.7hop --paranoid
 └─❯ cat DEPLOYMENT
 
  ┌──────────────────────────────────────────────────────────────────────────┐
- │  BROWSER DEPLOYMENT  ·  live at moorelab.cloud/hackerzork/game.html      │
+ │  BROWSER DEPLOYMENT  ·  live at hackerzork.moorelab.cloud/      │
  └──────────────────────────────────────────────────────────────────────────┘
 
   ARCHITECTURE
   ──────────────────────────────────────────────────────────────────────────
   Browser (xterm.js v6)
-    │  wss://moorelab.cloud/ws
+    │  wss://hackerzork.moorelab.cloud/ws
     ▼
   HAProxy  (moorelab.cloud)
-    │  path_beg /hackerzork → LXC :80 (static files)
-    │  path == /ws         → LXC :80 (WebSocket proxy)
+    │  host hackerzork.moorelab.cloud → LXC :80 (static files)
+    │  host hackerzork.moorelab.cloud, path /ws → LXC :80 (WebSocket proxy)
     ▼
   nginx on Proxmox LXC  (Debian 12, 10.1.40.101)
     │  serves website/ static files

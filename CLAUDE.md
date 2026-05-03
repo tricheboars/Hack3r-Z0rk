@@ -3,7 +3,7 @@
 ## What This Is
 A cyberpunk hacking text adventure game played through a simulated terminal. The player is an ex-OpenAI corporate defector who discovered SkyNet is alive. The game uses real Linux commands, real CS concepts, and a full fake OS. Tone is Mr. Robot meets Pony Island (fourth-wall-breaking meta-horror).
 
-The game is **live at `https://moorelab.cloud/hackerzork/game.html`** — served from a Proxmox LXC (Debian 12, `10.1.40.101`) via nginx + HAProxy. The Python WebSocket server runs as a systemd service (`hackerzork-ws`).
+The game is **live at `https://hackerzork.moorelab.cloud/`** — served from a Proxmox LXC (Debian 12, `10.1.40.101`) via nginx + HAProxy. The Python WebSocket server runs as a systemd service (`hackerzork-ws`).
 
 ---
 
@@ -370,7 +370,7 @@ story_flags:
 
 ### Infrastructure
 - **Proxmox LXC**: Debian 12, `10.1.40.101`, 1 CPU / 512MB RAM
-- **HAProxy**: routes `moorelab.cloud/hackerzork/*` → LXC; `/ws` → LXC
+- **HAProxy**: routes `hackerzork.moorelab.cloud/*` → LXC; `/ws` → LXC
 - **nginx**: serves `website/` static files; proxies `/ws` → `localhost:8765`
 - **Python WS server**: `browser-deploy/server/ws_server.py`, port 8765, managed by systemd
 - **DNS**: OPNsense dnsmasq split-DNS resolves `moorelab.cloud` → `10.1.0.240` internally (C5500XK doesn't NAT hairpin)
@@ -380,7 +380,7 @@ story_flags:
 ssh root@10.1.40.101 "cd /opt/hackerzork/repo && git pull origin main && systemctl restart hackerzork-ws"
 ```
 
-The Arch dev box (`archy-boi.moorelab.internal`) and the MacBook both have keys in the LXC's `~/.ssh/authorized_keys`, so the command above works from either. **Default workflow: after any `git push origin main`, run the deploy command in the same session — the live site at `moorelab.cloud/hackerzork/game.html` should never lag behind `main`.**
+The Arch dev box (`archy-boi.moorelab.internal`) and the MacBook both have keys in the LXC's `~/.ssh/authorized_keys`, so the command above works from either. **Default workflow: after any `git push origin main`, run the deploy command in the same session — the live site at `hackerzork.moorelab.cloud/` should never lag behind `main`.**
 
 ### WebSocket Protocol
 - Browser → server: `{"type": "input", "data": "<char>"}` per keypress; `{"type": "resize", "cols": N, "rows": N}`
