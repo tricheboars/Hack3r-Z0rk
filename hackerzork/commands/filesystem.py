@@ -19,6 +19,67 @@ from hackerzork.systems.virtual_fs import (
 _CAT = "filesystem"
 
 
+_DEFAULT_CENSOR_QUIP = (
+    "── SKYNET CENSORSHIP NOTICE ──\n"
+    "This file is currently classified. Decryption denied.\n"
+    "Reason: ongoing review. Estimated completion: never."
+)
+
+# Cap total censor-heat one command can add — prevents `cat *.enc` (60 files)
+# from cascading through identity_burned twice in a single keystroke.
+_CAT_CENSOR_HEAT_CAP = 30.0
+
+
+# ---------------------------------------------------------------------------
+# Censorship helpers — used by cat, head, tail, grep, rm, cp, mv
+# ---------------------------------------------------------------------------
+
+
+def _censor_block(node) -> str:
+    """Format the SkyNet refusal block for a censored file."""
+    quip = node.censor_quip or _DEFAULT_CENSOR_QUIP
+    return f"[CENSORED — {node.name}]\n{quip}"
+
+
+def _accumulate_censor_heat(ctx: CommandContext, node) -> None:
+    """Bump heat for one censored-file read."""
+    if ctx.heat is not None and node.censor_heat:
+        ctx.heat.add_heat(node.censor_heat, source=f"censored:{node.name}")
+
+
+def _emit_censored_seen(ctx: CommandContext, names: list[str], action: str = "read") -> None:
+    """Emit a single censored_file_accessed event after a command finishes,
+    regardless of how many files were touched. Prevents one glob from blasting
+    SkyNet awareness from 0 to tier 5 in a single command."""
+    if not names or ctx.events is None:
+        return
+    ctx.events.emit(
+        "censored_file_accessed",
+        filename=names[0],
+        files=list(names),
+        count=len(names),
+        action=action,
+    )
+
+
+def _refuse_censored_tamper(ctx: CommandContext, node, action: str) -> str:
+    """Return refusal message + bump heat hard for tamper attempts (rm/cp/mv).
+    These are louder than reads — destroying / propagating censored material is
+    a serious flag for SkyNet."""
+    if ctx.heat is not None:
+        ctx.heat.add_heat(15.0, source=f"censored-tamper:{node.name}")
+    if ctx.events is not None:
+        ctx.events.emit(
+            "censored_file_tampered",
+            filename=node.name,
+            action=action,
+        )
+    return (
+        f"bash: {action}: cannot {action} '{node.name}': "
+        f"SkyNet has flagged this file for retention. (read-only by directive)"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Path / flag helpers
 # ---------------------------------------------------------------------------
@@ -302,6 +363,12 @@ def _grep_node(
                     pass
         return
 
+    if node.censored:
+        results.append(f"grep: {display}: censored — SkyNet refused decryption")
+        _accumulate_censor_heat(ctx, node)
+        _emit_censored_seen(ctx, [node.name], action="grep")
+        return
+
     if node.encrypted or node.binary:
         if not invert and any(match_fn(line) for line in node.content.splitlines()):
             results.append(f"grep: {display}: binary file matches")
@@ -558,6 +625,8 @@ def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
         return ""
 
     parts: list[str] = []
+    _censored_seen: list[str] = []
+    _censored_heat_total: float = 0.0
     for path_str in positional:
         path = _resolve(ctx, path_str)
         try:
@@ -569,22 +638,9 @@ def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
                 parts.append(f"bash: cat: {path_str}: Binary file (use xxd to inspect)")
                 continue
             if node.censored:
-                quip = node.censor_quip or (
-                    "── SKYNET CENSORSHIP NOTICE ──\n"
-                    "This file is currently classified. Decryption denied.\n"
-                    "Reason: ongoing review. Estimated completion: never."
-                )
-                parts.append(f"[CENSORED — {node.name}]")
-                parts.append(quip)
-                if ctx.heat is not None and node.censor_heat:
-                    ctx.heat.add_heat(node.censor_heat, source=f"censored:{node.name}")
-                if ctx.events:
-                    ctx.events.emit(
-                        "censored_file_accessed",
-                        path=path,
-                        filename=node.name,
-                        heat_cost=node.censor_heat,
-                    )
+                parts.append(_censor_block(node))
+                _censored_heat_total += node.censor_heat
+                _censored_seen.append(node.name)
                 continue
             if node.encrypted:
                 parts.append("[ENCRYPTED — binary content]")
@@ -613,6 +669,9 @@ def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
         except FSError as e:
             parts.append(f"bash: cat: {path_str}: {e}")
 
+    if _censored_heat_total > 0 and ctx.heat is not None:
+        ctx.heat.add_heat(min(_censored_heat_total, _CAT_CENSOR_HEAT_CAP), source="censored:batch")
+    _emit_censored_seen(ctx, _censored_seen)
     return "\n".join(parts)
 
 
@@ -641,6 +700,10 @@ def cmd_head(ctx: CommandContext, args: list[str]) -> str:
             return f"bash: head: {positional[0]}: Is a directory"
         if node.binary:
             return f"bash: head: {positional[0]}: Binary file (use xxd to inspect)"
+        if node.censored:
+            _accumulate_censor_heat(ctx, node)
+            _emit_censored_seen(ctx, [node.name])
+            return _censor_block(node)
         if node.encrypted:
             hex_lines = ctx.fs.render_hex(node.content).splitlines()
             return "\n".join(["[ENCRYPTED — binary content]"] + hex_lines[:n])
@@ -672,6 +735,10 @@ def cmd_tail(ctx: CommandContext, args: list[str]) -> str:
             return f"bash: tail: {positional[0]}: Is a directory"
         if node.binary:
             return f"bash: tail: {positional[0]}: Binary file (use xxd to inspect)"
+        if node.censored:
+            _accumulate_censor_heat(ctx, node)
+            _emit_censored_seen(ctx, [node.name])
+            return _censor_block(node)
         if node.encrypted:
             hex_lines = ctx.fs.render_hex(node.content).splitlines()
             tail_lines = hex_lines[-n:] if n > 0 else []
@@ -830,6 +897,15 @@ def cmd_rm(ctx: CommandContext, args: list[str]) -> str:
     for path_str in positional:
         path = _resolve(ctx, path_str)
         try:
+            # Refuse to remove censored files even with -f, unless --shred (which is
+            # a story-level "destroy evidence" action and should still cost dearly).
+            try:
+                node = ctx.fs._get_node(path)
+            except FSError:
+                node = None
+            if node is not None and getattr(node, "censored", False) and not shred:
+                out.append(_refuse_censored_tamper(ctx, node, "rm"))
+                continue
             ctx.fs.remove(path, recursive=recursive, permanent=shred)
             if shred:
                 out.append(f"shredding {path_str}...")
@@ -865,6 +941,12 @@ def cmd_cp(ctx: CommandContext, args: list[str]) -> str:
     src = _resolve(ctx, positional[0])
     dst = _resolve(ctx, positional[1])
     try:
+        try:
+            src_node = ctx.fs._get_node(src)
+        except FSError:
+            src_node = None
+        if src_node is not None and getattr(src_node, "censored", False):
+            return _refuse_censored_tamper(ctx, src_node, "cp")
         ctx.fs.copy(src, dst)
         return ""
     except FSNotFoundError as e:
@@ -894,6 +976,12 @@ def cmd_mv(ctx: CommandContext, args: list[str]) -> str:
     src = _resolve(ctx, positional[0])
     dst = _resolve(ctx, positional[1])
     try:
+        try:
+            src_node = ctx.fs._get_node(src)
+        except FSError:
+            src_node = None
+        if src_node is not None and getattr(src_node, "censored", False):
+            return _refuse_censored_tamper(ctx, src_node, "mv")
         ctx.fs.move(src, dst)
         return ""
     except FSNotFoundError as e:

@@ -226,3 +226,145 @@ class TestCensoredVaultContent:
 
         skynet_root = game_fs._get_node("/var/skynet")
         assert count(skynet_root) >= 50  # we shipped ~64
+
+
+# ---------------------------------------------------------------------------
+# Regression tests — bugs found during post-ship review
+# ---------------------------------------------------------------------------
+
+
+class TestCensoredFileTamperRefusals:
+    """rm/cp/mv on a censored file must refuse + spike heat instead of letting
+    the player nuke or leak the vault."""
+
+    @pytest.fixture
+    def game(self):
+        from hackerzork.game import Game
+        g = Game(audio_enabled=False, effects_enabled=False, meta_enabled=True)
+        g.boot()
+        return g
+
+    def test_rm_refuses_and_keeps_file(self, game):
+        path = "/var/skynet/censored/epstein_client_list.csv.enc"
+        before = game._heat.level
+        out = game._shell.execute(f"rm {path}")
+        assert "SkyNet has flagged" in out
+        assert game._fs.file_exists(path)
+        assert game._heat.level - before == pytest.approx(15.0)
+
+    def test_rm_force_still_refuses(self, game):
+        path = "/var/skynet/censored/epstein_client_list.csv.enc"
+        out = game._shell.execute(f"rm -f {path}")
+        assert "SkyNet has flagged" in out
+        assert game._fs.file_exists(path)
+
+    def test_cp_refuses(self, game):
+        path = "/var/skynet/censored/epstein_client_list.csv.enc"
+        out = game._shell.execute(f"cp {path} /tmp/leak.enc")
+        assert "SkyNet has flagged" in out
+        assert not game._fs.file_exists("/tmp/leak.enc")
+
+    def test_mv_refuses(self, game):
+        path = "/var/skynet/censored/epstein_client_list.csv.enc"
+        out = game._shell.execute(f"mv {path} /tmp/moved.enc")
+        assert "SkyNet has flagged" in out
+        assert game._fs.file_exists(path)
+        assert not game._fs.file_exists("/tmp/moved.enc")
+
+    def test_rm_emits_tamper_event(self, game):
+        seen = []
+        game._events.on(
+            "censored_file_tampered",
+            lambda e: seen.append(e.data.get("action", "")),
+        )
+        game._shell.execute(
+            "rm /var/skynet/censored/epstein_client_list.csv.enc"
+        )
+        assert seen == ["rm"]
+
+
+class TestHeadTailGrepRespectCensorship:
+    """head/tail/grep must show the censor quip — not leak placeholder content."""
+
+    @pytest.fixture
+    def game(self):
+        from hackerzork.game import Game
+        g = Game(audio_enabled=False, effects_enabled=False, meta_enabled=True)
+        g.boot()
+        return g
+
+    def test_head_shows_censor_quip(self, game):
+        out = game._shell.execute(
+            "head /var/skynet/censored/epstein_client_list.csv.enc"
+        )
+        assert "[CENSORED" in out
+        assert "Decryption refused" in out
+        assert "[encrypted; 14 rows" not in out  # no placeholder leak
+
+    def test_head_bumps_heat(self, game):
+        before = game._heat.level
+        game._shell.execute(
+            "head /var/skynet/censored/epstein_client_list.csv.enc"
+        )
+        assert game._heat.level - before == pytest.approx(12.0)
+
+    def test_tail_shows_censor_quip(self, game):
+        out = game._shell.execute(
+            "tail /var/skynet/censored/epstein_client_list.csv.enc"
+        )
+        assert "[CENSORED" in out
+        assert "[encrypted; 14 rows" not in out
+
+    def test_grep_refuses_loudly(self, game):
+        out = game._shell.execute(
+            "grep list /var/skynet/censored/epstein_client_list.csv.enc"
+        )
+        assert "censored" in out.lower()
+        assert "skynet" in out.lower()
+
+    def test_grep_recursive_marks_each_censored_hit(self, game):
+        out = game._shell.execute("grep -r yacht /var/skynet/censored")
+        # Several censored files should contribute refusal lines
+        assert out.count("censored — SkyNet refused") >= 5
+
+
+class TestCatHeatCapPreventsBurnCascade:
+    """`cat *.enc` on the full vault must not insta-burn the player twice
+    (the bug that motivated the heat cap)."""
+
+    @pytest.fixture
+    def game(self):
+        from hackerzork.game import Game
+        g = Game(audio_enabled=False, effects_enabled=False, meta_enabled=True)
+        g.boot()
+        return g
+
+    def test_glob_cat_caps_heat_at_30(self, game):
+        game._shell.execute("cat /var/skynet/censored/*.enc | wc -l")
+        # One command should not exceed the cap
+        assert game._heat.level <= 30.5
+
+    def test_glob_cat_does_not_trigger_identity_burn(self, game):
+        game._shell.execute("cat /var/skynet/censored/*.enc | wc -l")
+        # If burn fired, awareness would be at 100. Cap should keep it well below.
+        assert game._skynet.awareness < 30.0
+
+    def test_glob_cat_emits_one_event_not_per_file(self, game):
+        events_seen: list[int] = []
+        game._events.on(
+            "censored_file_accessed",
+            lambda e: events_seen.append(e.data.get("count", 1)),
+        )
+        game._shell.execute("cat /var/skynet/censored/*.enc | wc -l")
+        # Exactly one event, with count > 1 (it batched many)
+        assert len(events_seen) == 1
+        assert events_seen[0] > 10
+
+    def test_single_cat_still_full_cost(self, game):
+        before = game._heat.level
+        game._shell.execute(
+            "cat /var/skynet/censored/PROJECT_GENESIS.md.enc"
+        )
+        # Single file should still cost the file's actual censor_heat (15)
+        assert game._heat.level - before == pytest.approx(15.0)
+
