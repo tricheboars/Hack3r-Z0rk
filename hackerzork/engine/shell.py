@@ -261,9 +261,17 @@ class Shell:
 
     def _handle_pipe(self, cmds: list[ParsedCommand]) -> str:
         stdin = ""
-        for cmd in cmds:
+        last_idx = len(cmds) - 1
+        for idx, cmd in enumerate(cmds):
             old_env = self._ctx.env
-            self._ctx.env = {**old_env, "STDIN": stdin} if stdin else dict(old_env)
+            new_env = dict(old_env)
+            if stdin:
+                new_env["STDIN"] = stdin
+            if idx < last_idx:
+                # Tell the upstream command its output is going to a pipe so
+                # tools like ls can switch to one-entry-per-line.
+                new_env["_PIPED_OUT"] = "1"
+            self._ctx.env = new_env
             try:
                 stdin = self._dispatch_single(cmd)
             finally:
@@ -286,11 +294,37 @@ class Shell:
         handler = self._registry.get(cmd.name)
         if handler is None:
             return f"bash: {cmd.name}: command not found"
-        args = _reconstruct_args(cmd)
+        args = self._expand_globs(_reconstruct_args(cmd))
         try:
             return handler(self._ctx, args)
         except Exception as exc:
             return f"bash: {cmd.name}: {exc}"
+
+    def _expand_globs(self, argv: list[str]) -> list[str]:
+        """Expand ``*``, ``?``, ``[...]`` against the VFS like bash does.
+
+        Bare-default behaviour: if a token contains glob metacharacters and
+        matches at least one VFS entry, replace it with the matches in sorted
+        order. If nothing matches, leave the token alone (POSIX default).
+        Hidden files are only matched when the pattern's basename starts with
+        a dot, mirroring bash's dotglob-off default.
+        """
+        import fnmatch
+        fs = self._ctx.fs
+        if fs is None:
+            return argv
+
+        out: list[str] = []
+        for tok in argv:
+            if not _has_glob_meta(tok):
+                out.append(tok)
+                continue
+            matches = _glob_match(fs, tok, self._ctx.env.get("CWD", "/home/user"))
+            if matches:
+                out.extend(matches)
+            else:
+                out.append(tok)
+        return out
 
 
 # ---------------------------------------------------------------------------
@@ -316,3 +350,67 @@ def _reconstruct_args(cmd: ParsedCommand) -> list[str]:
     ``find -name '*.txt'`` instead of bundling them into ``-aemn``.
     """
     return list(cmd.argv)
+
+
+def _has_glob_meta(s: str) -> bool:
+    in_brackets = False
+    for ch in s:
+        if ch == "[":
+            in_brackets = True
+        elif ch == "]" and in_brackets:
+            return True  # closed bracket — definitely a glob
+        elif ch in ("*", "?"):
+            return True
+    return False
+
+
+def _glob_match(fs, pattern: str, cwd: str) -> list[str]:
+    """Match a glob pattern against the VFS. Returns sorted absolute or
+    relative paths depending on whether the pattern was absolute."""
+    import fnmatch
+
+    is_abs = pattern.startswith("/")
+    parts = [p for p in pattern.split("/") if p]
+    base = "/" if is_abs else cwd
+
+    matches = _walk_glob(fs, base, parts, [])
+    if not matches:
+        return []
+
+    if is_abs:
+        return sorted(matches)
+    # Strip cwd prefix to keep relative paths relative.
+    prefix = cwd.rstrip("/") + "/"
+    out = []
+    for m in matches:
+        if m.startswith(prefix):
+            out.append(m[len(prefix):])
+        else:
+            out.append(m)
+    return sorted(out)
+
+
+def _walk_glob(fs, base: str, parts: list[str], acc: list[str]) -> list[str]:
+    import fnmatch
+
+    if not parts:
+        return [base]
+    head, *tail = parts
+    try:
+        node = fs._get_node(base)
+        if not node.is_dir:
+            return []
+        children = list(node.children.keys())
+    except Exception:
+        return []
+
+    # Hidden files require an explicit leading dot in the pattern.
+    if not head.startswith("."):
+        children = [c for c in children if not c.startswith(".")]
+
+    matched_names = [c for c in children if fnmatch.fnmatchcase(c, head)]
+    out: list[str] = []
+    for name in matched_names:
+        sub = base.rstrip("/") + "/" + name
+        out.extend(_walk_glob(fs, sub, tail, acc))
+    return out

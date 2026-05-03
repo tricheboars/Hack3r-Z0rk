@@ -319,7 +319,7 @@ def _sub_state(ctx: CommandContext, args: list[str]) -> str:
 
     # VFS
     try:
-        entries = ctx.fs.listdir("/home/user")
+        entries = ctx.fs.list_dir("/home/user")
         lines.append(f"\n{_CYAN}VFS /home/user:{_RESET} {len(entries)} entries")
     except Exception:
         lines.append(f"\n{_CYAN}VFS:{_RESET} unavailable")

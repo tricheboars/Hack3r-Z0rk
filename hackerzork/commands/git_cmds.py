@@ -224,6 +224,32 @@ def _git_log(ctx: CommandContext, args: list[str]) -> str:
     return "\n".join(out)
 
 
+def _resolve_checkout_target(gs, target: str):
+    """Resolve a checkout target to a commit. Accepts: short/long hash,
+    ``HEAD``, ``HEAD~N``, ``HEAD^...``, and the literal branch name ``main``."""
+    import re as _re
+    if not target:
+        return None
+    commits = gs.commits  # newest-last
+    if not commits:
+        return None
+    lowered = target.lower()
+    if lowered in ("main", "head"):
+        return commits[-1]
+    m = _re.match(r"^head(~|\^+)(\d*)$", lowered)
+    if m:
+        op, num = m.group(1), m.group(2)
+        if op.startswith("~"):
+            steps = int(num) if num else 1
+        else:
+            steps = len(op) if not num else int(num)
+        idx = len(commits) - 1 - steps
+        if idx < 0:
+            return None
+        return commits[idx]
+    return gs.find(target)
+
+
 def _git_checkout(ctx: CommandContext, args: list[str]) -> str:
     gs = _gs(ctx)
     if gs is None:
@@ -235,12 +261,12 @@ def _git_checkout(ctx: CommandContext, args: list[str]) -> str:
             "usage: git checkout <hash>   (use 'git log --oneline' to list hashes)"
         )
 
-    hash_prefix = args[0].lower()
-    commit = gs.find(hash_prefix)
+    target = args[0]
+    commit = _resolve_checkout_target(gs, target)
 
     if commit is None:
         return (
-            f"error: pathspec '{args[0]}' did not match any file(s) known to git\n"
+            f"error: pathspec '{target}' did not match any file(s) known to git\n"
             "hint:  use 'git log --oneline' to see valid commit hashes"
         )
 

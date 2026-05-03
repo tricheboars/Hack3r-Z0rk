@@ -181,6 +181,20 @@ def cmd_apt(ctx: CommandContext, args: list[str]) -> str:
         return _apt_list(ctx, rest)
     if sub == "verify":
         return _apt_verify(ctx, rest)
+    if sub in ("upgrade", "full-upgrade", "dist-upgrade"):
+        return (
+            "Reading package lists... Done\n"
+            "Building dependency tree... Done\n"
+            "Reading state information... Done\n"
+            "Calculating upgrade... Done\n"
+            "0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded."
+        )
+    if sub == "autoremove":
+        return (
+            "Reading package lists... Done\n"
+            "Building dependency tree... Done\n"
+            "0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded."
+        )
 
     return f"E: Invalid operation {sub}"
 
@@ -432,6 +446,22 @@ def cmd_gpg(ctx: CommandContext, args: list[str]) -> str:
         return (
             "gpg (GnuPG) 2.4.3\n"
             "Usage: gpg [--list-keys | --verify <package>]"
+        )
+
+    if args[0] in ("--version", "-V"):
+        return (
+            "gpg (GnuPG) 2.4.3\n"
+            "libgcrypt 1.10.2\n"
+            "Copyright (C) 2024 g10 Code GmbH"
+        )
+
+    if args[0] in ("--help", "-h"):
+        return (
+            "gpg (GnuPG) 2.4.3\n"
+            "Usage: gpg [options] [files] (-h for help)\n\n"
+            "Common options:\n"
+            "  --list-keys            list keys\n"
+            "  --verify <package>     verify a package signature"
         )
 
     if args[0] == "--list-keys":

@@ -52,6 +52,15 @@ def cmd_save(ctx: CommandContext, args: list[str]) -> str:
     if ctx.save_system is None:
         return "[save] Save system unavailable."
 
+    if len(args) > 1:
+        joined = " ".join(args)
+        return (
+            f"[save] Invalid save name: '{joined}'\n"
+            "       Save names cannot contain spaces.\n"
+            "       Names must be 1–32 characters: letters, numbers, _ or -\n"
+            "       Example: save chapter1"
+        )
+
     name = args[0] if args else "quicksave"
 
     if not _SAFE_NAME.match(name):
@@ -100,6 +109,14 @@ def cmd_save(ctx: CommandContext, args: list[str]) -> str:
 def cmd_load(ctx: CommandContext, args: list[str]) -> str:
     if ctx.save_system is None:
         return "[load] Save system unavailable."
+
+    if len(args) > 1:
+        joined = " ".join(args)
+        return (
+            f"[load] Invalid save name: '{joined}'\n"
+            "       Save names cannot contain spaces.\n"
+            "       Use 'saves' to list available slots."
+        )
 
     name = args[0] if args else "quicksave"
 

@@ -113,6 +113,14 @@ def _read_word(text: str, i: int, env: dict[str, str]) -> tuple[str, int]:
     n = len(text)
     parts: list[str] = []
 
+    # Tilde expansion — only at the very start of an unquoted word, never
+    # inside quotes (which is why it lives here, before the read loop).
+    if i < n and text[i] == "~":
+        nxt = text[i + 1] if i + 1 < n else ""
+        if nxt == "" or nxt == "/" or nxt.isspace() or nxt in _OPERATOR_CHARS:
+            parts.append(env.get("HOME", "/home/user"))
+            i += 1
+
     while i < n:
         c = text[i]
 

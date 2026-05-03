@@ -111,8 +111,15 @@ def _parse_n_flag(args: list[str], default: int) -> tuple[int, list[str]]:
     return n, positional
 
 
+_SYMBOLIC_CLAUSE_RE = re.compile(r"^([ugoa]*)([+\-=])([rwx]*)$")
+
+
 def _apply_symbolic_chmod(mode_str: str, current_octal: str) -> str:
-    """Apply a symbolic chmod expression like 'u+x,go-w' to a 3-digit octal string."""
+    """Apply a symbolic chmod expression like 'u+x,go-w' to a 3-digit octal string.
+
+    Raises ValueError if any clause fails to parse — chmod can then surface
+    "invalid mode" instead of silently no-op'ing the way it did before.
+    """
     s = current_octal.zfill(3)[-3:]
     u_d, g_d, o_d = int(s[0]), int(s[1]), int(s[2])
     bits = [
@@ -125,9 +132,9 @@ def _apply_symbolic_chmod(mode_str: str, current_octal: str) -> str:
     perm_off = {"r": 0, "w": 1, "x": 2}
 
     for clause in mode_str.split(","):
-        m = re.match(r"^([ugoa]*)([+\-=])([rwx]*)$", clause.strip())
+        m = _SYMBOLIC_CLAUSE_RE.match(clause.strip())
         if not m:
-            continue
+            raise ValueError(mode_str)
         who_str, op, what_str = m.group(1), m.group(2), m.group(3)
 
         if not who_str or "a" in who_str:
@@ -183,7 +190,13 @@ def _fmt_long(entry: FSEntry, name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _ls_dir_lines(ctx: CommandContext, path: str, show_all: bool, long_fmt: bool) -> list[str]:
+def _ls_dir_lines(
+    ctx: CommandContext,
+    path: str,
+    show_all: bool,
+    long_fmt: bool,
+    one_per_line: bool = False,
+) -> list[str]:
     entries = ctx.fs.list_dir(path)
     visible = [e for e in entries if show_all or not e.name.startswith(".")]
     visible.sort(key=lambda e: e.name.lstrip(".").lower())
@@ -202,12 +215,22 @@ def _ls_dir_lines(ctx: CommandContext, path: str, show_all: bool, long_fmt: bool
             names.append(e.name + "@")
         else:
             names.append(e.name)
-    return ["  ".join(names)] if names else []
+    if not names:
+        return []
+    if one_per_line:
+        return names
+    return ["  ".join(names)]
 
 
-def _ls_recursive(ctx: CommandContext, path: str, show_all: bool, long_fmt: bool) -> list[str]:
+def _ls_recursive(
+    ctx: CommandContext,
+    path: str,
+    show_all: bool,
+    long_fmt: bool,
+    one_per_line: bool = False,
+) -> list[str]:
     out = [path + ":"]
-    out.extend(_ls_dir_lines(ctx, path, show_all, long_fmt))
+    out.extend(_ls_dir_lines(ctx, path, show_all, long_fmt, one_per_line))
 
     try:
         entries = ctx.fs.list_dir(path)
@@ -398,29 +421,66 @@ def cmd_cd(ctx: CommandContext, args: list[str]) -> str:
     aliases=["dir"],
 )
 def cmd_ls(ctx: CommandContext, args: list[str]) -> str:
-    flags, positional = _parse_flags(args)
+    # "-1" looks like a numeric arg to the generic flag splitter, so peel it
+    # off here. Same with "-1l" / "-l1" bundles.
+    explicit_one = False
+    cleaned: list[str] = []
+    for a in args:
+        if a == "-1":
+            explicit_one = True
+            continue
+        if a.startswith("-") and "1" in a[1:] and len(a) > 1 and not a[1:].replace(".", "").isdigit():
+            explicit_one = True
+            cleaned.append(a.replace("1", "") or "-")
+            continue
+        cleaned.append(a)
+    flags, positional = _parse_flags([a for a in cleaned if a != "-"])
     show_all = "a" in flags
     long_fmt = "l" in flags
     recursive = "R" in flags
+    one_per_line = explicit_one or ctx.env.get("_PIPED_OUT") == "1"
 
-    path = _resolve(ctx, positional[0]) if positional else _cwd(ctx)
-    label = positional[0] if positional else path
+    targets = positional or [_cwd(ctx)]
 
-    try:
-        node = ctx.fs._get_node(path)
-    except FSNotFoundError:
-        return f"ls: cannot access '{label}': No such file or directory"
-    except FSError as e:
-        return f"ls: {e}"
+    # Split into file-targets (rendered together) and dir-targets (each as its
+    # own labelled block when there's more than one).
+    file_lines: list[str] = []
+    dir_blocks: list[str] = []
 
-    if not node.is_dir:
-        entry = node.to_entry()
-        return _fmt_long(entry, entry.name) if long_fmt else entry.name
+    for label in targets:
+        path = _resolve(ctx, label)
+        try:
+            node = ctx.fs._get_node(path)
+        except FSNotFoundError:
+            file_lines.append(f"ls: cannot access '{label}': No such file or directory")
+            continue
+        except FSError as e:
+            file_lines.append(f"ls: {e}")
+            continue
 
-    if recursive:
-        return "\n".join(_ls_recursive(ctx, path, show_all, long_fmt))
+        if not node.is_dir:
+            entry = node.to_entry()
+            file_lines.append(_fmt_long(entry, entry.name) if long_fmt else entry.name)
+            continue
 
-    return "\n".join(_ls_dir_lines(ctx, path, show_all, long_fmt))
+        if recursive:
+            block_lines = _ls_recursive(ctx, path, show_all, long_fmt, one_per_line)
+        else:
+            block_lines = _ls_dir_lines(ctx, path, show_all, long_fmt, one_per_line)
+
+        body = "\n".join(block_lines)
+        # Only label dir blocks when listing multiple targets (real ls).
+        if len(targets) > 1:
+            dir_blocks.append(f"{label}:\n{body}".rstrip())
+        else:
+            dir_blocks.append(body)
+
+    pieces: list[str] = []
+    if file_lines:
+        joiner = "\n" if one_per_line else "  "
+        pieces.append(joiner.join(file_lines))
+    pieces.extend(b for b in dir_blocks if b)
+    return "\n\n".join(p for p in pieces if p)
 
 
 # ---------------------------------------------------------------------------
@@ -508,7 +568,8 @@ def cmd_head(ctx: CommandContext, args: list[str]) -> str:
         if node.binary:
             return f"bash: head: {positional[0]}: Binary file (use xxd to inspect)"
         if node.encrypted:
-            return "[ENCRYPTED — binary content]\n" + ctx.fs.render_hex(node.content)
+            hex_lines = ctx.fs.render_hex(node.content).splitlines()
+            return "\n".join(["[ENCRYPTED — binary content]"] + hex_lines[:n])
         return "\n".join(node.content.splitlines()[:n])
     except FSNotFoundError:
         return f"bash: head: {positional[0]}: No such file or directory"
@@ -538,7 +599,9 @@ def cmd_tail(ctx: CommandContext, args: list[str]) -> str:
         if node.binary:
             return f"bash: tail: {positional[0]}: Binary file (use xxd to inspect)"
         if node.encrypted:
-            return "[ENCRYPTED — binary content]\n" + ctx.fs.render_hex(node.content)
+            hex_lines = ctx.fs.render_hex(node.content).splitlines()
+            tail_lines = hex_lines[-n:] if n > 0 else []
+            return "\n".join(["[ENCRYPTED — binary content]"] + tail_lines)
         lines = node.content.splitlines()
         return "\n".join(lines[-n:] if n > 0 else [])
     except FSNotFoundError:
@@ -783,13 +846,24 @@ def cmd_chmod(ctx: CommandContext, args: list[str]) -> str:
 
     mode_str, path_str = positional[0], positional[1]
     path = _resolve(ctx, path_str)
+
+    # Reject obvious-garbage modes early. Pure-digit strings must be valid
+    # octal (each digit 0-7); other strings get the symbolic parser, which
+    # now raises ValueError on bad clauses.
+    if mode_str.isdigit() and any(c not in "01234567" for c in mode_str):
+        return f"chmod: invalid mode: '{mode_str}'"
+
     try:
         node = ctx.fs._get_node(path)
         if re.match(r"^[0-7]{1,4}$", mode_str):
             ctx.fs.set_permissions(path, mode_str)
         else:
             current = node.permissions.to_octal()
-            ctx.fs.set_permissions(path, _apply_symbolic_chmod(mode_str, current))
+            try:
+                new_mode = _apply_symbolic_chmod(mode_str, current)
+            except ValueError:
+                return f"chmod: invalid mode: '{mode_str}'"
+            ctx.fs.set_permissions(path, new_mode)
         return ""
     except FSNotFoundError:
         return f"chmod: cannot access '{path_str}': No such file or directory"
