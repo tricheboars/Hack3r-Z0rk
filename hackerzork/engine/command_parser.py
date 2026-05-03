@@ -45,6 +45,7 @@ class ParsedCommand:
     name: str
     args: list[str] = field(default_factory=list)
     flags: dict[str, str | bool] = field(default_factory=dict)
+    argv: list[str] = field(default_factory=list)
     raw: str = ""
     pipe_to: ParsedCommand | None = None
     redirect: Redirect | None = None
@@ -356,6 +357,7 @@ def _build_command(tokens: list[Token], raw: str) -> ParsedCommand:
         name=words[0],
         args=args,
         flags=flags,
+        argv=list(words[1:]),
         raw=raw,
         redirect=redirect,
     )

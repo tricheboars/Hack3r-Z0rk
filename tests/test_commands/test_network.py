@@ -365,7 +365,7 @@ class TestSsh:
         node = _make_node()
         ctx = _make_ctx(node, compromised=True)
         result = cmd_ssh(ctx, ["10.0.0.1"])
-        assert "Connection" in result
+        assert "Foothold established" in result
         assert "Permission denied" not in result
 
     def test_uncompromised_denied(self):
@@ -391,7 +391,7 @@ class TestSsh:
         node = _make_node()
         ctx = _make_ctx(node, compromised=True)
         result = cmd_ssh(ctx, ["root@10.0.0.1"])
-        assert "Connection" in result
+        assert "Foothold established" in result
 
     def test_sets_last_ssh_host(self):
         node = _make_node()
@@ -412,7 +412,7 @@ class TestSsh:
         ctx = _make_ctx(node, compromised=True)
         result = cmd_ssh(ctx, ["10.0.0.1"])
         assert "Permission denied" not in result
-        assert "Connection" in result
+        assert "Foothold established" in result
 
 
 # ---------------------------------------------------------------------------

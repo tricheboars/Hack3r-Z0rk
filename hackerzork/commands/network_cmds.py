@@ -106,6 +106,23 @@ def _resolve_host(ctx: CommandContext, host: str) -> str:
     return host
 
 
+def _is_valid_ipv4(s: str) -> bool:
+    parts = s.split(".")
+    if len(parts) != 4:
+        return False
+    for p in parts:
+        if not p.isdigit() or not 0 <= int(p) <= 255:
+            return False
+    return True
+
+
+def _hostname_resolved(ctx: CommandContext, original: str, resolved: str) -> bool:
+    """True if either ``original`` already looked like an IP or /etc/hosts mapped it."""
+    if _is_valid_ipv4(original):
+        return True
+    return resolved != original and _is_valid_ipv4(resolved)
+
+
 def _net(ctx: CommandContext) -> NetworkSim | None:
     return ctx.network  # type: ignore[return-value]
 
@@ -145,14 +162,20 @@ def cmd_nmap(ctx: CommandContext, args: list[str]) -> str:
 
     for target in targets:
         ip = _resolve_host(ctx, target)
+
+        if not _hostname_resolved(ctx, target, ip):
+            lines.append(f"\nFailed to resolve \"{target}\".")
+            continue
+        if not _is_valid_ipv4(ip):
+            lines.append(f"\nnmap: invalid IPv4 address: {ip}")
+            continue
+
         net.discover_node(ip)
         node = net.nodes.get(ip)
 
         if node is None:
-            lines.append(f"\nNote: Host {ip} seems down.")
-            lines.append(f"Nmap scan report for {ip}")
-            lines.append("Host is up (0.000s latency).")
-            lines.append("\nAll scanned ports on are filtered")
+            lines.append(f"\nNmap scan report for {ip}")
+            lines.append("Note: Host seems down. If it is really up, but blocking our ping probes, try -Pn")
             continue
 
         ping_r = net.ping(ip)
@@ -456,14 +479,15 @@ def cmd_ssh(ctx: CommandContext, args: list[str]) -> str:
     hostname = node.hostname or ip
     date_str = datetime.now().strftime("%a %b %d %H:%M:%S %Y")
     banner = _SSH_BANNER.format(hostname=hostname, date=date_str, user=login_user)
+    loot_dir = f"/home/user/loot/{ip.replace('.', '_')}"
     lines = [
         f"Warning: Permanently added '{host}' (ED25519) to the list of known hosts.",
         _SSH_MOTD,
         "",
         banner.rstrip(),
         "",
-        "[simulation] — type commands in the shell to interact with this node",
-        f"Connection to {host} closed.",
+        f"[*] Foothold established on {hostname} ({ip}).",
+        f"[*] Exfiltrated artefacts available under {loot_dir}/",
     ]
     ctx.env["LAST_SSH_HOST"] = ip
     _emit(ctx, "ssh_connected", target=ip, user=login_user, note=auth_note)

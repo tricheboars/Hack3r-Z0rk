@@ -495,6 +495,9 @@ def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
 )
 def cmd_head(ctx: CommandContext, args: list[str]) -> str:
     n, positional = _parse_n_flag(args, default=10)
+    stdin = ctx.env.get("STDIN", "") if ctx.env else ""
+    if not positional and stdin:
+        return "\n".join(stdin.splitlines()[:n])
     if not positional:
         return ""
     path = _resolve(ctx, positional[0])
@@ -521,6 +524,10 @@ def cmd_head(ctx: CommandContext, args: list[str]) -> str:
 )
 def cmd_tail(ctx: CommandContext, args: list[str]) -> str:
     n, positional = _parse_n_flag(args, default=10)
+    stdin = ctx.env.get("STDIN", "") if ctx.env else ""
+    if not positional and stdin:
+        lines = stdin.splitlines()
+        return "\n".join(lines[-n:] if n > 0 else [])
     if not positional:
         return ""
     path = _resolve(ctx, positional[0])

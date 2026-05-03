@@ -999,6 +999,180 @@ def cmd_groupdel(ctx: CommandContext, args: list[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Tiny POSIX builtins — true / false / exit / logout / which / sort / uniq / diff
+# ---------------------------------------------------------------------------
+
+
+@register_command(
+    name="true",
+    usage="true",
+    help_text="Do nothing, successfully",
+    category=_CAT,
+)
+def cmd_true(ctx: CommandContext, args: list[str]) -> str:
+    return ""
+
+
+@register_command(
+    name="false",
+    usage="false",
+    help_text="Do nothing, unsuccessfully",
+    category=_CAT,
+)
+def cmd_false(ctx: CommandContext, args: list[str]) -> str:
+    return ""
+
+
+@register_command(
+    name="exit",
+    usage="exit",
+    help_text="Exit the shell",
+    category=_CAT,
+    aliases=["quit", "logout"],
+)
+def cmd_exit(ctx: CommandContext, args: list[str]) -> str:
+    # Shell.run intercepts exit/quit/logout before this handler is reached so
+    # the REPL terminates cleanly. This stub exists only so callers that go
+    # through Shell.execute (tests, programmatic harnesses) don't get
+    # "command not found".
+    return ""
+
+
+@register_command(
+    name="which",
+    usage="which <name>...",
+    help_text="Locate a command in the registry",
+    category=_CAT,
+)
+def cmd_which(ctx: CommandContext, args: list[str]) -> str:
+    if not args:
+        return ""
+    reg = getattr(ctx, "registry", None)
+    out: list[str] = []
+    for name in args:
+        if reg is not None and name in reg:
+            out.append(f"/usr/bin/{name}")
+        else:
+            out.append(f"{name}: not found")
+    return "\n".join(out)
+
+
+def _sort_lines(lines: list[str], reverse: bool, numeric: bool, unique: bool) -> list[str]:
+    if numeric:
+        def key(s: str) -> tuple[float, str]:
+            stripped = s.lstrip()
+            try:
+                return (float(stripped.split()[0]) if stripped else 0.0, s)
+            except (ValueError, IndexError):
+                return (0.0, s)
+        lines = sorted(lines, key=key, reverse=reverse)
+    else:
+        lines = sorted(lines, reverse=reverse)
+    if unique:
+        seen: set[str] = set()
+        out: list[str] = []
+        for line in lines:
+            if line not in seen:
+                seen.add(line)
+                out.append(line)
+        return out
+    return lines
+
+
+@register_command(
+    name="sort",
+    usage="sort [-r] [-n] [-u] [file]",
+    help_text="Sort lines of text",
+    category=_CAT,
+)
+def cmd_sort(ctx: CommandContext, args: list[str]) -> str:
+    flags, positional = _parse_flags(args)
+    reverse = "r" in flags or "reverse" in flags
+    numeric = "n" in flags or "numeric-sort" in flags
+    unique = "u" in flags or "unique" in flags
+
+    stdin = ctx.env.get("STDIN", "") if ctx.env else ""
+    if not positional and stdin:
+        return "\n".join(_sort_lines(stdin.splitlines(), reverse, numeric, unique))
+    if not positional:
+        return ""
+    if ctx.fs is None:
+        return "sort: filesystem unavailable"
+    from hackerzork.commands.filesystem import _resolve
+    try:
+        content = ctx.fs.read_file(_resolve(ctx, positional[0]))
+    except Exception as exc:
+        return f"sort: {positional[0]}: {exc}"
+    return "\n".join(_sort_lines(content.splitlines(), reverse, numeric, unique))
+
+
+@register_command(
+    name="uniq",
+    usage="uniq [-c] [-d] [file]",
+    help_text="Report or filter out repeated adjacent lines",
+    category=_CAT,
+)
+def cmd_uniq(ctx: CommandContext, args: list[str]) -> str:
+    flags, positional = _parse_flags(args)
+    count = "c" in flags or "count" in flags
+    only_dup = "d" in flags or "repeated" in flags
+
+    stdin = ctx.env.get("STDIN", "") if ctx.env else ""
+    if not positional and stdin:
+        lines = stdin.splitlines()
+    elif positional and ctx.fs is not None:
+        from hackerzork.commands.filesystem import _resolve
+        try:
+            lines = ctx.fs.read_file(_resolve(ctx, positional[0])).splitlines()
+        except Exception as exc:
+            return f"uniq: {positional[0]}: {exc}"
+    else:
+        return ""
+
+    out: list[str] = []
+    prev: str | None = None
+    run = 0
+    for line in lines:
+        if line == prev:
+            run += 1
+            continue
+        if prev is not None:
+            if not only_dup or run > 1:
+                out.append(f"{run:>7} {prev}" if count else prev)
+        prev = line
+        run = 1
+    if prev is not None:
+        if not only_dup or run > 1:
+            out.append(f"{run:>7} {prev}" if count else prev)
+    return "\n".join(out)
+
+
+@register_command(
+    name="diff",
+    usage="diff <file1> <file2>",
+    help_text="Compare files line by line",
+    category=_CAT,
+)
+def cmd_diff(ctx: CommandContext, args: list[str]) -> str:
+    if len(args) < 2:
+        return "diff: missing operand\nUsage: diff <file1> <file2>"
+    if ctx.fs is None:
+        return "diff: filesystem unavailable"
+    from hackerzork.commands.filesystem import _resolve
+    try:
+        a = ctx.fs.read_file(_resolve(ctx, args[0])).splitlines()
+    except Exception as exc:
+        return f"diff: {args[0]}: {exc}"
+    try:
+        b = ctx.fs.read_file(_resolve(ctx, args[1])).splitlines()
+    except Exception as exc:
+        return f"diff: {args[1]}: {exc}"
+    import difflib
+    diff = list(difflib.unified_diff(a, b, fromfile=args[0], tofile=args[1], lineterm=""))
+    return "\n".join(diff)
+
+
+# ---------------------------------------------------------------------------
 # neofetch
 # ---------------------------------------------------------------------------
 

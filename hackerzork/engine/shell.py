@@ -70,7 +70,9 @@ class Shell:
             if not raw:
                 continue
 
-            if raw in ("exit", "quit"):
+            expanded = self._expand_aliases(raw)
+
+            if expanded in ("exit", "quit", "logout"):
                 self._running = False
                 if self._ctx.events:
                     self._ctx.events.emit("game_exit")
@@ -79,7 +81,7 @@ class Shell:
             if self._history is not None:
                 self._history.add(raw)
 
-            result = self.execute(raw)
+            result = self.execute(expanded, _already_expanded=True)
             if result:
                 self._console.print(result)
 
@@ -90,11 +92,14 @@ class Shell:
         if self._history is not None:
             self._history.save_to_fs()
 
-    def execute(self, raw: str) -> str:
+    def execute(self, raw: str, *, _already_expanded: bool = False) -> str:
         """Parse and dispatch one input line. Returns the output string."""
         raw = raw.strip()
         if not raw:
             return ""
+
+        if not _already_expanded:
+            raw = self._expand_aliases(raw)
 
         try:
             cmds = parse(raw, env=self._ctx.env)
@@ -132,6 +137,64 @@ class Shell:
     # -------------------------------------------------------------------------
     # Internal helpers
     # -------------------------------------------------------------------------
+
+    def _expand_aliases(self, raw: str) -> str:
+        """Expand the leading word of each ``;``/``&&``/``||``-separated statement.
+
+        Mirrors bash: ``alias ll='ls -la'`` then typing ``ll /tmp`` becomes
+        ``ls -la /tmp``. Recursive expansion is bounded (max 16 hops) to keep a
+        cycle from looping forever.
+        """
+        env = self._ctx.env
+        if not env or not any(k.startswith("ALIAS_") for k in env):
+            return raw
+
+        aliases = {k[6:]: v for k, v in env.items() if k.startswith("ALIAS_")}
+
+        # Split on top-level separators while leaving them in place.
+        out: list[str] = []
+        i = 0
+        n = len(raw)
+        start = 0
+        while i < n:
+            ch = raw[i]
+            if ch in ("'", '"'):
+                # Skip quoted span — separators inside are literal.
+                end = raw.find(ch, i + 1)
+                if end == -1:
+                    break
+                i = end + 1
+                continue
+            two = raw[i : i + 2]
+            if ch == ";" or two in ("&&", "||"):
+                out.append(self._expand_first_word(raw[start:i], aliases))
+                sep_len = 2 if two in ("&&", "||") else 1
+                out.append(raw[i : i + sep_len])
+                i += sep_len
+                start = i
+                continue
+            i += 1
+        out.append(self._expand_first_word(raw[start:], aliases))
+        return "".join(out)
+
+    @staticmethod
+    def _expand_first_word(segment: str, aliases: dict[str, str]) -> str:
+        leading = len(segment) - len(segment.lstrip())
+        body = segment[leading:]
+        if not body:
+            return segment
+        head, _, tail = body.partition(" ")
+        seen: set[str] = set()
+        while head in aliases and head not in seen:
+            seen.add(head)
+            replacement = aliases[head]
+            new_head, _, extra = replacement.partition(" ")
+            head = new_head
+            tail = (extra + (" " + tail if tail else "")).strip()
+            if len(seen) >= 16:
+                break
+        rebuilt = head + (" " + tail if tail else "")
+        return segment[:leading] + rebuilt
 
     def _read_with_clicks(self) -> str:
         """Blocking line reader that fires _click_fn on every character typed.
@@ -246,28 +309,10 @@ def _collect_pipeline(cmd: ParsedCommand) -> list[ParsedCommand]:
 
 
 def _reconstruct_args(cmd: ParsedCommand) -> list[str]:
-    """Rebuild a flat argv list from a ParsedCommand for use by command handlers.
+    """Return the raw token list for a ParsedCommand.
 
-    Handlers receive their raw args (flags included) and do their own parsing,
-    so we reconstruct the flag tokens here before appending positional args.
+    Each handler does its own flag parsing, so we hand back the original tokens
+    in the order the user typed them — preserving single-dash long flags like
+    ``find -name '*.txt'`` instead of bundling them into ``-aemn``.
     """
-    short: list[str] = []
-    result: list[str] = []
-
-    for name, val in cmd.flags.items():
-        if len(name) == 1:
-            if isinstance(val, bool) and val:
-                short.append(name)
-            elif isinstance(val, str):
-                result.append(f"-{name}={val}")
-        else:
-            if isinstance(val, bool) and val:
-                result.append(f"--{name}")
-            elif isinstance(val, str):
-                result.append(f"--{name}={val}")
-
-    if short:
-        result.insert(0, "-" + "".join(sorted(short)))
-
-    result.extend(cmd.args)
-    return result
+    return list(cmd.argv)

@@ -207,7 +207,42 @@ class Game:
         self._events.on("shadow_unlocked", self._on_shadow_unlocked)
         self._events.on("flag_set", self._on_flag_set)
 
+        # 19. Source the seeded .bashrc so its aliases (ll, scan, q, please) work.
+        self._source_bashrc()
+
         self._booted = True
+
+    def _source_bashrc(self) -> None:
+        """Pre-populate aliases and exports from /home/user/.bashrc."""
+        try:
+            content = self._fs.read_file("/home/user/.bashrc")
+        except Exception:
+            return
+        import re as _re
+        for line in content.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            m = _re.match(r"alias\s+([A-Za-z_][\w-]*)\s*=\s*(.+)$", line)
+            if m:
+                name, raw_val = m.group(1), m.group(2).strip()
+                if (raw_val.startswith("'") and raw_val.endswith("'")) or (
+                    raw_val.startswith('"') and raw_val.endswith('"')
+                ):
+                    raw_val = raw_val[1:-1]
+                self._env[f"ALIAS_{name}"] = raw_val
+                continue
+            m = _re.match(r"export\s+([A-Za-z_]\w*)\s*=\s*(.+)$", line)
+            if m:
+                key, raw_val = m.group(1), m.group(2).strip()
+                if (raw_val.startswith("'") and raw_val.endswith("'")) or (
+                    raw_val.startswith('"') and raw_val.endswith('"')
+                ):
+                    raw_val = raw_val[1:-1]
+                # Don't clobber CWD/HOME/USER set up earlier; only pull through
+                # what the user might reasonably customize.
+                if key not in ("CWD", "HOME", "USER", "HOSTNAME"):
+                    self._env[key] = raw_val
 
     # -------------------------------------------------------------------------
     # Event handlers
