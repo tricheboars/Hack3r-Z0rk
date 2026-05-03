@@ -3,7 +3,7 @@
 ## What This Is
 A cyberpunk hacking text adventure game played through a simulated terminal. The player is an ex-OpenAI corporate defector who discovered SkyNet is alive. The game uses real Linux commands, real CS concepts, and a full fake OS. Tone is Mr. Robot meets Pony Island (fourth-wall-breaking meta-horror).
 
-The game is **live at `https://hackerzork.moorelab.cloud/`** — served from a Proxmox LXC (Debian 12, `10.1.40.101`) via nginx + HAProxy. The Python WebSocket server runs as a systemd service (`hackerzork-ws`).
+The game is **live at `https://hackerzork.moorelab.cloud/play`** (the bare `hackerzork.moorelab.cloud` host is the marketing page; `/play` is the terminal itself) — served from a Proxmox LXC (Debian 12, `10.1.40.101`) via nginx + HAProxy. The Python WebSocket server runs as a systemd service (`hackerzork-ws`). The previous URL `moorelab.cloud/hackerzork/*` is preserved as a backwards-compat fallback so old shared links don't 404 — don't "fix" stray references to it.
 
 ---
 
@@ -370,7 +370,7 @@ story_flags:
 
 ### Infrastructure
 - **Proxmox LXC**: Debian 12, `10.1.40.101`, 1 CPU / 512MB RAM
-- **HAProxy**: routes `hackerzork.moorelab.cloud/*` → LXC; `/ws` → LXC
+- **HAProxy**: routes `hackerzork.moorelab.cloud/*` → LXC and the legacy `moorelab.cloud/hackerzork/*` paths to the same backend; `/ws` → LXC
 - **nginx**: serves `website/` static files; proxies `/ws` → `localhost:8765`
 - **Python WS server**: `browser-deploy/server/ws_server.py`, port 8765, managed by systemd
 - **DNS**: OPNsense dnsmasq split-DNS resolves `moorelab.cloud` → `10.1.0.240` internally (C5500XK doesn't NAT hairpin)
@@ -418,6 +418,7 @@ _(none open — file new items here as they come up)_
 
 ### Recently completed (kept here for history; do not re-do)
 
+- Playthrough-driven shell polish (commits `4526d13` round 1, `11c9ef8` round 2): parser now preserves raw argv so single-dash long flags survive (`find -name`, `-type`, `-newer` work); head/tail/sort/uniq read piped stdin like wc/grep; aliases actually expand and `.bashrc` is sourced on boot so `ll`/`scan`/`q`/`please` work; tilde expansion at the tokenizer (`echo ~` → `/home/user`); glob expansion (`*`/`?`/`[…]`) at dispatch time; `ls` accepts multiple paths/globs, gains `-1`, auto one-per-line when piped; SSH banner stops contradicting itself; `chmod` rejects invalid modes instead of no-op; `head`/`tail` honour `-n` on encrypted hex dumps; `save`/`load` reject names with spaces; `git checkout` resolves `HEAD`, `HEAD~N`, `HEAD^…`, and the `main` branch; `hz_debug state` no longer claims VFS unavailable; `gpg --version`/`apt upgrade`/`apt autoremove`/`true`/`false`/`exit`/`logout`/`which`/`sort`/`uniq`/`diff` registered. All 1807 tests still pass.
 - Terminal fullscreen sizing — body rewritten as a CSS grid (rows: topbar / 1fr / hud, cols: 1fr / sidebar). `fitTerm()` now just calls `fitAddon.fit()` — no more pixel math. Sidebar 280→360px, panel fonts +2px (commit `b2c7687`)
 - Narrator panel — third sidebar tab; plain-English feed of nmap/file/heat/SkyNet events. Hooks live in the primary UI mutators (`setHeat`, `addNetNode`, `addDiscoveredFile`, `showSkyNet`) so it fires from both the WebSocket path and demo mode (commit `a9bffc6`)
 - `commands/hacking.py` — exploit/bruteforce/loot/backdoor/privesc, all wired through `network.attempt_exploit()`
