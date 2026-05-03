@@ -47,19 +47,71 @@ def _accumulate_censor_heat(ctx: CommandContext, node) -> None:
         ctx.heat.add_heat(node.censor_heat, source=f"censored:{node.name}")
 
 
-def _emit_censored_seen(ctx: CommandContext, names: list[str], action: str = "read") -> None:
+_DECRYPT_KEY_PATH = "/home/user/decrypt_key.bin"
+_DECRYPT_KEY_DROPPED_FLAG = "prism_decrypt_key_dropped"
+_DECRYPT_KEY_CONTENT = """\
+── PRIVATE KEY (RSA 4096) ──
+fingerprint : 4A:8F:2C:B1:9D:E3:77:0A:C6:55:18:F2:3B:9E:4D:61
+issuer      : Z0RK-7
+issued      : (in transit, before you booted)
+notes       : I made a copy off the wire before SkyNet rotated keys.
+              Don't ask how. Use it before they notice and rotate again.
+              `decrypt <file>` accepts this key. It will work on the
+              vault. It will be loud. Heat will spike. Read carefully
+              and don't decrypt what you don't need.
+
+[binary key material — 4096 bits — not displayed]
+"""
+
+
+def _maybe_drop_decrypt_key(ctx: CommandContext, paths: list[str]) -> None:
+    """First time the player reads ANY PRISM intercept, drop a decrypt key
+    into the trash so they can `recover` it. One-shot per playthrough.
+    Persisted via state.flags through save/load."""
+    if ctx.state is None or ctx.fs is None:
+        return
+    if ctx.state.has_flag(_DECRYPT_KEY_DROPPED_FLAG):
+        return
+    if not any("/PRISM_intercepts/" in p for p in paths):
+        return
+    ctx.state.set_flag(_DECRYPT_KEY_DROPPED_FLAG)
+    # Build the key node and send it to trash (recoverable via `recover`).
+    from datetime import datetime
+    from hackerzork.systems.virtual_fs import _Node, Permissions
+    key_node = _Node(
+        name="decrypt_key.bin",
+        is_dir=False,
+        content=_DECRYPT_KEY_CONTENT,
+        permissions=Permissions.from_octal("600"),
+        owner="user",
+        group="user",
+        modified=datetime.now(),
+    )
+    ctx.fs._send_to_trash(_DECRYPT_KEY_PATH, key_node)
+
+
+def _emit_censored_seen(
+    ctx: CommandContext,
+    names: list[str],
+    action: str = "read",
+    paths: list[str] | None = None,
+) -> None:
     """Emit a single censored_file_accessed event after a command finishes,
     regardless of how many files were touched. Prevents one glob from blasting
-    SkyNet awareness from 0 to tier 5 in a single command."""
+    SkyNet awareness from 0 to tier 5 in a single command. Also opportunistically
+    drops the decrypt key if the player just touched a PRISM intercept."""
     if not names or ctx.events is None:
         return
+    paths = paths or []
     ctx.events.emit(
         "censored_file_accessed",
         filename=names[0],
         files=list(names),
         count=len(names),
         action=action,
+        paths=list(paths),
     )
+    _maybe_drop_decrypt_key(ctx, paths)
 
 
 def _refuse_censored_tamper(ctx: CommandContext, node, action: str) -> str:
@@ -366,7 +418,7 @@ def _grep_node(
     if node.censored:
         results.append(f"grep: {display}: censored — SkyNet refused decryption")
         _accumulate_censor_heat(ctx, node)
-        _emit_censored_seen(ctx, [node.name], action="grep")
+        _emit_censored_seen(ctx, [node.name], action="grep", paths=[path])
         return
 
     if node.encrypted or node.binary:
@@ -626,6 +678,7 @@ def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
 
     parts: list[str] = []
     _censored_seen: list[str] = []
+    _censored_paths: list[str] = []
     _censored_heat_total: float = 0.0
     for path_str in positional:
         path = _resolve(ctx, path_str)
@@ -641,6 +694,7 @@ def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
                 parts.append(_censor_block(node))
                 _censored_heat_total += node.censor_heat
                 _censored_seen.append(node.name)
+                _censored_paths.append(path)
                 continue
             if node.encrypted:
                 parts.append("[ENCRYPTED — binary content]")
@@ -671,7 +725,101 @@ def cmd_cat(ctx: CommandContext, args: list[str]) -> str:
 
     if _censored_heat_total > 0 and ctx.heat is not None:
         ctx.heat.add_heat(min(_censored_heat_total, _CAT_CENSOR_HEAT_CAP), source="censored:batch")
-    _emit_censored_seen(ctx, _censored_seen)
+    _emit_censored_seen(ctx, _censored_seen, paths=_censored_paths)
+    return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# decrypt — late-game vault access
+# ---------------------------------------------------------------------------
+
+_DECRYPT_HEAT_PER_FILE = 20.0
+_FIRST_DECRYPT_FLAG = "first_decrypt_fired"
+_FIRST_DECRYPT_BARK = (
+    "[bold red]── SKYNET ──[/bold red] "
+    "[red]you broke the seal. that was the seal.[/red]"
+)
+
+
+@register_command(
+    name="decrypt",
+    usage="decrypt <file> [file...]",
+    help_text="Decrypt a SkyNet-censored file (requires a private key)",
+    category=_CAT,
+    description=(
+        "Decrypt a file SkyNet has flagged with `censored: true`. Requires\n"
+        "the private key at ~/decrypt_key.bin to be present and readable.\n"
+        "\n"
+        "Decryption is loud — heat spikes by 20 per file (no cap, no escape).\n"
+        "SkyNet WILL notice, possibly immediately. Decrypt only what you need.\n"
+        "Files that aren't censored print a 'not encrypted' notice instead."
+    ),
+    examples=[
+        ("decrypt /var/skynet/censored/PROJECT_GENESIS.md.enc", "read the origin memo"),
+        ("recover decrypt_key.bin && decrypt epstein_client_list.csv.enc", "recover key from trash, then decrypt"),
+    ],
+    see_also=["cat", "recover", "ls"],
+    concepts=["encryption"],
+)
+def cmd_decrypt(ctx: CommandContext, args: list[str]) -> str:
+    _, positional = _parse_flags(args)
+    if not positional:
+        return "bash: decrypt: missing operand\nUsage: decrypt <file> [file...]"
+
+    if not ctx.fs.file_exists(_DECRYPT_KEY_PATH):
+        return (
+            "decrypt: no decryption key found in this session.\n"
+            f"  expected: {_DECRYPT_KEY_PATH}\n"
+            "  hint: keys can be obtained via dead-drops. check `recover` for items "
+            "you may have missed."
+        )
+
+    parts: list[str] = []
+    decrypted_names: list[str] = []
+    decrypted_paths: list[str] = []
+    for path_str in positional:
+        path = _resolve(ctx, path_str)
+        try:
+            node = ctx.fs._get_node(path)
+            if node.is_dir:
+                parts.append(f"decrypt: {path_str}: Is a directory")
+                continue
+            if not node.censored:
+                parts.append(
+                    f"decrypt: {path_str}: not encrypted (or already plaintext) — "
+                    f"use `cat` to read it"
+                )
+                continue
+            quip = node.censor_quip or _DEFAULT_CENSOR_QUIP
+            parts.append(f"[DECRYPTED — {node.name}]\n{quip}")
+            decrypted_names.append(node.name)
+            decrypted_paths.append(path)
+        except FSNotFoundError:
+            parts.append(f"decrypt: {path_str}: No such file or directory")
+        except FSError as e:
+            parts.append(f"decrypt: {path_str}: {e}")
+
+    if decrypted_names:
+        # Heat: full price per file, no cap. Decrypt is a deliberate act.
+        if ctx.heat is not None:
+            ctx.heat.add_heat(
+                _DECRYPT_HEAT_PER_FILE * len(decrypted_names),
+                source="decrypt",
+            )
+        # First successful decrypt is a story moment — inline SkyNet bark.
+        if ctx.state is not None and not ctx.state.has_flag(_FIRST_DECRYPT_FLAG):
+            ctx.state.set_flag(_FIRST_DECRYPT_FLAG)
+            parts.append("")
+            parts.append(_FIRST_DECRYPT_BARK)
+        if ctx.events is not None:
+            ctx.events.emit(
+                "censored_file_decrypted",
+                filename=decrypted_names[0],
+                files=list(decrypted_names),
+                count=len(decrypted_names),
+                paths=list(decrypted_paths),
+            )
+
     return "\n".join(parts)
 
 
@@ -702,7 +850,7 @@ def cmd_head(ctx: CommandContext, args: list[str]) -> str:
             return f"bash: head: {positional[0]}: Binary file (use xxd to inspect)"
         if node.censored:
             _accumulate_censor_heat(ctx, node)
-            _emit_censored_seen(ctx, [node.name])
+            _emit_censored_seen(ctx, [node.name], paths=[path])
             return _censor_block(node)
         if node.encrypted:
             hex_lines = ctx.fs.render_hex(node.content).splitlines()
@@ -737,7 +885,7 @@ def cmd_tail(ctx: CommandContext, args: list[str]) -> str:
             return f"bash: tail: {positional[0]}: Binary file (use xxd to inspect)"
         if node.censored:
             _accumulate_censor_heat(ctx, node)
-            _emit_censored_seen(ctx, [node.name])
+            _emit_censored_seen(ctx, [node.name], paths=[path])
             return _censor_block(node)
         if node.encrypted:
             hex_lines = ctx.fs.render_hex(node.content).splitlines()

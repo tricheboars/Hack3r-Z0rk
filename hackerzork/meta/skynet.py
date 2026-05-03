@@ -26,6 +26,7 @@ from typing import Any
 _AWARENESS_COSTS: dict[str, float] = {
     "encrypted_file_accessed": 8.0,
     "censored_file_accessed":  6.0,
+    "censored_file_decrypted": 12.0,
     "surveillance_discovered":  20.0,
     "skynet_process_killed":    20.0,
     "ssh_connected":            5.0,
