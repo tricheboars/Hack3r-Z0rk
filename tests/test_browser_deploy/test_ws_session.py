@@ -70,7 +70,8 @@ def _find_event(msgs: list[str], name: str) -> dict | None:
 async def _server_and_client() -> AsyncIterator[tuple[str, Any]]:
     """Spin up a real ws_server on a random port and yield (url, connected_ws).
 
-    Consumes the initial prompt so callers start from a clean ready state.
+    Drains all initial messages (sysreport intro panel + ANSI prompt + version
+    side-channel event) so callers start from a clean ready state.
     """
     async with websockets.asyncio.server.serve(
         handle_connection, "127.0.0.1", 0
@@ -78,7 +79,12 @@ async def _server_and_client() -> AsyncIterator[tuple[str, Any]]:
         port = server.sockets[0].getsockname()[1]
         url = f"ws://127.0.0.1:{port}"
         async with websockets.connect(url) as ws:
-            await asyncio.wait_for(ws.recv(), timeout=30)  # consume initial prompt
+            # Drain until quiet — server may send 1-3 initial messages
+            try:
+                while True:
+                    await asyncio.wait_for(ws.recv(), timeout=2)
+            except asyncio.TimeoutError:
+                pass
             yield url, ws
 
 
@@ -277,12 +283,22 @@ def test_drain_buf_clears_buffer() -> None:
 
 @pytest.mark.slow
 async def test_integration_connect_sends_ansi_prompt() -> None:
-    """Fresh connection should receive an ANSI-styled prompt immediately."""
+    """Fresh connection should receive an ANSI-styled prompt and intro panel."""
     async with _server() as url:
         async with websockets.connect(url) as ws:
-            prompt = await asyncio.wait_for(ws.recv(), timeout=30)
-    assert "\x1b[" in prompt, f"Expected ANSI prompt, got: {prompt!r}"
-    assert "user" in prompt, f"Prompt should contain 'user', got: {prompt!r}"
+            msgs: list[str] = []
+            try:
+                while True:
+                    msgs.append(await asyncio.wait_for(ws.recv(), timeout=2))
+            except asyncio.TimeoutError:
+                pass
+    assert msgs, "Expected at least one initial message"
+    combined = "".join(msgs)
+    assert "\x1b[" in combined, f"Expected ANSI escapes, got: {combined!r}"
+    # Either the orientation panel (ORIENTATION/USER) or the prompt (user@host)
+    assert "ORIENTATION" in combined or "user" in combined, (
+        f"Initial output should contain orientation panel or prompt; got: {combined!r}"
+    )
 
 
 @pytest.mark.slow

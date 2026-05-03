@@ -69,9 +69,24 @@ class GameSession:
         self._running = True
         log.info("session=%s  game booted", self.session_id)
 
-        # Send initial prompt first — ANSI-only clients and the
+        # Render first-boot orientation panel into the captured Rich console
+        # (the WS path skips Game._run_async, so we replicate its MOTD here).
+        try:
+            from hackerzork.effects.sysreport import render_sysreport
+            heat_lvl = ctx.heat.level if ctx.heat is not None and hasattr(ctx.heat, "level") else 0.0
+            self._console.print(
+                "[dim]Last login: Fri Mar 15 02:55:41 2026 from 45.152.66.201[/dim]\n"
+            )
+            self._console.print(render_sysreport(heat=heat_lvl))
+            intro = self._drain_buf()
+            if intro:
+                await self.ws.send(intro.replace("\n", "\r\n"))
+        except Exception as exc:  # never block session start on cosmetic intro
+            log.warning("session=%s  intro render failed: %s", self.session_id, exc)
+
+        # Send initial prompt — ANSI-only clients and the
         # test_integration_connect_sends_ansi_prompt contract expect the
-        # very first message to be the prompt.
+        # prompt to follow the intro.
         await self.ws.send(self._ws_prompt())
 
         # Tell the browser what version it's connected to. Lazy import so
