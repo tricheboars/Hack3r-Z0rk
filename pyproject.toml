@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hackerzork"
-version = "0.1.0"
+version = "0.0.94"
 description = "H@ck3r-Z0rk — A cyberpunk hacking text adventure"
 readme = "README.md"
 requires-python = ">=3.11"

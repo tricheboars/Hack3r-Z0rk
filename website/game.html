@@ -809,6 +809,10 @@
       <span class="st-label">SESSION</span>
       <span class="st-val" id="st-session">2026-04-26</span>
     </div>
+    <div class="st-item">
+      <span class="st-label">VERSION</span>
+      <span class="st-val" id="st-version">—</span>
+    </div>
   </div>
 
   <div class="topbar-right">
@@ -1994,7 +1998,16 @@ function handleSideChannel(evt) {
       if (evt.payload.node) STATE.currentNode = evt.payload.node;
       fitTerm();
       break;
+    case 'version':
+      setVersion(evt.payload.version);
+      break;
   }
+}
+
+function setVersion(v) {
+  if (!v) return;
+  const el = document.getElementById('st-version');
+  if (el) el.textContent = 'v' + v;
 }
 
 /* ─────────────────────────────────────────────────────────────

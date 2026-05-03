@@ -69,8 +69,22 @@ class GameSession:
         self._running = True
         log.info("session=%s  game booted", self.session_id)
 
-        # Send initial prompt
+        # Send initial prompt first — ANSI-only clients and the
+        # test_integration_connect_sends_ansi_prompt contract expect the
+        # very first message to be the prompt.
         await self.ws.send(self._ws_prompt())
+
+        # Tell the browser what version it's connected to. Lazy import so
+        # the version module can fail without blocking session start.
+        try:
+            from hackerzork.version import get_version
+            await self.ws.send(json.dumps({
+                "type": "event",
+                "name": "version",
+                "payload": {"version": get_version()},
+            }))
+        except Exception:
+            pass
 
     async def run(self) -> None:
         """Main async loop: buffer keystrokes, execute on Enter, tab-complete on Tab.

@@ -138,7 +138,11 @@ async def test_session_start_sends_prompt() -> None:
     await session.teardown()
 
     assert fake.sent, "start() must send at least one message"
-    assert "\x1b[" in fake.sent[-1], "Last message from start() should be ANSI prompt"
+    # start() now sends both the ANSI prompt and a version JSON event; we
+    # don't care about ordering, just that the prompt is in there somewhere.
+    assert any("\x1b[" in m for m in fake.sent), (
+        f"start() must send an ANSI prompt; got: {fake.sent!r}"
+    )
 
 
 @pytest.mark.slow
